@@ -1,0 +1,24 @@
+# This file contains global variables used by multiple tools
+# Author: havembha@gmail.com,  2021/06/28 
+#
+JALogDir: /var/log/JaaduAudit/
+JAUpload:
+    LogFileName: JAUpload.log
+    MaxFileSize : 10000000000
+    DirLocal: /var/www/JaaduAudit/UploadLocal
+    # define separte path if file is to be kept at two diff places
+    DirReplicate: /var/www/JaaduAudit/UploadReplicate 
+    # define remote host if file is to be copied to another host
+    RemoteHost: NONE
+    # define directory on remote host
+    DirRemote: NONE
+    # default datamask file if none passed
+    DefaultDatamaskFileName: JADataMaskSpec.yaml 
+JASaveStats:
+    LogFileName: JASaveStats.log
+    Dir: /var/www/JaaduAudit/Stats
+    ## URL where pushgateway is present, to post the stats
+    PushGatewayURL: http://localhost:9091
+# 
+JADisableWarnings: True
+JAVerifyCertificate: False

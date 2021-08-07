@@ -1,0 +1,105 @@
+# Log Stats collection spec 
+# Author: havembha@gmail.com,  2021/07/18
+# Format
+# - LogFile: <file name including path name> - use regular expression syntax to specify a file whose 
+#         name may change from one host to another or with time (file name with date/time)
+#   - ServiceName: service name that identifies the pattern being searched
+#         use this to tie log pattern to many services offered by that process
+#         use UpperCase letters to separate words, use letters [a-z|A-Z|0-9] in name
+#     PatternPass: string in regular expression syntax to idicate pass instance
+#         presence of this string in a line will increment metric <ServiceName>_pass 
+#     PatternFail: string in regular expression syntax to idicate pass instance
+#         presence of this string in a line will increment metric <ServiceName>_fail
+#     PatternCount: string in regular expression syntax to idicate pass instance
+#         presence of this string in a line will increment metric <ServiceName>_count
+#         use this when Pass or Fail is not needed, just need to account for an incident like alarms
+# NOTE - make no space after pattern strings
+#  Escape regular expression special characters in pattern spec like \/
+#   Non-special characters match themselves. Special characters don't match themselves −
+#
+#     \    Escape special char or start a sequence.
+#     .    Match any char except newline, see re.DOTALL
+#     ^    Match start of the string, see re.MULTILINE
+#     $    Match end of the string, see re.MULTILINE
+#     [ ]  Enclose a set of matchable chars
+#     R|S  Match either regex R or regex S.
+#     ()   Create capture group, & indicate precedence
+#
+#     After '[', enclose a set, the only special chars are −
+#      ]    End the set, if not the 1st char
+#      -    A range, eg. a-c matches a, b or c
+#      ^    Negate the set only if it is the 1st char
+#
+#     Quantifiers (append '?' for non-greedy) −
+#      {m}   Exactly m repetitions
+#      {m,n} From m (default 0) to n (default infinity)
+#      *     0 or more. Same as {,}
+#      +     1 or more. Same as {1,}
+#      ?     0 or 1. Same as {,1}
+#  For more info on regular expression, refer https://docs.python.org/3/library/re.html
+---
+GatherLogStatsLogFile: JAGatherLogStats.log
+GatherLogStatsCacheFile: JAGatherLogStats.cache
+Environment:
+   Dev:
+    HostName: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T)
+   Test:
+     HostName: (...)(t)(...)([0-9][0-9])
+   UAT:
+     HostName: (...)(u)(...)([0-9][0-9])
+     WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+   Prod:
+     HostName: (...)(p)(...)([0-9][0-9])
+     WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+   All:
+     # post data to web server per this interval. if sampling interval is 10, post interval is 60,
+     #    it will post 6 samples in one post. This is to optimize data post operation.
+     DataPostIntervalInSec: 60
+     # once the job is started, run until this time. This is to allow job running from crontab at certain periodicity 
+     DataCollectDurationInSec: 600
+     ### while posting data to web server, defaults to False
+     DisableWarnings: True
+     ### do not verify web server certificate, defaults to True
+     VerifyCertificate: False
+     # post stats to below web server
+     WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+
+LogFile:
+    SyslogError:
+      LogFileName: /var/log/syslog
+      PatternCount: Error
+
+    SyslogSession:
+      LogFileName: /var/log/syslog
+      PatternCount: Started Session
+
+    AuthlogInvalidUser:
+      LogFileName: /var/log/auth.log
+      PatternCount: Invalid user
+
+    ApacheGrafana:
+      LogFileName: /var/log/apache2/access.log*
+      DateTimeFormat: \d\d/\w\w\w/\d\d\d\d:\d\d:\d\d:\d\d
+      PatternPass: /grafana(.*)HTTP/\d.\d" [2..|3..]
+      PatternFail: /grafana(.*)HTTP/\d.\d" [4..|5..]
+  
+    ApachePrometheus:
+      LogFileName: /var/log/apache2/access.log*
+      PatternPass: /prometheus(.*)HTTP/\d.\d" [2..|3..]
+      PatternFail: /prometheus(.*)HTTP/\d.\d" [4..|5..]
+
+    ApacheSaveStats:
+      LogFileName: /var/log/apache2/access.log*
+      PatternPass: /JASaveStats.py(.*)HTTP/\d.\d" [2..|3..]
+      PatternFail: /JASaveStats.py(.*)HTTP/\d.\d" [4..|5..]
+
+    ApacheError:
+      LogFileName: /var/log/apache2/error.log* 
+      PatternCount: \[cgi:error\] 
+
+    TestStats:
+      LogFileName: JATest.log*
+      PatternPass: TestMsg Pass
+      PatternFail: TestMsg Fail
+      PatternCount: TestMsg Count
+
