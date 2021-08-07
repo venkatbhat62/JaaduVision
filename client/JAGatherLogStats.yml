@@ -6,6 +6,10 @@
 #   - ServiceName: service name that identifies the pattern being searched
 #         use this to tie log pattern to many services offered by that process
 #         use UpperCase letters to separate words, use letters [a-z|A-Z|0-9] in name
+#         NOTE - keep service name unique for a given component type of host type across
+#                 all log files parsed within a host.
+#                The data posted to web server uses the parameter names <ServiceName>_pass,
+#                         <ServiceName>_fail,  <ServiceName>_count
 #     PatternPass: string in regular expression syntax to idicate pass instance
 #         presence of this string in a line will increment metric <ServiceName>_pass 
 #     PatternFail: string in regular expression syntax to idicate pass instance
@@ -43,6 +47,10 @@
 GatherLogStatsLogFile: JAGatherLogStats.log
 GatherLogStatsCacheFile: JAGatherLogStats.cache
 Environment:
+   ### for each environment, specify the host name whose OS stats will be collected
+   ### if current hostname match to the regular expression, that environment name
+   ###   will be used to pick up customized parameters like WebServerURL, JADisableWarning..
+   ### If environment does not match, script will not post the stats to any web server
    Dev:
     HostName: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T)
    Test:
@@ -67,6 +75,8 @@ Environment:
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
 
 LogFile:
+    ### make sure the log file listed here can be read by the account under which
+    ###   the JAGatherLogStats.py executes.
     SyslogError:
       LogFileName: /var/log/syslog
       PatternCount: Error
