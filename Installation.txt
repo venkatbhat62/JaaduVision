@@ -7,16 +7,12 @@ Import modules apart that may not be installed with base Python3
    requests
 
 Downloading project artifacts
-  If git is available, clone this project using the command
-     git clone https://github.com/venkatbhat62/JaaduVision/
-
-  If git is not available, download below file and execute while on a directory where
-     files are to be downloaded from github.
+  Using git, clone this project using the command
      mkdir JaaduVision
-     wget https://github.com/venkatbhat62/JaaduVision/UpdateJaaduVision.bash
-     chmod 755 UpdateJaaduVision.bash
-     ./UpdateJaaduVision.bash
-     
+     cd JaaduVision
+     git clone https://github.com/venkatbhat62/JaaduVision/
+  To get updates, be in JaaduVision directory
+     git pull https://github.com/venkatbhat62/JaaduVision/
 
 Customization for OS stats collection
  Edit client/JAGatherOSStats.yml to customize WebServerURL, hostname spec for each environment 

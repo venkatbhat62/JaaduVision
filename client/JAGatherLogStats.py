@@ -108,12 +108,12 @@ if args.l:
     statsLogFileName = args.l
 
 if debugLevel > 0 :
-    print(f'DEBUG-1 Parameters passed configFile:{configFile}, webServerURL:{webServerURL}, dataPostIntervalInSec:{dataPostIntervalInSec}, dataCollectDurationInSec: {dataCollectDurationInSec}, debugLevel:{debugLevel}, componentName:{componentName}, platformName:{platformName}, siteName:{siteName}, environment:{environment}')
+    print('DEBUG-1 Parameters passed configFile:' + configFile + ', webServerURL:' + webServerURL + ', dataPostIntervalInSec:' + dataPostIntervalInSec + ', dataCollectDurationInSec: ' + dataCollectDurationInSec + ', debugLevel:' + debugLevel + ', componentName:' + componentName + ', platformName:' + platformName + ', siteName:' + siteName + ', environment:' + environment)
 
 def JAStatsExit(reason):
-    print(f'{reason}')
+    print(reason)
     JAStatsDurationInSec = statsEndTimeInSec - statsStartTimeInSec
-    JAGlobalLib.LogMsg(f'{reason}, processing duration:{JAStatsDurationInSec} sec\n', statsLogFileName, True)
+    JAGlobalLib.LogMsg(reason + ', processing duration:' + JAStatsDurationInSec + ' sec\n', statsLogFileName, True)
     sys.exit()
 
 ### use default config file
@@ -157,7 +157,7 @@ def JAGatherEnvironmentSpecs( key, values ):
 
     for myKey, myValue in values.items():
         if debugLevel > 1 :
-            print(f'DEBUG-2 JAGatherEnvironmentSpecs() key: {myKey}, value:{myValue}')
+            print('DEBUG-2 JAGatherEnvironmentSpecs() key: ' + myKey + ', value:' + myValue)
         if myKey == 'DataPostIntervalInSec': 
             if dataPostIntervalInSec == 0:
                 if myValue != None:
@@ -195,7 +195,7 @@ def JAGatherEnvironmentSpecs( key, values ):
                     verifyCertificate = True
 
         if debugLevel > 1 :
-            print(f'DEBUG-2 JAGatherEnvironmentSpecs(), DataPostIntervalInSec:{dataPostIntervalInSec}, DataCollectDurationInSec:{dataCollectDurationInSec}, DisableWarnings: {disableWarnings}, VerifyCertificate: {verifyCertificate}, WebServerURL:{webServerURL}')
+            print('DEBUG-2 JAGatherEnvironmentSpecs(), DataPostIntervalInSec:' + dataPostIntervalInSec + ', DataCollectDurationInSec:' + dataCollectDurationInSec + ', DisableWarnings: ' + disableWarnings + ', VerifyCertificate: ' + verifyCertificate + ', WebServerURL:' + webServerURL)
 
 ## read default parameters and OS Stats collection spec
 try:
@@ -250,7 +250,7 @@ try:
                     if dateTimeFormat == values[1]:
                         dateTimeFormatType = key
                 if dateTimeFormatType == None:
-                    print(f'ERROR Unsupported DateTimeFormat:{dateTimeFormat} for LogFileName:{logFileName}')
+                    print('ERROR Unsupported DateTimeFormat:' + dateTimeFormat + ' for LogFileName:' + logFileName)
 
             if value.get('PatternPass') != None:
                 patternPass = value.get('PatternPass')
@@ -267,7 +267,7 @@ try:
             if logFileName != None:
                 JAStatsSpec[logFileName][key] = [ patternPass, patternFail, patternCount]
                 if debugLevel > 1 :
-                    print(f'DEBUG-2 key: {key}, value:{value}' + str(JAStatsSpec[logFileName][key]) )
+                    print('DEBUG-2 key: ' + key + ', value:' + value + str(JAStatsSpec[logFileName][key]) )
             #if dateTimeFormat != None:
             #    JAStatsSpec[logFileName]['DateTimeFormat'] = re.compile(dateTimeFormat)
             #if dateTimeFormatType != None:
@@ -279,12 +279,12 @@ try:
         file.close()
 
 except OSError as err:
-    JAStatsExit(f'ERROR - Can not open configFile:|{configFile}|' + "OS error: {0}".format(err) + '\n')
+    JAStatsExit('ERROR - Can not open configFile:|' + configFile + '|' + "OS error: {0}".format(err) + '\n')
 
 if debugLevel > 0:
-    print(f'DEBUG-1 Parameters after reading configFile:{configFile}, webServerURL:{webServerURL}, dataPostIntervalInSec:{dataPostIntervalInSec}, dataCollectDurationInSec: {dataCollectDurationInSec}, debugLevel:{debugLevel}')
+    print('DEBUG-1 Parameters after reading configFile:' + configFile + ', webServerURL:' + webServerURL + ', dataPostIntervalInSec:' + dataPostIntervalInSec + ', dataCollectDurationInSec: ' + dataCollectDurationInSec + ', debugLevel:' + debugLevel)
     for key, spec in JAStatsSpec.items():
-        print(f'DEBUG-1 Name: {key}, Fields: {spec}')
+        print('DEBUG-1 Name: ' + key + ', Fields: ' + spec)
 
 ### if another instance is running, exit
 result =  subprocess.run(['ps', '-ef'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
@@ -295,7 +295,7 @@ for procName in returnProcessNames:
        if re.search( r'vi |more |view ', procName ) == None:
            procCount += 1
            if procCount > 1:
-                JAStatsExit(f'WARN - another instance ({procName}) is running, exiting' )
+                JAStatsExit('WARN - another instance (' + procName + ') is running, exiting' )
 
 
 returnResult = ''
@@ -335,7 +335,7 @@ def JAPostDataToWebServer():
     global webServerURL, verifyCertificate, logStatsToPost
     timeStamp = JAGlobalLib.UTCDateTime() 
     if debugLevel > 1:
-        print(f'DEBUG-2 JAPostDataToWebServer() {timeStamp} Posting the stats collected')
+        print('DEBUG-2 JAPostDataToWebServer() ' + timeStamp + ' Posting the stats collected')
 
     numPostings = 0
     ### sampling interval elapsed
@@ -356,11 +356,11 @@ def JAPostDataToWebServer():
     ### post interval elapsed, post the data to web server
     returnResult = requests.post( webServerURL, data=json.dumps(logStatsToPost), verify=verifyCertificate, headers=headers)
     if debugLevel > 1:
-        print (f'DEBUG-2 logStatsToPost:{logStatsToPost}')
-        print(f'Result of posting data to web server {webServerURL} :\n{returnResult.text}')
+        print ('DEBUG-2 logStatsToPost:' + logStatsToPost)
+        print('Result of posting data to web server ' + webServerURL + ' :\n' + returnResult.text)
     numPostings += 1
 
-    JAGlobalLib.LogMsg(f'INFO  JAPostDataToWebServer() timeStamp: {timeStamp} Number of stats posted: {numPostings}\n', statsLogFileName, True)
+    JAGlobalLib.LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp + ' Number of stats posted: ' + numPostings + '\n', statsLogFileName, True)
     return True
 
 """
@@ -385,7 +385,7 @@ This function checks the timestamp in current line,
 def JAIsTimeStampInRange( tempLine, startTime, dateTimeFormat, dateTimeFormatType  ):
     returnStatus = True
     if dateTimeFormat == None or dateTimeFormatType == None:
-        print(f'ERROR JAIsTimeStampInRange() Pass values for dateTimeFormat, and dateTimeFormatType')
+        print('ERROR JAIsTimeStampInRange() Pass values for dateTimeFormat, and dateTimeFormatType')
         return False
 
     tempDateTime = re.search( dateTimeFormat, tempLine )
@@ -407,7 +407,7 @@ def JAIsTimeStampInRange( tempLine, startTime, dateTimeFormat, dateTimeFormatTyp
             currentTime = startTime
 
         else:
-            print(f'ERROR JAIsTimeStampInRange() date time format: {dateTimeFormat}, dateTimeFormatType:{dateTimeFormatType} not supported')
+            print('ERROR JAIsTimeStampInRange() date time format: ' + dateTimeFormat + ', dateTimeFormatType:' + dateTimeFormatType + ' not supported')
             return False
 
     return returnStatus, timeStampType
@@ -424,18 +424,18 @@ def JAWriteFileInfo():
             for key, value in logFileInfo.items():
                 tempPosition = logFileInfo[key]['filePosition'] 
                 tempPrevTime = logFileInfo[key]['prevTime']
-                file.write(f'{key} {tempPosition} {tempPrevTime}\n')
+                file.write(key + ' ' + tempPosition + ' ' +  tempPrevTime + '\n')
                 numItems += 1
                 ### close log file that was opened before
                 ### logFileInfo[key]['filePointer'].close()
 
             file.close()
-        JAGlobalLib.LogMsg(f'INFO  JAWriteFileInfo() Wrote {numItems} log file info items to cache file: {cacheLogFileName}\n', statsLogFileName, True)
+        JAGlobalLib.LogMsg('INFO  JAWriteFileInfo() Wrote ' + numItems + ' log file info items to cache file: ' + cacheLogFileName + '\n', statsLogFileName, True)
 
         return True
 
     except OSError as err:
-        errorMsg = f'ERROR - JAWriteFileInfo() Can not open file {JAGatherLogStatsCache} to save log file info ' + "OS error: {0}".format(err) + '\n'
+        errorMsg = 'ERROR - JAWriteFileInfo() Can not open file ' + JAGatherLogStatsCache + ' to save log file info ' + "OS error: {0}".format(err) + '\n'
         print(errorMsg)
         JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
         return False        
@@ -458,7 +458,7 @@ def JAReadFileInfo():
             file.close()
 
     except OSError as err:
-         errorMsg = f'INFO - JAReadFileInfo() Can not open file {cacheLogFileName} to read log file info ' + "OS error: {0}".format(err) + '\n'
+         errorMsg = 'INFO - JAReadFileInfo() Can not open file ' + cacheLogFileName + 'to read log file info ' + "OS error: {0}".format(err) + '\n'
          print(errorMsg)
          JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
 """
@@ -505,7 +505,7 @@ def JAGetModifiedFileNames( logFileName, startTimeInSec, debugLevel):
         sortedFileNames.append( fileName )
 
     if debugLevel > 0:
-        print(f'DEBUG-1 JAFindAllLogFileNames() logFileName: {logFileName}, log files changed since epoch time {startTimeInSec}: {sortedFileNames}')
+        print('DEBUG-1 JAFindAllLogFileNames() logFileName: ' + logFileName + ', log files changed since epoch time ' + startTimeInSec + ': ' + sortedFileNames)
     return sortedFileNames
 
 def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
@@ -520,7 +520,7 @@ def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
        prevTimeInSec = startTimeInSec
 
        if debugLevel > 0:
-            print (f'DEBUG-1 JAProcessLogFile() Processing log file: {fileName}')
+            print ('DEBUG-1 JAProcessLogFile() Processing log file: ' + fileName )
        if logFileInfo.get(fileName) == None:
             firstTime = True
        elif logFileInfo[fileName].get('filePosition') == None:
@@ -542,7 +542,7 @@ def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
             try:
                 file = open(fileName, "r")
             except OSError as err:
-                errorMsg = f'ERROR - JAProcessLogFile() Can not open logFile:|{fileName}|' + "OS error: {0}".format(err) + '\n'
+                errorMsg = 'ERROR - JAProcessLogFile() Can not open logFile:| ' + fileName + '|' + "OS error: {0}".format(err) + '\n'
                 print(errorMsg)
                 JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
                 ### store error status so that next round, this will not be tried
@@ -558,7 +558,7 @@ def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
                 ### position file pointer to the previous position
                 file.seek( filePosition )
             except OSError as err:
-                errorMsg = f'ERROR - JAProcessLogFile() Can not seek position in logFile:|{fileName}|' + "OS error: {0}".format(err) + '\n'
+                errorMsg = 'ERROR - JAProcessLogFile() Can not seek position in logFile:|' + fileName + '|' + "OS error: {0}".format(err) + '\n'
                 print(errorMsg)
                 JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
                 ### store error status so that next round, this will not be tried
@@ -578,7 +578,7 @@ def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
                logFileInfo[fileName]['filePosition'] = file.tell()
                logFileInfo[fileName]['prevTime'] = time.time()
                if debugLevel > 0:
-                   print (f'DEBUG-1 JAProcessLogFile() Reached end of log file: {fileName}')
+                   print ('DEBUG-1 JAProcessLogFile() Reached end of log file: ' + fileName )
                break
 
            ### search for pass, fail, count patterns of each service associated with this log file
@@ -611,7 +611,7 @@ sleepTimeInSec = dataPostIntervalInSec
 while loopStartTimeInSec  <= statsEndTimeInSec :
    if debugLevel > 0:
        myProcessingTime = time.process_time()
-       print(f'DEBUG-1 log file(s) processing time: {myProcessingTime}, Sleeping for {sleepTimeInSec} sec')
+       print('DEBUG-1 log file(s) processing time: ' + myProcessingTime + ', Sleeping for ' + sleepTimeInSec + ' sec')
    time.sleep( sleepTimeInSec)
 
    ### take current time, it will be used to find files modified since this time for next round
@@ -644,4 +644,4 @@ JAWriteFileInfo()
 myProcessingTime = time.process_time()
 programEndTime = time.time()
 programExecTime = programEndTime - programStartTime
-JAStatsExit( f'PASS  Processing time this program:{myProcessingTime}, programExecTime:{programExecTime}' )
+JAStatsExit( 'PASS  Processing time this program:' + myProcessingTime + ', programExecTime:' + programExecTime )
