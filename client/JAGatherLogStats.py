@@ -22,7 +22,7 @@ Parameters passed are:
 returnResult
     Print result of operation to log file 
 
-Author: havembha@gmail.com, 2021/07/18
+Author: havembha@gmail.com, 2021-07-18
 """
 import yaml 
 from collections import defaultdict

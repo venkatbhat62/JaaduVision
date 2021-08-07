@@ -12,3 +12,9 @@ Server side setup
 - Apache web server to allow execution of cgi-scripts, allow interaction with Grafana, Prometheus, and Prometheus gateway.
 - Grafana (https://grafana.com/) to visualize data in time series, histogram format using Prometheus as data source.
 - Diagram plugin (https://grafana.com/grafana/plugins/jdbranham-diagram-panel/) to visualize data in network or node view
+
+Prerequisites
+     Python3.8+
+Import modules in addition to base python 3.8 
+  yaml
+  requests

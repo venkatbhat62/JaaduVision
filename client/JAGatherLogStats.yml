@@ -1,5 +1,5 @@
 # Log Stats collection spec 
-# Author: havembha@gmail.com,  2021/07/18
+# Author: havembha@gmail.com,  2021-07-18
 # Format
 # - LogFile: <file name including path name> - use regular expression syntax to specify a file whose 
 #         name may change from one host to another or with time (file name with date/time)
@@ -13,6 +13,8 @@
 #     PatternCount: string in regular expression syntax to idicate pass instance
 #         presence of this string in a line will increment metric <ServiceName>_count
 #         use this when Pass or Fail is not needed, just need to account for an incident like alarms
+# 
+#
 # NOTE - make no space after pattern strings
 #  Escape regular expression special characters in pattern spec like \/
 #   Non-special characters match themselves. Special characters don't match themselves −
