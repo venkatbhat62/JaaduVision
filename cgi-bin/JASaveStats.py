@@ -26,7 +26,7 @@ Return Result
  Post the data to pushgateway using jobname, instance
    one metric posted per line
 
-Author: havembha@gmail.com 2021/07/11
+Author: havembha@gmail.com 2021-07-11
 
 """
 import os,sys,json,re
@@ -37,20 +37,20 @@ import JAGlobalLib
 
 def JASaveStatsExit(reason):
     if re.match('^ERROR ', reason):
-        print(f'ERROR JASaveStats.py() {reason}')
+        print('ERROR JASaveStats.py() ' + reason )
     elif re.match('^PASS ', reason):
-        print(f'PASS  JASaveStats.py() {reason}')
+        print('PASS  JASaveStats.py() ' + reason)
     else:
-        print(f'      JASaveStats.py() {reason}')
+        print('      JASaveStats.py() ' + reason)
 
     JASaveStatsEndTime = datetime.datetime.now()
     JASaveStatsDuration = JASaveStatsEndTime - JASaveStatsStartTime
     JASaveStatsDurationInSec = JASaveStatsDuration.total_seconds()
-    JAGlobalLib.LogMsg(f'{reason}, response time:{JASaveStatsDurationInSec} sec\n', JALogFileName, True)
+    JAGlobalLib.LogMsg(reason + ', response time:{JASaveStatsDurationInSec} sec\n', JALogFileName, True)
     sys.exit()
 
 def JASaveStatsError(reason):
-    print (f'ERROR Could not save the data: {reason}')
+    print ('ERROR Could not save the data: ' + reason)
     JASaveStatsExit(reason)
 
 JASaveStatsStartTime = datetime.datetime.now()
@@ -73,17 +73,17 @@ returnResult='PASS - Saved data'
 
 ### prepare server side fileName to store data
 if postedData['fileName'] == None:
-    JASaveStatsError(f'fileName not passed')
+    JASaveStatsError('fileName not passed')
 else:
     fileName = JADirStats + '/' + postedData['fileName']
 
 if postedData['jobName'] == None:
-    JASaveStatsError(f'jobName not passed')
+    JASaveStatsError('jobName not passed')
 else:
     jobName = postedData['jobName']
 
 if postedData['hostName'] == None:
-    JASaveStatsError(f'hostName not passed')
+    JASaveStatsError('hostName not passed')
 else:
     hostName = postedData['hostName']
 
@@ -125,7 +125,7 @@ if hostName != None:
     prefixParams = prefixParams + ",host=" + hostName
 
 if debugLevel > 1:
-    JAGlobalLib.LogMsg(f'DEBUG-2 pushGatewayURL: {pushGatewayURL}, appendToURL: {appendToURL}, prefixParams: {prefixParams}\n', JALogFileName, True)
+    JAGlobalLib.LogMsg('DEBUG-2 pushGatewayURL: ' + pushGatewayURL + ', appendToURL: ' + appendToURL + ', prefixParams: ' + prefixParams + '\n', JALogFileName, True)
 
 ### Now post the data to web server
 headers= {'Content-type': 'application/x-www-form-urlencoded', 'Accept': '*/*'}
@@ -142,9 +142,9 @@ try:
     for key, value in postedData.items():
         if key not in skipKeyList:
             if debugLevel > 2:
-                print(f'DEBUG-3 JASaveStats.py processing key:{key}')
+                print('DEBUG-3 JASaveStats.py processing key:' + key)
             ### save this data with prefixParams that identifies environment, site, platform, component, host 
-            fpo.write(f'{prefixParams},{value}\n')
+            fpo.write(prefixParams + ',' + value + '\n')
 
             ### convert data 
             ### from p1=v1,p2=v2,... 
@@ -161,24 +161,24 @@ try:
             items.pop(0)
 
             for item in items:
-                statsToPost += (f'{item}\n')
+                statsToPost += (item + '\n')
                 if debugLevel > 2: 
-                    JAGlobalLib.LogMsg(f'DEBUG-3 item : {item}\n', JALogFileName, True) 
+                    JAGlobalLib.LogMsg('DEBUG-3 item : ' + item + '\n', JALogFileName, True) 
 
             statsToPost = statsToPost.replace('=', ' ')
             returnResult = requests.post( pushGatewayURL, data=statsToPost, headers=headers)
 
             if debugLevel > 0:
-                JAGlobalLib.LogMsg(f'DEBUG-1 data posted:\n{statsToPost}      With result:{returnResult}\n\n', JALogFileName, True)
+                JAGlobalLib.LogMsg('DEBUG-1 data posted:\n' + statsToPost + '      With result:' + returnResult + '\n\n', JALogFileName, True)
 
         else:
             if debugLevel > 2:
-                print(f'DEBUG-3 JASaveStats.py skipping key:{key}, this data will be added to stats key')
+                print('DEBUG-3 JASaveStats.py skipping key:' + key + ', this data will not be added to stats key')
 
     fpo.close()
 
 except OSError as err:
-    JASaveStatsError(f'Can not open file:|{fileName}|' + "OS error: {0}".format(err) )
+    JASaveStatsError('Can not open file:|' + fileName + '|' + "OS error: {0}".format(err) )
 
 ### print status and get out
 JASaveStatsExit(str(returnResult))
