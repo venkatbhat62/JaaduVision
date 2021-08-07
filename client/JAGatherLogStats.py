@@ -108,7 +108,7 @@ if args.l:
     statsLogFileName = args.l
 
 if debugLevel > 0 :
-    print('DEBUG-1 Parameters passed configFile:' + configFile + ', webServerURL:' + webServerURL + ', dataPostIntervalInSec:' + dataPostIntervalInSec + ', dataCollectDurationInSec: ' + dataCollectDurationInSec + ', debugLevel:' + debugLevel + ', componentName:' + componentName + ', platformName:' + platformName + ', siteName:' + siteName + ', environment:' + environment)
+    print('DEBUG-1 Parameters passed configFile: {0}, WebServerURL: {1}, dataPostIntervalInSec: {2}, dataCollectDurationInSec: {3}, debugLevel: {4}, componentName: {5}, platformName: {6}, siteName: {7}, environment: {8}'.format(configFile, webServerURL, dataPostIntervalInSec, dataCollectDurationInSec, debugLevel, componentName, platformName, siteName, environment))
 
 def JAStatsExit(reason):
     print(reason)
@@ -157,7 +157,7 @@ def JAGatherEnvironmentSpecs( key, values ):
 
     for myKey, myValue in values.items():
         if debugLevel > 1 :
-            print('DEBUG-2 JAGatherEnvironmentSpecs() key: ' + myKey + ', value:' + myValue)
+            print('DEBUG-2 JAGatherEnvironmentSpecs() key: {0}, value: {1}'.format( myKey, myValue))
         if myKey == 'DataPostIntervalInSec': 
             if dataPostIntervalInSec == 0:
                 if myValue != None:
@@ -195,7 +195,7 @@ def JAGatherEnvironmentSpecs( key, values ):
                     verifyCertificate = True
 
         if debugLevel > 1 :
-            print('DEBUG-2 JAGatherEnvironmentSpecs(), DataPostIntervalInSec:' + dataPostIntervalInSec + ', DataCollectDurationInSec:' + dataCollectDurationInSec + ', DisableWarnings: ' + disableWarnings + ', VerifyCertificate: ' + verifyCertificate + ', WebServerURL:' + webServerURL)
+            print('DEBUG-2 JAGatherEnvironmentSpecs(), DataPostIntervalInSec:{0}, DataCollectDurationInSec: {1}, DisableWarnings: {2}, verifyCertificate: {3}, WebServerURL: {4}'.format( dataPostIntervalInSec, dataCollectDurationInSec, disableWarnings, verifyCertificate, webServerURL))
 
 ## read default parameters and OS Stats collection spec
 try:
@@ -267,7 +267,7 @@ try:
             if logFileName != None:
                 JAStatsSpec[logFileName][key] = [ patternPass, patternFail, patternCount]
                 if debugLevel > 1 :
-                    print('DEBUG-2 key: ' + key + ', value:' + value + str(JAStatsSpec[logFileName][key]) )
+                    print('DEBUG-2 key: {0}, value: {1} {2}'.format( key, value, JAStatsSpec[logFileName][key]) )
             #if dateTimeFormat != None:
             #    JAStatsSpec[logFileName]['DateTimeFormat'] = re.compile(dateTimeFormat)
             #if dateTimeFormatType != None:
@@ -282,9 +282,9 @@ except OSError as err:
     JAStatsExit('ERROR - Can not open configFile:|' + configFile + '|' + "OS error: {0}".format(err) + '\n')
 
 if debugLevel > 0:
-    print('DEBUG-1 Parameters after reading configFile:' + configFile + ', webServerURL:' + webServerURL + ', dataPostIntervalInSec:' + dataPostIntervalInSec + ', dataCollectDurationInSec: ' + dataCollectDurationInSec + ', debugLevel:' + debugLevel)
+    print('DEBUG-1 Parameters after reading configFile:' + configFile + ', webServerURL:' + webServerURL + ', dataPostIntervalInSec:' + str(dataPostIntervalInSec) + ', dataCollectDurationInSec: ' + str(dataCollectDurationInSec) + ', debugLevel:' + str(debugLevel) )
     for key, spec in JAStatsSpec.items():
-        print('DEBUG-1 Name: ' + key + ', Fields: ' + spec)
+        print('DEBUG-1 Name: {0}, Fields: {1}'.format( key, spec))
 
 ### if another instance is running, exit
 result =  subprocess.run(['ps', '-ef'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
@@ -360,7 +360,7 @@ def JAPostDataToWebServer():
         print('Result of posting data to web server ' + webServerURL + ' :\n' + returnResult.text)
     numPostings += 1
 
-    JAGlobalLib.LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp + ' Number of stats posted: ' + numPostings + '\n', statsLogFileName, True)
+    JAGlobalLib.LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp + ' Number of stats posted: ' + str(numPostings) + '\n', statsLogFileName, True)
     return True
 
 """
@@ -505,7 +505,7 @@ def JAGetModifiedFileNames( logFileName, startTimeInSec, debugLevel):
         sortedFileNames.append( fileName )
 
     if debugLevel > 0:
-        print('DEBUG-1 JAFindAllLogFileNames() logFileName: ' + logFileName + ', log files changed since epoch time ' + startTimeInSec + ': ' + sortedFileNames)
+        print('DEBUG-1 JAFindAllLogFileNames() logFileName: ' + logFileName + ', log files changed since epoch time ' + str(startTimeInSec) + ': ' + sortedFileNames)
     return sortedFileNames
 
 def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
@@ -611,7 +611,7 @@ sleepTimeInSec = dataPostIntervalInSec
 while loopStartTimeInSec  <= statsEndTimeInSec :
    if debugLevel > 0:
        myProcessingTime = time.process_time()
-       print('DEBUG-1 log file(s) processing time: ' + myProcessingTime + ', Sleeping for ' + sleepTimeInSec + ' sec')
+       print('DEBUG-1 log file(s) processing time: ' + str(myProcessingTime) + ', Sleeping for ' + str(sleepTimeInSec) + ' sec')
    time.sleep( sleepTimeInSec)
 
    ### take current time, it will be used to find files modified since this time for next round
