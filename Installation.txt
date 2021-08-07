@@ -6,14 +6,171 @@ Import modules apart that may not be installed with base Python3
    yaml
    requests
 
+Customization for OS stats collection
+ Edit client/JAGatherOSStats.yml to customize WebServerURL, hostname spec for each environment 
+    and any other desired parameters
+ Suggest to keep one spec file per OS type like linux, windows so that same file can be deployed
+    platform wide, or even on all servers of interest.
+
+Cutomization for log stats collection
+  Edit client/JAGatherLogStats.yml to customize
+     WebServerURL, hostname spec for each environment, log file name, service name and associated 
+       text patterns to search.
+  Since service name is to be maintained unique within a host type or within a component type,
+    suggest to prepare the client/JAGatherLogStats file on web server and deploy those files to
+    all hosts from where log stats are to be collected. Thus, all hosts will have uniform spec.
+
 Installation at host being monitored
   Install the scripts under client directory under a service account that can access all log files
     to be parsed, whose stats are to be uploaded to web server
-  If OS stats are to be gathered, edit JAGatherOSStats.yml to customize
-     
-  Place all files under client directory 
+  If OS stats are to be gathered, add a crontab to run JAGatherOSStats.py
+   * * * * * cd <path>;python3 JAGatherOSStats.py -c <OSSpecificConfigFile> 
+   This is to post data every minute. 
+   
+  If log stats are to be gathered, add a crontab to run JAGatherLogStats.py
+   */6 * * * * cd <path>;python3 JAGatherLogStats.py -c <ComponentSpecificConfigFile>
+   Adjust the frequency of this run based on value specified for DataCollectDurationInSec
+    Above setup is to run every 10 min, when DataCollectDurationInSec is 600 seconds
+  
+Installation of python3 scripts on web server
+   Place all files from cgi-bin of distribution folder under cgi-bin of web server
+   Change script permission to executable
+     chmode 755 *.py
+
+Installing grafana OSS version on web server
+   https://grafana.com/docs/grafana/latest/installation/debian/ - works on Ubuntu server
+       sudo apt-get install -y apt-transport-https
+        sudo apt-get install -y software-properties-common wget
+        wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+        echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+        sudo apt-get update
+        sudo apt-get install grafana
+
+        sudo systemctl daemon-reload
+        sudo systemctl start grafana-server
+        sudo systemctl status grafana-server
+
+        sudo systemctl enable grafana-server.service
+
+   https://grafana.com/docs/grafana/latest/installation/rpm/ - for rpm based OS 
+
+   web access https://hostName:3000/
+       admin  - admin first time
+          change the password
+
+    ### grafana customize it to be behind apache proxy
+    sudo vi /etc/grafana/grafana.ini
+    [server]
+    http_addr = 127.0.0.1
+    http_port = 3000
+    root_url = https://hostName:443/grafana/
+    serve_from_sub_path = true
+
+    TBD - to be fixed later
+    As of now grafana live is not working behind apache proxy, see below error in apache access log.
+    If user is trying to get realtime update to browser, it will not work until this is fixed.
+     192.168.1.224 - - [18/Jul/2021:14:07:31 +0000] "GET /grafana/api/live/ws HTTP/1.1" 400 3102 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
 
-Installation on web server hosting grafana, prometheus, pushgateway, cgi-scripts
+Installing prometheus on web server
+  Below steps for Ubuntu server
+    wget https://github.com/prometheus/prometheus/releases/download/v2.28.1/prometheus-2.28.1.linux-amd64.tar.gz
+    gzip prometheus-2.28.1.linux-amd64.tar.gz
+    tar -xvf prometheus-2.28.1.linux-amd64.tar
+    cd prometheus-2.28.1.linux-amd64
+    sudo useradd -M -r -s /bin/false prometheus
+    sudo mkdir /etc/prometheus /var/lib/prometheus
+    sudo cp prometheus /usr/local/bin
+    sudo cp promtool /usr/local/bin
+    sudo chown prometheus:prometheus /usr/local/bin/{prometheus,promtool}
+    sudo cp -r {consoles,console_libraries} /etc/prometheus/
+    sudo cp prometheus.yml /etc/prometheus/
+
+    sudo chown -R prometheus:prometheus /etc/prometheus
+    sudo chown prometheus:prometheus /var/lib/prometheus
+
+    Web access promotheus http://hostName:9090/
+    to access metrics  http://hostName:9090/metrics
+
+    sudo vi /etc/systemd/system/prometheus.service
+    [Unit]
+    Description=Prometheus Time Series Collection and Processing Server
+    Wants=network-online.target
+    After=network-online.target
+
+    [Service]
+    User=prometheus
+    Group=prometheus
+    Type=simple
+    ExecStart=/usr/local/bin/prometheus \
+        --config.file /etc/prometheus/prometheus.yml \
+        --storage.tsdb.path /var/lib/prometheus/ \
+        --web.console.templates=/etc/prometheus/consoles \
+        --web.console.libraries=/etc/prometheus/console_libraries
+
+    [Install]
+    WantedBy=multi-user.target
+    :wq
+
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now prometheus
+
+
+Installing pushgateway on web server
+    wget https://github.com/prometheus/pushgateway/releases/download/v1.4.1/pushgateway-1.4.1.linux-amd64.tar.gz
+
+    tar -xvzf pushgateway-1.4.1.linux-amd64.tar.gz
+    cd pushgateway-1.4.1.linux-amd64
+    sudo cp pushgateway /usr/local/bin/pushgateway
+    # run pushgateway under prometheus, do not create separate account for pushgateway
+
+    sudo vi /etc/systemd/system/pushgateway.service
+    [Unit]
+    Description=Pushgateway
+    Wants=network-online.target
+    After=network-online.target
+
+    [Service]
+    User=prometheus
+    Group=prometheus
+    Type=simple
+    ExecStart=/usr/local/bin/pushgateway \
+        --web.listen-address=":9091" \
+        --web.telemetry-path="/metrics" \
+        --persistence.file="/tmp/metric.store" \
+        --persistence.interval=5m \
+        --log.level="info"
+    # below line is giving issue, fix it later 2021/07/11 venkat
+    #    --log.format="logger:stdout?json=true"
+
+    [Install]
+    WantedBy=multi-user.target
+    :wq
+
+    sudo systemctl daemon-reload
+    sudo systemctl restart pushgateway
+
+    ######### config prometheus to use pushgateway
+    sudo vi /var/snap/prometheus/32/prometheus.yml
+
+    ## add below lines
+    - job_name: 'pushgateway'
+        honor_labels: true
+        static_configs:
+    - targets: ['localhost:9091']
+
+    # restart prometheus
+    sudo systemctl restart prometheus
+
+    Use this to show pictures, association between components, sites, show values within components,
+    use color coding to show green, amber, red states
+    https://grafana.com/grafana/plugins/jdbranham-diagram-panel/
+
+    ### install grafana diagram plugin =============
+    sudo grafana-cli plugins install jdbranham-diagram-panel
+
+
+Installing or customizing existing apache on web server
+
 
 
