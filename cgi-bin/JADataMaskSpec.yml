@@ -1,0 +1,15 @@
+# Sample datamask file 
+# Author: havembha@gmail.com,  2021/07/03
+# Format
+#   - Name:
+#       search: regular expression spec
+#       replace: replace string pattern
+---
+DMSpec:
+    - Name: Replace Password
+      Search: <password>\w+</password>
+      Replace: <password>xxxxxxxx</password>
+
+    - Name: Replace DB Password       
+      Search: <dbpassword>\w+</dbpassword>
+      Replace: <dbpassword>xxxxxxxx</dbpassword>
