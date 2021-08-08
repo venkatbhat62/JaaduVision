@@ -31,6 +31,46 @@ import datetime
 import JAGlobalLib
 import time
 import subprocess
+try:
+    from subprocess import CompletedProcess
+except ImportError:
+    # Python 2
+    class CompletedProcess:
+
+        def __init__(self, args, returncode, stdout=None, stderr=None):
+            self.args = args
+            self.returncode = returncode
+            self.stdout = stdout
+            self.stderr = stderr
+
+        def check_returncode(self):
+            if self.returncode != 0:
+               err = subprocess.CalledProcessError(self.returncode, self.args, output=self.stdout)
+               raise err
+               return self.returncode
+
+        def sp_run(*popenargs, **kwargs):
+            input = kwargs.pop("input", None)
+            check = kwargs.pop("handle", False)
+            if input is not None:
+                if 'stdin' in kwargs:
+                    raise ValueError('stdin and input arguments may not both be used.')
+                kwargs['stdin'] = subprocess.PIPE
+            process = subprocess.Popen(*popenargs, **kwargs)
+            try:
+                outs, errs = process.communicate(input)
+            except:
+                process.kill()
+                process.wait()
+                raise
+            returncode = process.poll()
+            if check and returncode:
+                raise subprocess.CalledProcessError(returncode, popenargs, output=outs)
+            return CompletedProcess(popenargs, returncode, stdout=outs, stderr=errs)
+
+            subprocess.run = sp_run
+            # ^ This monkey patch allows it work on Python 2 or 3 the same way
+
 
 ## global default parameters
 configFile = None 
@@ -282,7 +322,7 @@ except OSError as err:
     JAStatsExit('ERROR - Can not open configFile:|' + configFile + '|' + "OS error: {0}".format(err) + '\n')
 
 if debugLevel > 0:
-    print('DEBUG-1 Parameters after reading configFile:' + configFile + ', webServerURL:' + webServerURL + ', dataPostIntervalInSec:' + str(dataPostIntervalInSec) + ', dataCollectDurationInSec: ' + str(dataCollectDurationInSec) + ', debugLevel:' + str(debugLevel) )
+    print('DEBUG-1 Parameters after reading configFile: {0}, webServerURL: {1},  dataPostIntervalInSec: {2}, dataCollectDurationInSec: {3}, debugLevel: {4}'.format( configFile, webServerURL,dataPostIntervalInSec, dataCollectDurationInSec, debugLevel) )
     for key, spec in JAStatsSpec.items():
         print('DEBUG-1 Name: {0}, Fields: {1}'.format( key, spec))
 
@@ -505,7 +545,7 @@ def JAGetModifiedFileNames( logFileName, startTimeInSec, debugLevel):
         sortedFileNames.append( fileName )
 
     if debugLevel > 0:
-        print('DEBUG-1 JAFindAllLogFileNames() logFileName: ' + logFileName + ', log files changed since epoch time ' + str(startTimeInSec) + ': ' + sortedFileNames)
+        print('DEBUG-1 JAFindAllLogFileNames() logFileName: {0}, log files changed since epoch time {1}, log files changed since epoch time {2}: {3}'.format( logFileName, startTimeInSec, sortedFileNames) )
     return sortedFileNames
 
 def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
@@ -611,7 +651,7 @@ sleepTimeInSec = dataPostIntervalInSec
 while loopStartTimeInSec  <= statsEndTimeInSec :
    if debugLevel > 0:
        myProcessingTime = time.process_time()
-       print('DEBUG-1 log file(s) processing time: ' + str(myProcessingTime) + ', Sleeping for ' + str(sleepTimeInSec) + ' sec')
+       print('DEBUG-1 log file(s) processing time: {0}, Sleeping for: {1} sec'.format( myProcessingTime, sleepTimeInSec ))
    time.sleep( sleepTimeInSec)
 
    ### take current time, it will be used to find files modified since this time for next round
