@@ -396,7 +396,7 @@ def JAPostDataToWebServer():
     ### post interval elapsed, post the data to web server
     returnResult = requests.post( webServerURL, data=json.dumps(logStatsToPost), verify=verifyCertificate, headers=headers)
     if debugLevel > 1:
-        print ('DEBUG-2 logStatsToPost:' + logStatsToPost)
+        print ('DEBUG-2 logStatsToPost: {0}'.format(logStatsToPost))
         print('Result of posting data to web server ' + webServerURL + ' :\n' + returnResult.text)
     numPostings += 1
 
