@@ -332,7 +332,7 @@ returnProcessNames = result.stdout.decode('utf-8').split('\n')
 procCount = 0
 for procName in returnProcessNames:
    if re.search( 'JAGatherLogStats.py', procName ) != None :
-       if re.search( r'vi |more |view ', procName ) == None:
+       if re.search( r'vi |vim |more |view ', procName ) == None:
            procCount += 1
            if procCount > 1:
                 JAStatsExit('WARN - another instance (' + procName + ') is running, exiting' )
