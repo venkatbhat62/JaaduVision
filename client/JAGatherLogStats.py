@@ -484,6 +484,9 @@ def JAReadFileInfo()
 Read log file name, file pointer position so that processing can resume from this position
 """
 def JAReadFileInfo():
+    if os.path.exists( cacheLogFileName ) == None:
+        return False
+
     try:
         with open(cacheLogFileName, "r") as file:
             while True:
@@ -496,11 +499,14 @@ def JAReadFileInfo():
                     logFileInfo[fields[0]]['filePosition'] = fields[1]
                     logFileInfo[fields[0]]['prevTime'] = fields[2]
             file.close()
+        return True
 
     except OSError as err:
          errorMsg = 'INFO - JAReadFileInfo() Can not open file ' + cacheLogFileName + 'to read log file info ' + "OS error: {0}".format(err) + '\n'
          print(errorMsg)
          JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+
+
 """
 def JAGetModifiedFileNames( logFileName, startTime)
 JAGetModifiedFileNames( logFileName, startTime)
@@ -684,4 +690,4 @@ JAWriteFileInfo()
 myProcessingTime = time.process_time()
 programEndTime = time.time()
 programExecTime = programEndTime - programStartTime
-JAStatsExit( 'PASS  Processing time this program:' + myProcessingTime + ', programExecTime:' + programExecTime )
+JAStatsExit( 'PASS  Processing time this program: {0}, programExecTime: {1}'.format( myProcessingTime, programExecTime ))
