@@ -7,19 +7,19 @@
 """
 import datetime
 def UTCDateTime():
-    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f%Z")
+    return datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f%Z")
 
 def UTCDateTimeForFileName():
-    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
+    return datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
 
 def UTCDate():
-    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    return datetime.datetime.utcnow().strftime("%Y-%m-%d")
 
 def UTCDateForFileName():
-    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
+    return datetime.datetime.utcnow().strftime("%Y%m%d")
 
 def UTCTime():
-    return datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M:%S")
+    return datetime.datetime.utcnow().strftime("%H:%M:%S")
 
 def LogMsg(logMsg, fileName, appendDate=True):
     if appendDate == True:

@@ -464,13 +464,13 @@ def JAWriteFileInfo():
             for key, value in logFileInfo.items():
                 tempPosition = logFileInfo[key]['filePosition'] 
                 tempPrevTime = logFileInfo[key]['prevTime']
-                file.write(key + ' ' + tempPosition + ' ' +  tempPrevTime + '\n')
+                file.write('{0} {1} {2}\n'.format(key, tempPosition, tempPrevTime))
                 numItems += 1
                 ### close log file that was opened before
                 ### logFileInfo[key]['filePointer'].close()
 
             file.close()
-        JAGlobalLib.LogMsg('INFO  JAWriteFileInfo() Wrote ' + numItems + ' log file info items to cache file: ' + cacheLogFileName + '\n', statsLogFileName, True)
+        JAGlobalLib.LogMsg('INFO  JAWriteFileInfo() Wrote {0} log file info items to cache file: {1}\n'.format( numItems, cacheLogFileName), statsLogFileName, True)
 
         return True
 
