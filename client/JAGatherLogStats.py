@@ -545,7 +545,7 @@ def JAGetModifiedFileNames( logFileName, startTimeInSec, debugLevel):
         sortedFileNames.append( fileName )
 
     if debugLevel > 0:
-        print('DEBUG-1 JAFindAllLogFileNames() logFileName: {0}, log files changed since epoch time {1}, log files changed since epoch time {2}: {3}'.format( logFileName, startTimeInSec, sortedFileNames) )
+        print('DEBUG-1 JAFindAllLogFileNames() logFileName: {0}, log files changed since epoch time {1}, log files changed since epoch time {2}'.format( logFileName, startTimeInSec, sortedFileNames) )
     return sortedFileNames
 
 def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
