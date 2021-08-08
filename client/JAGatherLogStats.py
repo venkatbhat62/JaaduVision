@@ -153,7 +153,7 @@ if debugLevel > 0 :
 def JAStatsExit(reason):
     print(reason)
     JAStatsDurationInSec = statsEndTimeInSec - statsStartTimeInSec
-    JAGlobalLib.LogMsg( '[0} processing duration: {1} sec\n'.format( reason, JAStatsDurationInSec, statsLogFileName, True))
+    JAGlobalLib.LogMsg( '{0} processing duration: {1} sec\n'.format( reason, JAStatsDurationInSec, statsLogFileName, True))
     sys.exit()
 
 ### use default config file
@@ -484,10 +484,9 @@ def JAReadFileInfo()
 Read log file name, file pointer position so that processing can resume from this position
 """
 def JAReadFileInfo():
-    if os.path.exists( cacheLogFileName ) == None:
-        return False
-
     try:
+        if os.path.exists( cacheLogFileName ) == False:
+            return False
         with open(cacheLogFileName, "r") as file:
             while True:
                 tempLine = file.readline()
