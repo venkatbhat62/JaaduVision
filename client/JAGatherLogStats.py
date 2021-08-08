@@ -153,7 +153,7 @@ if debugLevel > 0 :
 def JAStatsExit(reason):
     print(reason)
     JAStatsDurationInSec = statsEndTimeInSec - statsStartTimeInSec
-    JAGlobalLib.LogMsg(reason + ', processing duration:' + JAStatsDurationInSec + ' sec\n', statsLogFileName, True)
+    JAGlobalLib.LogMsg( '[0} processing duration: {1} sec\n'.format( reason, JAStatsDurationInSec, statsLogFileName, True))
     sys.exit()
 
 ### use default config file
@@ -327,7 +327,7 @@ if debugLevel > 0:
         print('DEBUG-1 Name: {0}, Fields: {1}'.format( key, spec))
 
 ### if another instance is running, exit
-result =  subprocess.run(['ps', '-ef'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+result =  subprocess.run(['ps', '-ef'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 returnProcessNames = result.stdout.decode('utf-8').split('\n')
 procCount = 0
 for procName in returnProcessNames:
@@ -529,7 +529,7 @@ def JAGetModifiedFileNames( logFileName, startTimeInSec, debugLevel):
     else:
         myDirPath = head_tail[0]
 
-    result =  subprocess.run(['find', myDirPath, '-mmin', '-1', '-name', head_tail[1], '-type', 'f' ],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+    result =  subprocess.run(['find', myDirPath, '-mmin', '-1', '-name', head_tail[1], '-type', 'f' ],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     fileNames = result.stdout.decode('utf-8').split('\n')
     returnFileNames = {}
 
