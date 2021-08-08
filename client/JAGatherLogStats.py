@@ -68,7 +68,7 @@ except ImportError:
                 raise subprocess.CalledProcessError(returncode, popenargs, output=outs)
             return CompletedProcess(popenargs, returncode, stdout=outs, stderr=errs)
 
-            subprocess.run = sp_run
+        subprocess.run = sp_run
             # ^ This monkey patch allows it work on Python 2 or 3 the same way
 
 
