@@ -223,25 +223,66 @@ def JAGatherEnvironmentSpecs( key, values ):
         elif myKey == 'DisableWarnings': 
             if disableWarnings == None:
                 if myValue != None:
-                    disableWarnings = myValue
+                    if myValue == 'False' or myValue == False :
+                        disableWarnings = False
+                    elif myValue == 'True' or myValue == True :
+                        disableWarning = True
+                    else:
+                        disableWarning = myValue
+
                 elif key == 'All':
                     disableWarnings = True
 
         elif myKey == 'VerifyCertificate':
             if verifyCertificate == None:
                 if myValue != None:
-                    verifyCertificate = myValue
+                    if myValue == 'False' or myValue == False:
+                        verifyCertificate = False
+                    elif myValue == 'True' or myValue == True:
+                        verifyCertificate = True
+                    else:
+                        verifyCertificate = myValue
+
                 elif key == 'All':
                     verifyCertificate = True
 
         if debugLevel > 1 :
             print('DEBUG-2 JAGatherEnvironmentSpecs(), DataPostIntervalInSec:{0}, DataCollectDurationInSec: {1}, DisableWarnings: {2}, verifyCertificate: {3}, WebServerURL: {4}'.format( dataPostIntervalInSec, dataCollectDurationInSec, disableWarnings, verifyCertificate, webServerURL))
 
+### check whether yaml module is present
+yamlModulePresent = False
+
+if sys.version_info >= (3,3):
+    import importlib
+    try:
+        importlib.util.find_spec("yaml")
+        yamlModulePresent = True
+    except ImportError:
+        yamlModulePresent = False
+else:
+    import imp
+    try:
+        importlib.find_module("yaml")
+        yamlModulePresent = True
+    except ImportError:
+        yamlModulePresent = False
+
 ## read default parameters and OS Stats collection spec
 try:
     with open(configFile, "r") as file:
-        JAStats = yaml.load(file, Loader=yaml.FullLoader)
-        
+        ### uncomment below to test local parsing of yaml file where pythin 3 is not present
+        # yamlModulePresent = False
+
+        ### use limited yaml reader when yaml is not available
+        if yamlModulePresent == True:
+            JAStats = yaml.load(file, Loader=yaml.FullLoader)
+            file.close()
+        else:
+            JAStats = JAGlobalLib.JAYamlLoad( configFile )
+            
+        if debugLevel > 1 :
+            print('DEBUG-2 Content of config file: {0}, read to JAStats: {1}'.format(configFile, JAStats)) 
+
         if statsLogFileName == None:
             if JAStats['GatherLogStatsLogFile'] != None:
                 statsLogFileName = JAStats['GatherLogStatsLogFile']
@@ -316,7 +357,6 @@ try:
             ###  set present flag if that count is to be posted to web server
             logStats[key] = [ 0,patternPassPresent,0,patternFailPresent,0,patternCountPresent]
 
-        file.close()
 
 except OSError as err:
     JAStatsExit('ERROR - Can not open configFile:|' + configFile + '|' + "OS error: {0}".format(err) + '\n')
@@ -655,7 +695,10 @@ sleepTimeInSec = dataPostIntervalInSec
 ###   and post the stats per post interval
 while loopStartTimeInSec  <= statsEndTimeInSec :
    if debugLevel > 0:
-       myProcessingTime = time.process_time()
+       if sys.version_info >= (3,3):
+            myProcessingTime = time.process_time()
+       else:
+            myProcessingTime = 0
        print('DEBUG-1 log file(s) processing time: {0}, Sleeping for: {1} sec'.format( myProcessingTime, sleepTimeInSec ))
    time.sleep( sleepTimeInSec)
 
