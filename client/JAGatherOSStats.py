@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 
 """ 
 This script gathers and POSTs OS stats to remote web server
@@ -22,7 +21,10 @@ Parameters passed are:
 returnResult
     Print result of operation to log file 
 
-Author: havembha@gmail.com, 2021/07/04
+Note - did not add python interpreter location at the top intentionally so that
+    one can execute this using python or python3 depending on python version on target host
+
+Author: havembha@gmail.com, 2021-07-04
 """
 import os, sys, re
 import datetime

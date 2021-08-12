@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 
 """ 
 This script gathers and POSTs log stats to remote web server
@@ -21,6 +20,9 @@ Parameters passed are:
 
 returnResult
     Print result of operation to log file 
+
+Note - did not add python interpreter location at the top intentionally so that
+    one can execute this using python or python3 depending on python version on target host
 
 Author: havembha@gmail.com, 2021-07-18
 """
@@ -727,13 +729,14 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
    loopStartTimeInSec = logFileProcessingStartTime 
 
 
-### if any data is present, post those
-### JAPostDataToWebServer()
-
 ### Save file info to be used next round  
 JAWriteFileInfo()
 
-myProcessingTime = time.process_time()
+if sys.version_info >= (3,3):
+    myProcessingTime = time.process_time()
+else:
+    myProcessingTime = 'N/A'
+
 programEndTime = time.time()
 programExecTime = programEndTime - programStartTime
 JAStatsExit( 'PASS  Processing time this program: {0}, programExecTime: {1}'.format( myProcessingTime, programExecTime ))
