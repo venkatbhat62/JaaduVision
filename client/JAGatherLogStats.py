@@ -225,9 +225,9 @@ def JAGatherEnvironmentSpecs( key, values ):
                     if myValue == 'False' or myValue == False :
                         disableWarnings = False
                     elif myValue == 'True' or myValue == True :
-                        disableWarning = True
+                        disableWarnings = True
                     else:
-                        disableWarning = myValue
+                        disableWarnings = myValue
 
                 elif key == 'All':
                     disableWarnings = True
@@ -245,8 +245,8 @@ def JAGatherEnvironmentSpecs( key, values ):
                 elif key == 'All':
                     verifyCertificate = True
 
-        if debugLevel > 1 :
-            print('DEBUG-2 JAGatherEnvironmentSpecs(), DataPostIntervalInSec:{0}, DataCollectDurationInSec: {1}, DisableWarnings: {2}, verifyCertificate: {3}, WebServerURL: {4}'.format( dataPostIntervalInSec, dataCollectDurationInSec, disableWarnings, verifyCertificate, webServerURL))
+    if debugLevel > 1 :
+        print('DEBUG-2 JAGatherEnvironmentSpecs(), DataPostIntervalInSec:{0}, DataCollectDurationInSec: {1}, DisableWarnings: {2}, verifyCertificate: {3}, WebServerURL: {4}'.format( dataPostIntervalInSec, dataCollectDurationInSec, disableWarnings, verifyCertificate, webServerURL))
 
 ### check whether yaml module is present
 yamlModulePresent = False
