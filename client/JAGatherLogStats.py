@@ -316,7 +316,6 @@ try:
         for key, value in JAStats['LogFile'].items():
             patternPass =  patternFail = patternCount = None
             patternPassPresent =  patternFailPresent = patternCountPresent = False 
-                # JAGatherServiceSpec(currentLogFileName, value)
             if value.get('LogFileName') != None:
                 logFileName = str(value.get('LogFileName'))
 
@@ -343,11 +342,13 @@ try:
             if logFileName != None:
                 JAStatsSpec[logFileName][key] = [ patternPass, patternFail, patternCount]
                 if debugLevel > 1 :
-                    print('DEBUG-2 key: {0}, value: {1} {2}'.format( key, value, JAStatsSpec[logFileName][key]) )
+                    print('DEBUG-2 key: {0}, value: {1}, pass, fail, count search strings: {2}'.format( key, value, JAStatsSpec[logFileName][key]) )
+            
             #if dateTimeFormat != None:
             #    JAStatsSpec[logFileName]['DateTimeFormat'] = re.compile(dateTimeFormat)
             #if dateTimeFormatType != None:
             #    JAStatsSpec[logFileName]['DateTimeFormatType'] = dateTimeFormatType
+            
             ### initialize counts to 0
             ###  set present flag if that count is to be posted to web server
             logStats[key] = [ 0,patternPassPresent,0,patternFailPresent,0,patternCountPresent]
@@ -416,24 +417,28 @@ def JAPostDataToWebServer():
     ### sampling interval elapsed
     ### push current sample stats to the data to be posted to the web server
     for key, values in logStats.items():
-        
-        logStatsToPost[key] = "timeStamp=" + timeStamp
+        ### use temporary buffer for each posting
+        tempLogStatsToPost = logStatsToPost.copy()
+        #for tempParam  in logStatsToPost:
+        #    tempLogStatsToPost[tempParam] = logStatsToPost[tempParam]
+
+        tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
         if values[1] == True:
-            logStatsToPost[key] += "," + key + "_pass=" + str(values[0])
+            tempLogStatsToPost[key] += ',' + key + '_pass=' + str(values[0])
         if values[3] == True:
-            logStatsToPost[key] += "," + key + "_fail=" + str(values[2])
+            tempLogStatsToPost[key] += ',' + key + '_fail=' + str(values[2])
         if values[5] == True:
-            logStatsToPost[key] += "," + key + "_count=" + str(values[4])
+            tempLogStatsToPost[key] += ',' + key + '_count=' + str(values[4])
 
         if values[1] == True or values[3] == True or values[5] == True:
             ### clear stats for next sampling interval
             values[0] = values[2] = values[4] = 0
 
             ### post interval elapsed, post the data to web server
-            returnResult = requests.post( webServerURL, data=json.dumps(logStatsToPost), verify=verifyCertificate, headers=headers)
+            returnResult = requests.post( webServerURL, data=json.dumps(tempLogStatsToPost), verify=verifyCertificate, headers=headers)
             if debugLevel > 1:
-                print ('DEBUG-2 logStatsToPost: {0}'.format(logStatsToPost))
-                print('Result of posting data to web server ' + webServerURL + ' :\n' + returnResult.text)
+                print('DEBUG-2 logStatsToPost: {0}'.format(tempLogStatsToPost))
+                print('DEBUG-2 Result of posting data to web server ' + webServerURL + ' :\n' + returnResult.text)
                 numPostings += 1
         else:
             if debugLevel > 1:

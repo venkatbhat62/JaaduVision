@@ -137,14 +137,19 @@ if JADisableWarnings == True:
 try:
     fpo = open( fileName, 'a')
     ### while writing values to file and posting to pushgateway, skip below keys
-    skipKeyList = ['fileName','environment','siteName','platformName','componentName','hostName']
+    skipKeyList = ['debugLevel','fileName','environment','siteName','platformName','componentName','hostName']
 
     for key, value in postedData.items():
         if key not in skipKeyList:
             if debugLevel > 2:
-                print('DEBUG-3 JASaveStats.py processing key:' + key)
+                print('DEBUG-3 JASaveStats.py processing key: {0}, value: {1}'.format(key, value))
+
+            ### SKIP LogStats, OSStats  
+            if value == 'LogStats' or value == 'OSStats' :
+                continue
+
             ### save this data with prefixParams that identifies environment, site, platform, component, host 
-            fpo.write(prefixParams + ',' + value + '\n')
+            fpo.write( '{0},{1}\n'.format(prefixParams, value ) )
 
             ### convert data 
             ### from p1=v1,p2=v2,... 
@@ -163,17 +168,17 @@ try:
             for item in items:
                 statsToPost += (item + '\n')
                 if debugLevel > 2: 
-                    JAGlobalLib.LogMsg('DEBUG-3 item : ' + item + '\n', JALogFileName, True) 
+                    JAGlobalLib.LogMsg('DEBUG-3 item : {0}\n'.format(item ), JALogFileName, True) 
 
             statsToPost = statsToPost.replace('=', ' ')
             returnResult = requests.post( pushGatewayURL, data=statsToPost, headers=headers)
 
             if debugLevel > 0:
-                JAGlobalLib.LogMsg('DEBUG-1 data posted:\n' + statsToPost + '      With result:' + returnResult + '\n\n', JALogFileName, True)
+                JAGlobalLib.LogMsg('DEBUG-1 data posted:{0} with result:{1}\n\n'.format(statsToPost,returnResult), JALogFileName, True)
 
         else:
             if debugLevel > 2:
-                print('DEBUG-3 JASaveStats.py skipping key:' + key + ', this data will not be added to stats key')
+                print('DEBUG-3 JASaveStats.py skipping key:{0} this data not added to stats key\n'.format(key) )
 
     fpo.close()
 
