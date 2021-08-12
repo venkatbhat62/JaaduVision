@@ -24,7 +24,6 @@ returnResult
 
 Author: havembha@gmail.com, 2021-07-18
 """
-import yaml 
 from collections import defaultdict
 import os, sys, re
 import datetime 
@@ -260,12 +259,7 @@ if sys.version_info >= (3,3):
     except ImportError:
         yamlModulePresent = False
 else:
-    import imp
-    try:
-        importlib.find_module("yaml")
-        yamlModulePresent = True
-    except ImportError:
-        yamlModulePresent = False
+    yamlModulePresent = False
 
 ## read default parameters and OS Stats collection spec
 try:
@@ -275,6 +269,7 @@ try:
 
         ### use limited yaml reader when yaml is not available
         if yamlModulePresent == True:
+            import yaml 
             JAStats = yaml.load(file, Loader=yaml.FullLoader)
             file.close()
         else:
