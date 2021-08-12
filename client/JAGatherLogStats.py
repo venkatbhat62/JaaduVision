@@ -154,7 +154,7 @@ if debugLevel > 0 :
 def JAStatsExit(reason):
     print(reason)
     JAStatsDurationInSec = statsEndTimeInSec - statsStartTimeInSec
-    JAGlobalLib.LogMsg( '{0} processing duration: {1} sec\n'.format( reason, JAStatsDurationInSec, statsLogFileName, True))
+    JAGlobalLib.LogMsg( '{0} processing duration: {1} sec\n'.format( reason, JAStatsDurationInSec), statsLogFileName, True)
     sys.exit()
 
 ### use default config file

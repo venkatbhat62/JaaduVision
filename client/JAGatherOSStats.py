@@ -244,7 +244,7 @@ for procName in returnProcessNames:
         if re.search( r'vi |vim |more |view |cat ', procName ) == None:
             procCount += 1
             if procCount > 1:
-                JAStatsExit('WARN - another instance ({0}) is running, exiting\n'.format(procName) )
+                JAOSStatsExit('WARN - another instance ({0}) is running, exiting\n'.format(procName) )
 
 returnResult = ''
 OSStatsToPost = {}
