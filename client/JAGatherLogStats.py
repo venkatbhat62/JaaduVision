@@ -678,12 +678,20 @@ def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
                pattern1 = values[1]
                pattern2 = values[2]
 
+               if debugLevel > 3 :
+                   print('DEBUG-4 JAProcessLogFile() searching for pattern:|' + pattern0 + '|' + pattern1 + '|' + pattern2 + '| in line: ' + tempLine + '\n') 
                if pattern0 != None and re.search( pattern0, tempLine) != None:
                    logStats[key][0] += 1
+                   if debugLevel > 3 :
+                       print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}\n'.format( key, pattern0, logStats[key][0]) ) 
                elif pattern1 != None and re.search( pattern1, tempLine) != None:
                    logStats[key][2] += 1
+                   if debugLevel > 3 :
+                       print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}\n'.format( key, pattern1, logStats[key][2]) ) 
                elif pattern2 != None and re.search( pattern2, tempLine) != None:
                    logStats[key][4] += 1
+                   if debugLevel >3 :
+                       print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}\n'.format( key, pattern2, logStats[key][4]) ) 
 
    return True
 
