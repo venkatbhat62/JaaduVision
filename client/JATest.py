@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+
 """
 This script generates test data in JATest.log.YYYYMMDD so that the JAGatherLogStats.py can send the
 simulated data to web server. This is to test the functionality of client processing log files and posting to
@@ -10,6 +10,9 @@ Parameters passed are:
     debugLevel - 0,1,2,3, default 0
 
 Author: havembha@gmail.com, 2021/08/01
+
+Note: python interpreter is not mentioned at the start of the script so that it can be run 
+   with whatever python version available on target host
 
 """
 import datetime, time
@@ -39,7 +42,7 @@ if args.s:
     simulationType = args.s
 
 if debugLevel > 0 :
-    print(f'DEBUG-1 Parameters passed simultionType: {simulationType}, testDurationInSec: {testDurationInSec}, debugLevel:{debugLevel}')
+    print('DEBUG-1 Parameters passed simultionType: {0}, testDurationInSec: {1}, debugLevel: {2}'.format(simulationType, testDurationInSec, debugLevel))
 
 def JATestExit(reason):
     print(reason)
@@ -61,15 +64,15 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
             sleepTimeInSec = 5
 
     if debugLevel > 2:
-        print(f'DEBUG-3 simulationType: {simulationType}, sleeping for {sleepTimeInSec}')
+        print('DEBUG-3 simulationType: {0}, sleeping for: {1}'.format( simulationType, sleepTimeInSec))
 
     time.sleep( sleepTimeInSec)
 
     ### log messages to log file
     for count in range( int(sleepTimeInSec / 5) ):
-        JAGlobalLib.LogMsg(f'TestMsg Pass\n', testLogFileName, True)
+        JAGlobalLib.LogMsg('TestMsg Pass\n', testLogFileName, True)
         if count % 2 > 0:
-            JAGlobalLib.LogMsg(f'TestMsg Fail\n', testLogFileName, True)
+            JAGlobalLib.LogMsg('TestMsg Fail\n', testLogFileName, True)
         if count % 3 > 0:
-            JAGlobalLib.LogMsg(f'TestMsg Count\n', testLogFileName, True)
+            JAGlobalLib.LogMsg('TestMsg Count\n', testLogFileName, True)
 
