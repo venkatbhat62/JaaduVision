@@ -416,6 +416,7 @@ def JAPostDataToWebServer():
     ### sampling interval elapsed
     ### push current sample stats to the data to be posted to the web server
     for key, values in logStats.items():
+        
         logStatsToPost[key] = "timeStamp=" + timeStamp
         if values[1] == True:
             logStatsToPost[key] += "," + key + "_pass=" + str(values[0])
@@ -424,16 +425,19 @@ def JAPostDataToWebServer():
         if values[5] == True:
             logStatsToPost[key] += "," + key + "_count=" + str(values[4])
 
-        #logStatsToPost[key] = f'timeStamp={timeStamp},{key}_pass={values[0]},{key}_fail={values[2]},{key}_count={values[4]}'
-        ### clear stats for next sampling interval
-        values[0] = values[2] = values[4] = 0
+        if values[1] == True or values[3] == True or values[5] == True:
+            ### clear stats for next sampling interval
+            values[0] = values[2] = values[4] = 0
 
-    ### post interval elapsed, post the data to web server
-    returnResult = requests.post( webServerURL, data=json.dumps(logStatsToPost), verify=verifyCertificate, headers=headers)
-    if debugLevel > 1:
-        print ('DEBUG-2 logStatsToPost: {0}'.format(logStatsToPost))
-        print('Result of posting data to web server ' + webServerURL + ' :\n' + returnResult.text)
-    numPostings += 1
+            ### post interval elapsed, post the data to web server
+            returnResult = requests.post( webServerURL, data=json.dumps(logStatsToPost), verify=verifyCertificate, headers=headers)
+            if debugLevel > 1:
+                print ('DEBUG-2 logStatsToPost: {0}'.format(logStatsToPost))
+                print('Result of posting data to web server ' + webServerURL + ' :\n' + returnResult.text)
+                numPostings += 1
+        else:
+            if debugLevel > 1:
+                print('DEBUG-2 No data to post for the key:{0}\n'.format( key ))
 
     JAGlobalLib.LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp + ' Number of stats posted: ' + str(numPostings) + '\n', statsLogFileName, True)
     return True
