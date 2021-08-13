@@ -177,8 +177,8 @@ try:
                 JAGlobalLib.LogMsg('DEBUG-1 data posted:{0} with result:{1}\n\n'.format(statsToPost,returnResult), JALogFileName, True)
 
         else:
-            if debugLevel > 2:
-                print('DEBUG-3 JASaveStats.py skipping key:{0} this data not added to stats key\n'.format(key) )
+            if debugLevel > 3:
+                print('DEBUG-4 JASaveStats.py skipping key:{0} this data not added to stats key\n'.format(key) )
 
     fpo.close()
 
