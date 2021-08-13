@@ -587,7 +587,7 @@ def JAGetModifiedFileNames( logFileName, startTimeInSec, debugLevel):
             result =  subprocess.check_output(['find', myDirPath, '-mmin', '-1', '-name', head_tail[1], '-type', 'f' ],stderr=subprocess.STDOUT)
             fileNames = result.decode('utf-8').split('\n')
         
-    except OSError as err:
+    except subprocess.CalledProcessError as err:
         errorMsg = 'ERROR JAGetModifiedFileNames() error finding files changed in last one min for logFileName: ' + logFileName + "OS error: {0}".format(err) + '\n'
         print(errorMsg)
         JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
@@ -618,7 +618,7 @@ def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
 
    logFileNames = JAGetModifiedFileNames( logFileName, startTimeInSec, debugLevel)
 
-   if len(logFileNames) <= 0:
+   if logFileNames == None:
        return False
 
    for fileName in logFileNames:
@@ -687,6 +687,10 @@ def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
                    print ('DEBUG-1 JAProcessLogFile() Reached end of log file: ' + fileName )
                break
 
+           ### SKIP short lines
+           if len(tempLine) < 2:
+               continue
+
            if debugLevel > 3 :
                print('DEBUG-4 JAProcessLogFile() processing log line:' + tempLine + '\n') 
                
@@ -697,7 +701,7 @@ def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
                pattern2 = values[2]
 
                if debugLevel > 3 :
-                   print('DEBUG-4 JAProcessLogFile() searching for pattern:|' + pattern0 + '|' + pattern1 + '|' + pattern2 + '|\n') 
+                   print('DEBUG-4 JAProcessLogFile() searching for pattern:{0}|{1}|{2}\n'.format(pattern0, pattern1, pattern2 )) 
                if pattern0 != None and re.search( pattern0, tempLine) != None:
                    logStats[key][0] += 1
                    if debugLevel > 3 :
