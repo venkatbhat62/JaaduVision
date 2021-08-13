@@ -14,6 +14,8 @@ Parameters passed are:
     dataCollectDurationInSec - collect data for this duration once started
             when started from crontab, run for this duration and exit
             default - get it from JAGatherLogStats.yml
+    processSingleLogFileName - process only this log file, skip the rest
+            useful to debug single log file at a time to refine regular expression spec for services
 
     debugLevel - 0, 1, 2, 3
         default = 0
@@ -86,6 +88,7 @@ siteName = None
 disableWarnings = None
 verifyCertificate = None
 cacheLogFileName = None
+processSingleLogFileName = None
 
 ### contains current stats
 logStats = defaultdict(dict)
@@ -114,6 +117,7 @@ parser.add_argument("-P", help="platform name, default - none")
 parser.add_argument("-S", help="site name, default - none")
 parser.add_argument("-E", help="environment like dev, test, uat, prod, default - test")
 parser.add_argument("-l", help="log file name, including path name")
+parser.add_argument("-L", help="process single log file name, including path name, skip rest")
 
 args = parser.parse_args()
 if args.D:
@@ -148,8 +152,11 @@ else:
 if args.l:
     statsLogFileName = args.l
 
+if args.L:
+    processSingleLogFileName = args.L
+
 if debugLevel > 0 :
-    print('DEBUG-1 Parameters passed configFile: {0}, WebServerURL: {1}, dataPostIntervalInSec: {2}, dataCollectDurationInSec: {3}, debugLevel: {4}, componentName: {5}, platformName: {6}, siteName: {7}, environment: {8}'.format(configFile, webServerURL, dataPostIntervalInSec, dataCollectDurationInSec, debugLevel, componentName, platformName, siteName, environment))
+    print('DEBUG-1 Parameters passed configFile: {0}, WebServerURL: {1}, dataPostIntervalInSec: {2}, dataCollectDurationInSec: {3}, debugLevel: {4}, componentName: {5}, platformName: {6}, siteName: {7}, environment: {8}, processSingleLogFileName: {9}\n'.format(configFile, webServerURL, dataPostIntervalInSec, dataCollectDurationInSec, debugLevel, componentName, platformName, siteName, environment, processSingleLogFileName))
 
 def JAStatsExit(reason):
     print(reason)
@@ -320,6 +327,11 @@ try:
             patternPassPresent =  patternFailPresent = patternCountPresent = False 
             if value.get('LogFileName') != None:
                 logFileName = str(value.get('LogFileName'))
+            
+            if processSingleLogFileName != None :
+                ### need to process single log file, skip rest
+                if logFileName != processSingleLogFileName :
+                    continue
 
             if value.get('DateTimeFormat') != None:
                 dateTimeFormat = str(value.get('DateTimeFormat'))
