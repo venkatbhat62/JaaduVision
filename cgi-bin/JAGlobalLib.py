@@ -175,3 +175,51 @@ def JAYamlLoad(fileName ):
         print('ERROR Can not read file:|' + fileName + '|, ' + "OS error: {0}".format(err) + '\n')
         return yamlData
 
+import os
+def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
+    """
+        This function returns file names in a directory that are modified since given GMT time in seconds
+        Can be used instead of find command
+    """
+    head_tail = os.path.split( fileName )
+    ### if no path specified, use ./ (current working directory)
+    if head_tail[0] == '' or head_tail[0] == None:
+        myDirPath = './'
+    else:
+        myDirPath = head_tail[0]
+
+    fileNameWithoutPath = head_tail[1]
+
+    if debugLevel > 1 :
+        print('DEBUG-2 JAFileFilesModified() filePath:{0}, fileName: {1}'.format( myDirPath, fileNameWithoutPath))
+
+    import fnmatch
+    
+    ### return buffer
+    returnFileNames = []
+    fileNames = {}
+
+    ### get all file names in desired directory
+    for file in os.listdir( myDirPath ) :
+        ### select the file name that matches to passed file name
+        if fnmatch.fnmatch(file, fileNameWithoutPath) :
+    
+            if debugLevel > 2 :
+                print('DEBUG-3 JAFileFilesModified() fileName: {0}, match to desired fileNamePattern: {1}'.format(file, fileNameWithoutPath) )
+
+            ### make full file name including path/name
+            fullFileName = myDirPath + '/' + file
+
+            ### now check the file modified time, if greater than or equal to passed time, save the file name
+            fileModifiedTime = os.path.getmtime ( fullFileName )
+            if fileModifiedTime >= sinceTimeInSec :
+                fileNames[ fileModifiedTime ] = fullFileName 
+                if debugLevel > 2 :
+                    print('DEBUG-3 JAFileFilesModified() fileName: {0}, modified time: {1}, later than desired time: {2}\n'.format( file, fileModifiedTime, sinceTimeInSec) )
+
+    sortedFileNames = []
+    for fileModifiedTime, fileName in sorted ( fileNames.items() ):
+        sortedFileNames.append( fileName )
+
+    if debugLevel > 0 :
+        print('DEBUG-1 JAFileFilesModified() modified files in:{0}, since gmtTimeInSec:{1}, fileNames:{2}'.format( fileName, sinceTimeInSec, sortedFileNames) )

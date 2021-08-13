@@ -564,71 +564,9 @@ def JAReadFileInfo():
          JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
 
 
-"""
-def JAGetModifiedFileNames( logFileName, startTime)
-JAGetModifiedFileNames( logFileName, startTime)
-Get list of log file names modified in last one min
-for each file name,
-  find last modified time
-  if that time is older than starTime passed, skip that file
-  else, store the file name along with last modified time
-
-sort the file names based on ascending time of last modified time
-
-Return Values:
-    fileNames in list form
-
-"""
-def JAGetModifiedFileNames( logFileName, startTimeInSec, debugLevel):
-    ### separate file path and filename portion
-    ###  passing both together does not work in python
-    ###  head_tail[0] - dirPath
-    ###  head_tail[1] - fileName
-    head_tail = os.path.split(logFileName)
-
-    ### if  no path specified use ./ (current working directory)
-    if head_tail[0] == '' or head_tail[0] == None:
-        myDirPath = './'
-    else:
-        myDirPath = head_tail[0]
-    try:
-        if sys.version_info >= (3,5):
-            result =  subprocess.run(['find', myDirPath, '-mmin', '-1', '-name', head_tail[1], '-type', 'f' ],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-            fileNames = result.stdout.decode('utf-8').split('\n')
-        else:
-            result =  subprocess.check_output(['find', myDirPath, '-mmin', '-1', '-name', head_tail[1], '-type', 'f' ],stderr=subprocess.STDOUT)
-            fileNames = result.decode('utf-8').split('\n')
-        
-    except subprocess.CalledProcessError as err:
-        errorMsg = 'ERROR JAGetModifiedFileNames() error finding files changed in last one min for logFileName: ' + logFileName + "OS error: {0}".format(err) + '\n'
-        print(errorMsg)
-        JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
-        ### store error status so that next round, this will not be tried
-        return None
-
-    returnFileNames = {}
-    
-    if debugLevel > 1:
-        print('DEBUG-2 logfileName: {0}, dirPath: {1}, fileName: {2}, files changed in last one min: {3}'.format( logFileName, myDirPath, head_tail[1], fileNames) )
-
-    for fileName in fileNames:
-        if os.path.isfile( fileName) == True:
-            fileModifiedTime = os.path.getmtime( fileName )
-            if fileModifiedTime > startTimeInSec:
-                returnFileNames[ fileModifiedTime ] = fileName
-    
-    sortedFileNames = []
-
-    for fileMTime, fileName  in sorted(returnFileNames.items()):
-        sortedFileNames.append( fileName )
-
-    if debugLevel > 0:
-        print('DEBUG-1 JAFindAllLogFileNames() logFileName: {0}, log files changed since epoch time {1}, log files changed since epoch time {2}'.format( logFileName, startTimeInSec, sortedFileNames) )
-    return sortedFileNames
-
 def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
 
-   logFileNames = JAGetModifiedFileNames( logFileName, startTimeInSec, debugLevel)
+   logFileNames = JAGlobalLib.JAFindModifiedFiles( logFileName, startTimeInSec, debugLevel)
 
    if logFileNames == None:
        return False
