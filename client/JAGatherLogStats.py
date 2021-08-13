@@ -355,6 +355,11 @@ try:
 
             if logFileName != None:
                 JAStatsSpec[logFileName][key] = [ patternPass, patternFail, patternCount]
+
+                ### initialize counts to 0
+                ###  set present flag if that count is to be posted to web server
+                logStats[logFileName][key] = [ 0,patternPassPresent,0,patternFailPresent,0,patternCountPresent]
+
                 if debugLevel > 1 :
                     print('DEBUG-2 key: {0}, value: {1}, pass, fail, count search strings: {2}'.format( key, value, JAStatsSpec[logFileName][key]) )
             
@@ -363,10 +368,6 @@ try:
             #if dateTimeFormatType != None:
             #    JAStatsSpec[logFileName]['DateTimeFormatType'] = dateTimeFormatType
             
-            ### initialize counts to 0
-            ###  set present flag if that count is to be posted to web server
-            logStats[key] = [ 0,patternPassPresent,0,patternFailPresent,0,patternCountPresent]
-
 
 except OSError as err:
     JAStatsExit('ERROR - Can not open configFile:|' + configFile + '|' + "OS error: {0}".format(err) + '\n')
@@ -430,33 +431,35 @@ def JAPostDataToWebServer():
     numPostings = 0
     ### sampling interval elapsed
     ### push current sample stats to the data to be posted to the web server
-    for key, values in logStats.items():
-        ### use temporary buffer for each posting
-        tempLogStatsToPost = logStatsToPost.copy()
+    for logFile in logStats.keys() :
+      ### use temporary buffer for each posting
+      tempLogStatsToPost = logStatsToPost.copy()
+      tempLogStatsToPost[logFile] = 'timeStamp=' + timeStamp
+
+      for key, values in logStats[logFile].items():
         #for tempParam  in logStatsToPost:
         #    tempLogStatsToPost[tempParam] = logStatsToPost[tempParam]
 
-        tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
         if values[1] == True:
-            tempLogStatsToPost[key] += ',' + key + '_pass=' + str(values[0])
+            tempLogStatsToPost[logFile] += ',' + key + '_pass=' + str(values[0])
         if values[3] == True:
-            tempLogStatsToPost[key] += ',' + key + '_fail=' + str(values[2])
+            tempLogStatsToPost[logFile] += ',' + key + '_fail=' + str(values[2])
         if values[5] == True:
-            tempLogStatsToPost[key] += ',' + key + '_count=' + str(values[4])
+            tempLogStatsToPost[logFile] += ',' + key + '_count=' + str(values[4])
 
         if values[1] == True or values[3] == True or values[5] == True:
             ### clear stats for next sampling interval
             values[0] = values[2] = values[4] = 0
 
-            ### post interval elapsed, post the data to web server
-            returnResult = requests.post( webServerURL, data=json.dumps(tempLogStatsToPost), verify=verifyCertificate, headers=headers)
-            if debugLevel > 1:
-                print('DEBUG-2 logStatsToPost: {0}'.format(tempLogStatsToPost))
-                print('DEBUG-2 Result of posting data to web server ' + webServerURL + ' :\n' + returnResult.text)
-                numPostings += 1
-        else:
-            if debugLevel > 1:
-                print('DEBUG-2 No data to post for the key:{0}\n'.format( key ))
+      ### post interval elapsed, post the data to web server
+      returnResult = requests.post( webServerURL, data=json.dumps(tempLogStatsToPost), verify=verifyCertificate, headers=headers)
+      if debugLevel > 1:
+          print('DEBUG-2 logStatsToPost: {0}'.format(tempLogStatsToPost))
+          print('DEBUG-2 Result of posting data to web server ' + webServerURL + ' :\n' + returnResult.text)
+          numPostings += 1
+      else:
+          if debugLevel > 1:
+              print('DEBUG-2 No data to post for the key:{0}\n'.format( key ))
 
     JAGlobalLib.LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp + ' Number of stats posted: ' + str(numPostings) + '\n', statsLogFileName, True)
     return True
@@ -653,17 +656,17 @@ def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
                if debugLevel > 3 :
                    print('DEBUG-4 JAProcessLogFile() searching for pattern:{0}|{1}|{2}\n'.format(pattern0, pattern1, pattern2 )) 
                if pattern0 != None and re.search( pattern0, tempLine) != None:
-                   logStats[key][0] += 1
+                   logStats[logFileName][key][0] += 1
                    if debugLevel > 3 :
-                       print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}\n'.format( key, pattern0, logStats[key][0]) ) 
+                       print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}\n'.format( key, pattern0, logStats[logFileName][key][0]) ) 
                elif pattern1 != None and re.search( pattern1, tempLine) != None:
-                   logStats[key][2] += 1
+                   logStats[logFileName][key][2] += 1
                    if debugLevel > 3 :
-                       print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}\n'.format( key, pattern1, logStats[key][2]) ) 
+                       print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}\n'.format( key, pattern1, logStats[logFileName][key][2]) ) 
                elif pattern2 != None and re.search( pattern2, tempLine) != None:
-                   logStats[key][4] += 1
+                   logStats[logFileName][key][4] += 1
                    if debugLevel >3 :
-                       print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}\n'.format( key, pattern2, logStats[key][4]) ) 
+                       print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}\n'.format( key, pattern2, logStats[logFileName][key][4]) ) 
 
    return True
 
