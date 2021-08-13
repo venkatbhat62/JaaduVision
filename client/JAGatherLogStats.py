@@ -579,13 +579,21 @@ def JAGetModifiedFileNames( logFileName, startTimeInSec, debugLevel):
         myDirPath = './'
     else:
         myDirPath = head_tail[0]
-
-    if sys.version_info >= (3,5):
-        result =  subprocess.run(['find', myDirPath, '-mmin', '-1', '-name', head_tail[1], '-type', 'f' ],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-    else:
-        result =  subprocess.check_output(['find', myDirPath, '-mmin', '-1', '-name', head_tail[1], '-type', 'f' ],stderr=subprocess.STDOUT)
+    try:
+        if sys.version_info >= (3,5):
+            result =  subprocess.run(['find', myDirPath, '-mmin', '-1', '-name', head_tail[1], '-type', 'f' ],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            fileNames = result.stdout.decode('utf-8').split('\n')
+        else:
+            result =  subprocess.check_output(['find', myDirPath, '-mmin', '-1', '-name', head_tail[1], '-type', 'f' ],stderr=subprocess.STDOUT)
+            fileNames = result.decode('utf-8').split('\n')
         
-    fileNames = result.stdout.decode('utf-8').split('\n')
+    except OSError as err:
+        errorMsg = 'ERROR JAGetModifiedFileNames() error finding files changed in last one min for logFileName: ' + logFileName + "OS error: {0}".format(err) + '\n'
+        print(errorMsg)
+        JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+        ### store error status so that next round, this will not be tried
+        return None
+
     returnFileNames = {}
     
     if debugLevel > 1:
