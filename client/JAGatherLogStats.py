@@ -583,7 +583,7 @@ def JAGetModifiedFileNames( logFileName, startTimeInSec, debugLevel):
     if sys.version_info >= (3,5):
         result =  subprocess.run(['find', myDirPath, '-mmin', '-1', '-name', head_tail[1], '-type', 'f' ],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     else:
-        result =  subprocess.check_output(['find', myDirPath, '-mmin', '-1', '-name', head_tail[1], '-type', 'f' ],stdout=subprocess.STDOUT,stderr=subprocess.STDOUT)
+        result =  subprocess.check_output(['find', myDirPath, '-mmin', '-1', '-name', head_tail[1], '-type', 'f' ],stderr=subprocess.STDOUT)
         
     fileNames = result.stdout.decode('utf-8').split('\n')
     returnFileNames = {}
