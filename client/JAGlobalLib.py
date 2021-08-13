@@ -223,3 +223,5 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
 
     if debugLevel > 0 :
         print('DEBUG-1 JAFileFilesModified() modified files in:{0}, since gmtTimeInSec:{1}, fileNames:{2}'.format( fileName, sinceTimeInSec, sortedFileNames) )
+
+    return sortedFileNames
