@@ -583,6 +583,9 @@ def JAGetModifiedFileNames( logFileName, startTimeInSec, debugLevel):
     result =  subprocess.run(['find', myDirPath, '-mmin', '-1', '-name', head_tail[1], '-type', 'f' ],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     fileNames = result.stdout.decode('utf-8').split('\n')
     returnFileNames = {}
+    
+    if debugLevel > 1:
+        print('DEBUG-2 logfileName: {0}, dirPath: {1}, fileName: {2}, files changed in last one min: {3}'.format( logFileName, myDirPath, head_tail[1], fileNames) )
 
     for fileName in fileNames:
         if os.path.isfile( fileName) == True:
@@ -672,6 +675,9 @@ def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
                    print ('DEBUG-1 JAProcessLogFile() Reached end of log file: ' + fileName )
                break
 
+           if debugLevel > 3 :
+               print('DEBUG-4 JAProcessLogFile() processing log line:' + tempLine + '\n') 
+               
            ### search for pass, fail, count patterns of each service associated with this log file
            for key, values in JAStatsSpec[logFileName].items():
                pattern0 = values[0]
@@ -679,7 +685,7 @@ def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
                pattern2 = values[2]
 
                if debugLevel > 3 :
-                   print('DEBUG-4 JAProcessLogFile() searching for pattern:|' + pattern0 + '|' + pattern1 + '|' + pattern2 + '| in line: ' + tempLine + '\n') 
+                   print('DEBUG-4 JAProcessLogFile() searching for pattern:|' + pattern0 + '|' + pattern1 + '|' + pattern2 + '|\n') 
                if pattern0 != None and re.search( pattern0, tempLine) != None:
                    logStats[key][0] += 1
                    if debugLevel > 3 :
