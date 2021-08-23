@@ -6,7 +6,8 @@
 
     Author: havembha@gmail.com, 2021-06-28
 """
-import datetime
+import datetime, platform, re, sys, os
+
 def UTCDateTime():
     return datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f%Z")
 
@@ -21,6 +22,18 @@ def UTCDateForFileName():
 
 def UTCTime():
     return datetime.datetime.utcnow().strftime("%H:%M:%S")
+
+def JAGetTime( deltaSeconds ):
+    tempTime = datetime.datetime.now()
+    deltaTime = datetime.timedelta(seconds=deltaSeconds)
+    newTime = tempTime - deltaTime
+    return newTime.strftime("%H:%M:%S")
+
+def JAGetDayOfMonth( deltaSeconds ):
+    tempTime = datetime.datetime.now()
+    deltaTime = datetime.timedelta(seconds=deltaSeconds)
+    newTime = tempTime - deltaTime
+    return newTime.strftime("%d")
 
 def LogMsg(logMsg, fileName, appendDate=True):
     if appendDate == True:
@@ -215,7 +228,7 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
             if fileModifiedTime >= sinceTimeInSec :
                 fileNames[ fileModifiedTime ] = fullFileName 
                 if debugLevel > 2 :
-                    print('DEBUG-3 JAFileFilesModified() fileName: {0}, modified time: {1}, later than desired time: {2}\n'.format( file, fileModifiedTime, sinceTimeInSec) )
+                    print('DEBUG-3 JAFileFilesModified() fileName: {0}, modified time: {1}, later than desired time: {2}'.format( file, fileModifiedTime, sinceTimeInSec) )
 
     sortedFileNames = []
     for fileModifiedTime, fileName in sorted ( fileNames.items() ):
@@ -223,3 +236,60 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
 
     if debugLevel > 0 :
         print('DEBUG-1 JAFileFilesModified() modified files in:{0}, since gmtTimeInSec:{1}, fileNames:{2}'.format( fileName, sinceTimeInSec, sortedFileNames) )
+
+    return sortedFileNames
+
+def JAGetOSInfo(pythonVersion, debugLevel):
+    """
+    Returns 
+        OSType like Linux, Windows
+        OSName like rhel for Redhat Linux, ubuntu for Ubuntu, Windows for Windows
+        OSVersion like
+            7 (for RH7.x), 8 (for RH8.x) for Redhat release
+            20 (for Ubuntu)
+            10, 11 for Windows
+
+    """
+    OSType = platform.system()
+    if OSType == 'Linux' :
+        try:
+            with open("/etc/os-release", "r") as file:
+                while True:
+                    tempLine = file.readline()
+                    if not tempLine:
+                        break
+                    if len(tempLine)<5:
+                        continue
+                    tempLine = re.sub('\n$','',tempLine)
+
+                    if re.match(r'ID=', tempLine) != None:
+                        dummy, OSName = re.split(r'ID=', tempLine)
+                    elif re.match(r'VERSION_ID',tempLine) != None:
+                        dummy,tempOSVersion = re.split(r'VERSION_ID=', tempLine)
+                file.close()
+        except:
+            print("ERROR JAGetOSInfo() Can't read file: /etc/os-release")
+            tempOSReease = ''
+
+    elif OSType == 'Windows' :
+        if pythonVersion >= (3,7) :
+            tempOSVersion = platform.version()
+        OSName = OSType
+
+    ### extract major release id from string like x.y.z
+    ### windows 10.0.19042
+    ### RH7.x - 3.10.z, RH8.x - 4.18.z
+    ### Ubuntu - 5.10.z
+    OSVersion = re.search(r'\d+', tempOSVersion).group()
+    if debugLevel > 0 :
+        print("DEBUG-1 JAGetOSInfo() OSType:{0}, OSName:{1}, OSVersion:{2}".format(OSType, OSName, OSVersion) )
+
+    return OSType, OSName, OSVersion
+     
+
+def JAGetOSType():
+    """
+        Returns values like Linux, Windows
+    """
+    return platform.system()
+

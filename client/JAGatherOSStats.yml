@@ -1,13 +1,14 @@
 # Default OS stats collection spec 
-# Author: havembha@gmail.com,  2021-07-04
+# Author: havembha@gmail.com,  2021/07/04
 # Format
 #   - Name: <groupName>
 ---
 ### specify this including path name, .YYYYMMDD will appended to this name to create per day file
-LogFileName: JAGatherOSStats.log 
+LogFileName: JAGatherOSStats.log
+SysStatPathName: '' 
 Default:
-    SamplingIntervalInSec: 60
-    DataPostIntervalInSec: 600
+    DataPostIntervalInSec: 60
+    DataCollectionDurationInSec: 600
     Dev:
         WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
         ### while posting data to web server, defaults to False 
@@ -25,12 +26,8 @@ Default:
     Prod: 
         WebServerURL: https://MyWebServer:443/cgi-bin/JASaveStats.py
 Environment:
-    ### for each environment, specify the host name whose OS stats will be collected
-    ### if current hostname match to the regular expression, that environment name
-    ###   will be used to pick up customized parameters like WebServerURL, JADisableWarning..
-    ### If environment does not match, script will not post the stats to any web server
-    Dev: ((...)(d)(...)([0-9][0-9]))|(havembha|penguin)
-    Test: (...)(t)(...)([0-9][0-9])|(test-PC)
+    Dev: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T|havembha|penguin)
+    Test: (...)(t)(...)([0-9][0-9])|(venkat-PC)
     Uat: (...)(u)(...)([0-9][0-9])
     Prod: (...)(p)(...)([0-9][0-9])
 
@@ -46,14 +43,21 @@ CPU:
 
 Memory:
     - Name: virtual_memory
-      Fields: total,available 
+      Fields: total,available,kbavail,memused 
     - Name: swap_memory
-      Fields: total,free,percent
+      Fields: total,free,percent,kbswpfree,kbswpused,swpused
 
-Disk:
-    - Name: disk_io_counters
-      Fields: read_count, write_count, read_bytes, write_bytes
+#Disk:
+#    - Name: disk_io_counters
+#      Fields: read_count, write_count, read_bytes, write_bytes
+
+FileSystem:
+     - Name: filesystem_usage
+       FileSystemNames: /init
+       Fields: percent_used,size_used
 
 Network:
     - Name: net_io_counters
-      Fields: bytes_sent, bytes_recv, packets_sent, packets_recv, errin, errout, dropin, dropout  
+      Fields: bytes_sent, bytes_recv, packets_sent, packets_recv, errin, errout, dropin, dropout 
+    - Name: socket_stats
+      Fields: total, established, time_wait 
