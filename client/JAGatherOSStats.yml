@@ -5,31 +5,30 @@
 ---
 ### specify this including path name, .YYYYMMDD will appended to this name to create per day file
 LogFileName: JAGatherOSStats.log
-SysStatPathName: '' 
-Default:
-    DataPostIntervalInSec: 60
-    DataCollectionDurationInSec: 600
-    Dev:
-        WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
-        ### while posting data to web server, defaults to False 
-        JADisableWarnings: True
-        ### do not verify web server certificate, defaults to True 
-        JAVerifyCertificate: False
-    Test:
-        WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
-        ### while posting data to web server, defaults to False 
-        JADisableWarnings: True
-        ### do not verify web server certificate, defaults to True 
-        JAVerifyCertificate: False
-    Uat:
-        WebServerURL: https://MyWebServer:443/cgi-bin/JASaveStats.py
-    Prod: 
-        WebServerURL: https://MyWebServer:443/cgi-bin/JASaveStats.py
+SysStatPathName: ''
 Environment:
-    Dev: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T|havembha|penguin)
-    Test: (...)(t)(...)([0-9][0-9])|(venkat-PC)
-    Uat: (...)(u)(...)([0-9][0-9])
-    Prod: (...)(p)(...)([0-9][0-9])
+    Dev:
+        HostName: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T|havembha|penguin)
+    Test:
+        HostName: (...)(t)(...)([0-9][0-9])
+    UAT:
+        HostName: (...)(u)(...)([0-9][0-9])
+        WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+    Prod:
+        HostName: (...)(p)(...)([0-9][0-9])
+        WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+    All:
+        # post data to web server per this interval. if sampling interval is 10, post interval is 60,
+        #    it will post 6 samples in one post. This is to optimize data post operation.
+        DataPostIntervalInSec: 60
+        # once the job is started, run until this time. This is to allow job running from crontab at certain periodicity
+        DataCollectDurationInSec: 600
+        ### while posting data to web server, defaults to False
+        DisableWarnings: True
+        ### do not verify web server certificate, defaults to True
+        VerifyCertificate: False
+        # post stats to below web server
+        WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
 
 ### format
 ### - Name: psutil.<functionName>

@@ -135,9 +135,82 @@ thisHostName = platform.node()
 OSType, OSName, OSVersion = JAGlobalLib.JAGetOSInfo( sys.version_info, debugLevel)
 
 ### show warnings by default 
-JADisableWarnings = False
+disableWarnings = None
 ### verify server certificate by default
-JAVerifyCertificate = True
+verifyCertificate = None
+
+def JAGatherEnvironmentSpecs( key, values ):
+    """
+    JAGatherEnvironmentSpecs( key, values )
+    This function parses the environment variables defined for a given environment like Dev, Test, UAT
+    If current environment is 'All' and value not defined for a parameter,
+        appropriate default value is assigned
+
+    Parameters passed
+        key like Dev, Test, UAT, Prod, All
+        values - values in list form
+
+    Return value
+        Below global variables are updated with values parsed from values parameter
+            global dataPostIntervalInSec, dataCollectDurationInSec
+            global webServerURL, disableWarnings, verifyCertificate, numSamplesToPost
+
+    """
+
+    ### declare global variables
+    global dataPostIntervalInSec, dataCollectDurationInSec
+    global webServerURL, disableWarnings, verifyCertificate, numSamplesToPost
+    
+    for myKey, myValue in values.items():
+        if debugLevel > 1 :
+            print('DEBUG-2 JAGatherEnvironmentSpecs() key: {0}, value: {1}'.format( myKey, myValue))
+        if myKey == 'DataPostIntervalInSec':
+            if dataPostIntervalInSec == 0:
+                if myValue != None:
+                     dataPostIntervalInSec = int(myValue)
+                elif key == 'All':
+                     ### apply default if value is not defined in environment and 'All' section
+                     dataPostIntervalInSec = 60
+        elif myKey == 'DataCollectDurationInSec':
+            if dataCollectDurationInSec == 0:
+                if myValue != None:
+                    dataCollectDurationInSec = int(myValue)
+                elif key == 'All':
+                    dataCollectDurationInSec = 600
+
+        elif myKey == 'WebServerURL':
+            if webServerURL == None or webServerURL == '':
+                if myValue != None:
+                    webServerURL = myValue
+                elif key == 'All':
+                    JAStatsExit( 'ERROR mandatory param WebServerURL not available')
+        
+        elif myKey == 'DisableWarnings':
+           if disableWarnings == None:
+               if myValue != None:
+                   if myValue == 'False' or myValue == False :
+                       disableWarnings = False
+                   elif myValue == 'True' or myValue == True :
+                       disableWarnings = True
+                   else:
+                       disableWarnings = myValue
+               elif key == 'All':
+                   disableWarnings = True
+
+        elif myKey == 'VerifyCertificate':
+            if verifyCertificate == None:
+                if myValue != None:
+                    if myValue == 'False' or myValue == False:
+                        verifyCertificate = False
+                    elif myValue == 'True' or myValue == True:
+                        verifyCertificate = True
+                    else:
+                        verifyCertificate = myValue
+
+                elif key == 'All':
+                    verifyCertificate = True
+    if debugLevel > 1 :
+        print('DEBUG-2 JAGatherEnvironmentSpecs(), DataPostIntervalInSec:{0}, DataCollectDurationInSec: {1}, DisableWarnings: {2}, verifyCertificate: {3}, WebServerURL: {4}'.format( dataPostIntervalInSec, dataCollectDurationInSec, disableWarnings, verifyCertificate, webServerURL))
 
 if sys.version_info >= (3,3):
     import importlib
@@ -168,20 +241,10 @@ try:
             JAOSStats = yaml.load(file, Loader=yaml.FullLoader)
             file.close()
         else:
-            JAStats = JAGlobalLib.JAYamlLoad( configFile )
+            JAOSStats = JAGlobalLib.JAYamlLoad( configFile )
         if debugLevel > 1 :
             print('DEBUG-2 Content of config file: {0}, read to JAStats: {1}'.format(configFile, JAOSStats))
 
-        if dataPostIntervalInSec == 0:
-            if JAOSStats['Default']['DataPostIntervalInSec'] != None:
-                dataPostIntervalInSec = int(JAOSStats['Default']['DataPostIntervalInSec'])
-            else:
-                dataPostIntervalInSec = 60
-        if dataCollectDurationInSec == 0:
-            if JAOSStats['Default']['DataCollectionDurationInSec'] != None:
-                dataCollectDurationInSec = int(JAOSStats['Default']['DataCollectionDurationInSec'])
-            else:
-                dataCollectDurationInSec = 600
 
         if JAOSStatsLogFileName == None:
             if JAOSStats['LogFileName'] != None:
@@ -200,24 +263,19 @@ try:
                     elif OSName == 'ubuntu' :
                         JASysStatFilePathName = '/var/log/sysstat/'
 
+        for key, value in JAOSStats['Environment'].items():
+            if key == 'All':
+                ### if parameters are not yet defined, read the values from this section
+                ###  values in this section work as default if params are defined for
+                ###  specific environment
+                JAGatherEnvironmentSpecs( key, value )
+            if value.get('HostName') != None:
+                if re.match( value['HostName'], thisHostName):
+                    ### current hostname match the hostname specified for this environment
+                    ###  read all parameters defined for this environment
+                    JAGatherEnvironmentSpecs( key, value )
+                    myEnvironment = key
 
-        if webServerURL == '':
-
-            ### check to which environment current host belongs to
-            for env in JAOSStats['Environment']:
-                ### get environment spec from config file
-                if JAOSStats['Environment'][env] != None:
-                    tempEnvironment = JAOSStats['Environment'][env]
-
-                    ## see whether the current hostname matches to environment
-                    if re.search( tempEnvironment, thisHostName) != None:
-                        ### get web server URL matching to current environment
-                        if JAOSStats['Default'][env]['WebServerURL'] != None:
-                            webServerURL = JAOSStats['Default'][env]['WebServerURL']
-                        if JAOSStats['Default'][env]['JADisableWarnings'] != None:
-                            JADisableWarnings = JAOSStats['Default'][env]['JADisableWarnings']
-                        if JAOSStats['Default'][env]['JAVerifyCertificate'] != None:
-                            JAVerifyCertificate = JAOSStats['Default'][env]['JAVerifyCertificate']
         ### read CPU stats spec
         ### format:
         ### CPU:
@@ -323,6 +381,10 @@ def JAGetFileSystemUsage( fileSystemNames, fields ):
     ### if in CSV format, separate the file system names 
     tempFileSystemNames = fileSystemNames.split(',')
     for fs in tempFileSystemNames:
+        if os.path.isdir(  fs ) != True:
+            print("ERROR File System {0} not present, can't gather stats for it".format(fs) )
+            continue
+
         result = subprocess.run( ['df', '-h', fs], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         index = 0
         lines = result.stdout.decode('utf-8').split('\n')
@@ -361,7 +423,7 @@ def JAGetFileSystemUsage( fileSystemNames, fields ):
             except:
                 ## ignore error
                 if debugLevel > 0:
-                    errorMsg = 'ERROR JAGetFileSystemUsage() Not enough params in line:{0}\n'.format(line)
+                    errorMsg = 'ERROR JAGetFileSystemUsage() Not enough params in line:{0} for file system: {1}\n'.format(line, fs)
                     print( errorMsg )
                     JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
     return myStats
@@ -705,7 +767,7 @@ def JAGetDiskIOCounters(fields):
 
     return myStats
 
-def JAGetNetIOCounters(fields):
+def JAGetNetworkIOCounters(fields):
     myStats = ''
     comma = ''
     global OSType, OSName, OSVersion, debugLevel
@@ -927,10 +989,10 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
 
   if debugLevel > 1:
         print ('DEBUG-2 OSStatsToPost:{0}'.format( OSStatsToPost) )
-  if JADisableWarnings == True:
+  if disableWarnings == True:
         requests.packages.urllib3.disable_warnings()
 
-  returnResult = requests.post( webServerURL, data=json.dumps(OSStatsToPost), verify=JAVerifyCertificate, headers=headers)
+  returnResult = requests.post( webServerURL, data=json.dumps(OSStatsToPost), verify=verifyCertificate, headers=headers)
   print('INFO  - Result of posting data to web server {0} :\n{1}'.format(webServerURL, returnResult.text))
 
   ### if elapsed time is less than post interval, sleep till post interval elapses
