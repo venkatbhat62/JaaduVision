@@ -34,6 +34,7 @@ import os, sys, re
 import datetime
 import JAGlobalLib
 import time
+import subprocess
 
 ## global default parameters
 configFile = '' 
@@ -319,9 +320,9 @@ except ImportError:
 
         def check_returncode(self):
            if self.returncode != 0:
-           err = subprocess.CalledProcessError(self.returncode, self.args, output=self.stdout)
-           raise err
-           return self.returncode
+                err = subprocess.CalledProcessError(self.returncode, self.args, output=self.stdout)
+                raise err
+                return self.returncode
 
         def sp_run(*popenargs, **kwargs):
             input = kwargs.pop("input", None)
@@ -337,12 +338,12 @@ except ImportError:
                 process.kill()
                 process.wait()
                 raise
-                returncode = process.poll()
-             if check and returncode:
+            returncode = process.poll()
+            if check and returncode:
                 raise subprocess.CalledProcessError(returncode, popenargs, output=outs)
-             return CompletedProcess(popenargs, returncode, stdout=outs, stderr=errs)
-         subprocess.run = sp_run
-         # ^ This monkey patch allows it work on Python 2 or 3 the same way
+            return CompletedProcess(popenargs, returncode, stdout=outs, stderr=errs)
+        subprocess.run = sp_run
+        # ^ This monkey patch allows it work on Python 2 or 3 the same way
 
 if platform.system() == 'Windows':
     result =  subprocess.run(['tasklist'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
