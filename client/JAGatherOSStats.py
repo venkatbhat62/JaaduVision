@@ -255,7 +255,7 @@ try:
 
         if JASysStatFilePathName == None:
             if JAOSStats['SysStatPathName'] != None:
-                JASysStatFilePathName = JAOSStats['SysStatPathName']
+                JASysStatFilePathName = '{0}'.format(JAOSStats['SysStatPathName'])
                 
             if JASysStatFilePathName == None or JASysStatFilePathName == '': 
                 if OSType == 'Linux' :

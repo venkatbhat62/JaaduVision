@@ -33,7 +33,8 @@ def JAGetDayOfMonth( deltaSeconds ):
     tempTime = datetime.datetime.now()
     deltaTime = datetime.timedelta(seconds=deltaSeconds)
     newTime = tempTime - deltaTime
-    return newTime.strftime("%d")
+    newTimeString = newTime.strftime("%d")
+    return newTimeString 
 
 def LogMsg(logMsg, fileName, appendDate=True):
     if appendDate == True:
