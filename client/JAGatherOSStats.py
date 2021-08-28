@@ -276,48 +276,22 @@ try:
                     JAGatherEnvironmentSpecs( key, value )
                     myEnvironment = key
 
-        ### read CPU stats spec
-        ### format:
-        ### CPU:
-        ###    - Name: cpu_times
-        ###      Fields: user, system, idle, iowait
-        ###    - Name: cpu_percent
-        ###      Fields: percentUsed
+        for key, value in JAOSStats['OSStats'].items():
+            if value.get('Name') != None:
+                statType = value.get('Name')
 
-        if 'CPU' in JAOSStats.keys() :
-            for statType in JAOSStats['CPU']:
-                name = statType.pop('Name')
-                JAOSStatsSpec[name] = statType
+            if value.get( 'Fields' ) != None:
+                fields =  value.get( 'Fields')
 
-        ### read Memory stats spec
-        ### Memory:
-        ###    - Name: virtual_memory
-        ###      Fields: total,available
-        ###    - Name: swap_memory
-        ###      Fields: total,free,percentUsed
-        if 'Memory' in JAOSStats.keys() :
-            for statType in JAOSStats['Memory']:
-                name = statType.pop('Name')
-                JAOSStatsSpec[name] = statType
+            fsNames = ''
+            if statType == 'filesystem_usage' :
+                if value.get('FileSystemNames') != None:
+                    fsNames = value.get('FileSystemNames')
 
-        if 'Disk' in JAOSStats.keys() :
-            ### read Disk stats spec
-            for statType in JAOSStats['Disk']:
-                name = statType.pop('Name')
-                JAOSStatsSpec[name] = statType
-        
-        if 'FileSystem' in JAOSStats.keys() :
-            ### read file system spec 
-            for statType in JAOSStats['FileSystem']:
-                name = statType.pop('Name')
-                JAOSStatsSpec[name] = statType
+            JAOSStatsSpec[statType] = [ fields, fsNames ]
 
-        if 'Network' in JAOSStats.keys() :
-            ### network stats spec
-            for statType in JAOSStats['Network']:
-                name = statType.pop('Name')
-                JAOSStatsSpec[name] = statType
-
+            if debugLevel > 1:
+                print('DEBUG-2 key: {0}, OSStatType: {1}, fields: {2}, fsNames: {3}'.format(key, statType, fields, fsNames ) )
 
 except OSError as err:
     JAOSStatsExit('ERROR - Can not open configFile:|{0}|, OS error: {1}\n'.format(configFile,err)) 
@@ -325,8 +299,9 @@ except OSError as err:
 if debugLevel > 0:
     print('DEBUG-1 Parameters after reading configFile:{0}, webServerURL:{1}, dataPostIntervalInSec:{2}, dataCollectDurationInSec:{3}, debugLevel: {4}\n'.format(configFile, webServerURL, dataPostIntervalInSec, dataCollectDurationInSec, debugLevel))
     for key, spec in JAOSStatsSpec.items():
-        fields = spec['Fields'] 
-        print('DEBUG-1 Name: {0}, Fields: {1}'.format(key, fields))
+        fields = spec[0] 
+        fsNames = spec[1] 
+        print('DEBUG-1 Name: {0}, Fields: {1}, fsNames: {2}'.format(key, fields, fsNames))
 
 ### if another instance is running, exit
 import subprocess,platform
@@ -865,7 +840,7 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
   
   ### Now gather OS stats
   for key, spec in JAOSStatsSpec.items():
-     fields = spec['Fields']
+     fields = spec[0]
 
      ### remove space from fieds
      fields = re.sub('\s+','',fields)
@@ -901,7 +876,8 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
             tempPostData = True
 
         elif key == 'filesystem_usage':
-            stats = JAGetFileSystemUsage( spec['FileSystemNames'], fields)
+            ### fsNames in index 1 of spec[]
+            stats = JAGetFileSystemUsage( spec[1], fields)
             tempPostData = True
 
         elif key == 'socket_stats':

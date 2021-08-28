@@ -34,29 +34,29 @@ Environment:
 ### - Name: psutil.<functionName>
 ###   Fields: values that can be read using that psutil function
 ### Refer to Python documentation https://psutil.readthedocs.io/en/latest/
-CPU:
-    - Name: cpu_times_percent
-      Fields: user, system, idle, iowait
-    - Name: cpu_percent
-      Fields: percent
-
-Memory:
-    - Name: virtual_memory
-      Fields: total,available,kbavail,memused 
-    - Name: swap_memory
-      Fields: total,free,percent,kbswpfree,kbswpused,swpused
-
-#Disk:
-#    - Name: disk_io_counters
-#      Fields: read_count, write_count, read_bytes, write_bytes
-
-FileSystem:
-     - Name: filesystem_usage
-       FileSystemNames: /init
-       Fields: percent_used,size_used
-
-Network:
-    - Name: net_io_counters
-      Fields: bytes_sent, bytes_recv, packets_sent, packets_recv, errin, errout, dropin, dropout 
-    - Name: socket_stats
-      Fields: total, established, time_wait 
+OSStats:
+  CPUTimes:
+    Name: cpu_times_percent
+    Fields: user, system, idle, iowait
+  CPUPercent:
+    Name: cpu_percent
+    Fields: percent
+  MemoryVirtual:
+    Name: virtual_memory
+    Fields: total,available,kbavail,memused
+  MemorySwap:
+    Name: swap_memory
+    Fields: total,free,percent,kbswpfree,kbswpused,swpused
+  DiskIO:
+    Name: disk_io_counters
+    Fields: read_count, write_count, read_bytes, write_bytes
+  FSUsage:
+    Name: filesystem_usage
+    FileSystemNames: /init
+    Fields: percent_used,size_used
+  NetworkIO:
+    Name: net_io_counters
+    Fields: bytes_sent, bytes_recv, packets_sent, packets_recv, errin, errout, dropin, dropout
+  NetworkSockets: 
+    Name: socket_stats
+    Fields: total, established, time_wait 
