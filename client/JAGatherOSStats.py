@@ -374,7 +374,7 @@ OSStatsToPost['platformName'] = platformName
 OSStatsToPost['siteName'] = siteName 
 OSStatsToPost['environment'] = environment
 
-def JAGetFileSystemUsage( fileSystemNames, fields ):
+def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
     """
     This function gets the file system usage
     Fields supported are
@@ -442,7 +442,7 @@ def JAGetFileSystemUsage( fileSystemNames, fields ):
                     JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
     return myStats
 
-def JAGetSocketStats(fields):
+def JAGetSocketStats(fields, recursive=False):
     """
     This function gets socket counts on Linux hosts
       Sockets in established, and time_wait state can be counted separately
@@ -589,7 +589,7 @@ def JAGetCPUPercent():
 
     return myStats
 
-def JAGetVirtualMemory(fields):
+def JAGetVirtualMemory(fields, recursive=False):
     myStats = ''
     comma = ''
     global OSType, OSName, OSVersion, debugLevel
@@ -653,7 +653,7 @@ def JAGetVirtualMemory(fields):
 
     return myStats
 
-def JAGetSwapMemory(fields):
+def JAGetSwapMemory(fields, recursive=False):
     myStats = ''
     comma = ''
     global OSType, OSName, OSVersion, debugLevel
@@ -717,7 +717,7 @@ def JAGetSwapMemory(fields):
 
     return myStats
 
-def JAGetDiskIOCounters(fields):
+def JAGetDiskIOCounters(fields, recursive=False):
     myStats = ''
     comma = ''
     global OSType, OSName, OSVersion, debugLevel
@@ -781,7 +781,7 @@ def JAGetDiskIOCounters(fields):
 
     return myStats
 
-def JAGetNetworkIOCounters(fields):
+def JAGetNetworkIOCounters(fields, recursive=False):
     myStats = ''
     comma = ''
     global OSType, OSName, OSVersion, debugLevel
