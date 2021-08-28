@@ -718,7 +718,7 @@ def JAGetSwapMemory(fields):
     return myStats
 
 def JAGetDiskIOCounters(fields):
-    myStatsdingFields[ columnCount ] = ''
+    myStats = ''
     comma = ''
     global OSType, OSName, OSVersion, debugLevel
     global JAFromTimeString, JAToTimeString, JADayOfMonth
@@ -747,7 +747,7 @@ def JAGetDiskIOCounters(fields):
         ### if sar does not have sample between the given start and end time, single line output will be present
         ### change the start time to -10 min and call this function again
         if recursive == True :
-            print("ERROR JAGetCPUTimesPercent() NO sar data available from {0} to {1}".format( JAFromTimeString, JAToTimeString))
+            print("ERROR JAGetDiskIOCounters() NO sar data available from {0} to {1}".format( JAFromTimeString, JAToTimeString))
             return myStats
 
         ### compute start time 10 times more than dataPostIntervalInSec
