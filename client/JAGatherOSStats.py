@@ -349,7 +349,7 @@ if platform.system() == 'Windows':
     result =  subprocess.run(['tasklist'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
 
 else:
-    result =  subprocess.run(['ps', '-ef'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+    result =  subprocess.run(['ps', '-ef'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 
 returnProcessNames = result.stdout.decode('utf-8').split('\n')
 procCount = 0
