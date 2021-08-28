@@ -264,6 +264,10 @@ def JAGetOSInfo(pythonVersion, debugLevel):
 
                     if re.match(r'ID=', tempLine) != None:
                         dummy, OSName = re.split(r'ID=', tempLine)
+
+                        ### remove double quote around the value
+                        OSName = re.sub('"','',OSName)
+
                     elif re.match(r'VERSION_ID',tempLine) != None:
                         dummy,tempOSVersion = re.split(r'VERSION_ID=', tempLine)
                 file.close()
