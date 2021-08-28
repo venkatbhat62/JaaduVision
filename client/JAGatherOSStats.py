@@ -953,7 +953,7 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
             tempPostData = True
 
         elif key == 'filesystem_usage':
-            stats = JAGetFileSystemUsage( spec['FileSystemNames'], fields)
+            stats = JAGetFileSystemUsage( spec[1], fields)
             tempPostData = True
 
         elif key == 'socket_stats':
