@@ -599,11 +599,11 @@ def JAGetVirtualMemory(fields):
         if OSName == 'rhel' or OSName == 'ubuntu':
             result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-r'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
-            print("ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats")
+            print("ERROR JAGetCPUPercent() install psutils on this server to get OS stats")
             return myStats
 
     elif OSType == 'windows' :
-        print("ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats")
+        print("ERROR JAGetCPUPercent() install psutils on this server to get OS stats")
         return myStats
 
     lines = result.stdout.decode('utf-8').split('\n')
@@ -619,7 +619,7 @@ def JAGetVirtualMemory(fields):
         ### if sar does not have sample between the given start and end time, single line output will be present
         ### change the start time to -10 min and call this function again
         if recursive == True :
-            print("ERROR JAGetCPUTimesPercent() NO sar data available from {0} to {1}".format( JAFromTimeString, JAToTimeString))
+            print("ERROR JAGetCPUPercent() NO sar data available from {0} to {1}".format( JAFromTimeString, JAToTimeString))
             return myStats
 
         ### compute start time 10 times more than dataPostIntervalInSec
@@ -663,11 +663,11 @@ def JAGetSwapMemory(fields):
         if OSName == 'rhel' or OSName == 'ubuntu':
             result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-S'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
-            print("ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats")
+            print("ERROR JAGetSwapMemory() install psutils on this server to get OS stats")
             return myStats
 
     elif OSType == 'windows' :
-        print("ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats")
+        print("ERROR JAGetSwapMemory() install psutils on this server to get OS stats")
         return myStats
 
     lines = result.stdout.decode('utf-8').split('\n')
@@ -683,7 +683,7 @@ def JAGetSwapMemory(fields):
         ### if sar does not have sample between the given start and end time, single line output will be present
         ### change the start time to -10 min and call this function again
         if recursive == True :
-            print("ERROR JAGetCPUTimesPercent() NO sar data available from {0} to {1}".format( JAFromTimeString, JAToTimeString))
+            print("ERROR JAGetSwapMemory() NO sar data available from {0} to {1}".format( JAFromTimeString, JAToTimeString))
             return myStats
 
         ### compute start time 10 times more than dataPostIntervalInSec
@@ -727,11 +727,11 @@ def JAGetDiskIOCounters(fields):
         if OSName == 'rhel' or OSName == 'ubuntu':
             result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-b'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
-            print("ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats")
+            print("ERROR JAGetDiskIOCounters() install psutils on this server to get OS stats")
             return myStats
 
     elif OSType == 'windows' :
-        print("ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats")
+        print("ERROR JAGetDiskIOCounters() install psutils on this server to get OS stats")
         return myStats
 
     lines = result.stdout.decode('utf-8').split('\n')
@@ -791,11 +791,11 @@ def JAGetNetworkIOCounters(fields):
         if OSName == 'rhel' or OSName == 'ubuntu':
             result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-n', 'EDEV'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
-            print("ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats")
+            print("ERROR JAGetNetworkIOCounters() install psutils on this server to get OS stats")
             return myStats
 
     elif OSType == 'windows' :
-        print("ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats")
+        print("ERROR JAGetNetworkIOCounters() install psutils on this server to get OS stats")
         return myStats
 
     lines = result.stdout.decode('utf-8').split('\n')
@@ -815,7 +815,7 @@ def JAGetNetworkIOCounters(fields):
         ### if sar does not have sample between the given start and end time, single line output will be present
         ### change the start time to -10 min and call this function again
         if recursive == True :
-            print("ERROR JAGetCPUTimesPercent() NO sar data available from {0} to {1}".format( JAFromTimeString, JAToTimeString))
+            print("ERROR JAGetNetworkIOCounters() NO sar data available from {0} to {1}".format( JAFromTimeString, JAToTimeString))
             return myStats
 
         ### compute start time 10 times more than dataPostIntervalInSec
@@ -868,7 +868,7 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
         myProcessingTime = time.process_time()
     else:
         myProcessingTime = 0
-    print('DEBUG-1 log file(s) processing time: {0}, Sleeping for: {1} sec'.format( myProcessingTime, sleepTimeInSec ))
+    print('DEBUG-1 processing time: {0}, Sleeping for: {1} sec'.format( myProcessingTime, sleepTimeInSec ))
   time.sleep( sleepTimeInSec)
   ### take current time, it will be used to find files modified since this time for next round
   logFileProcessingStartTime = time.time()
