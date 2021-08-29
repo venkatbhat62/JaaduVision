@@ -404,6 +404,8 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
         lines = result.stdout.decode('utf-8').split('\n')
         for line in lines:
             line = re.sub('\s+', ' ', line)
+            if len(line) < 5:
+                continue
             try:
                 device, size, used, available, percent, mountpoint = line.split(' ', 5)
                 if mountpoint == fs:
@@ -467,6 +469,8 @@ def JAGetSocketStats(fields, recursive=False):
     for line in lines:
         if re.match(r'tcp|udp', line) == None:
             ### skip this line, not a TCP or UDP connection line
+            continue
+        if len(line) < 5:
             continue
 
         for field in fieldNames:
