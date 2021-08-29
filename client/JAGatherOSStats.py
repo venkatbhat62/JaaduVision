@@ -1090,8 +1090,12 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
         for item in tempValue2:
             if valuePairs == '': 
                 if key == 'cpu_percent':
-                    ### this has the value in the form cpu_percent 3.0
-                    valuePairs = '{0}={1}'.format(key,item)
+                    if re.search('cpu_percent_used', item) == None:
+                        ### this has the value in the form cpu_percent 3.0
+                        valuePairs = '{0}_used={1}'.format(key,item)
+                    else:
+                        ### this has the value in the form cpu_percent_used=3.0
+                        valuePairs = '{0}'.format(item)
                 else:
                     valuePairs = '{0}_{1}'.format(key,item) 
             else:
