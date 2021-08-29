@@ -662,11 +662,11 @@ def JAGetCPUTimesPercent(fields, recursive=False):
                     ### this column data is opted, store the data
                     myStats = myStats + '{0}{1}={2}'.format( comma, tempHeadingFields[ columnCount ], field)
                     comma = ','
-                elif 'cpuPercent' in fields:
+                elif 'cpu_percent_used' in fields:
                     ### total CPU usage is to be returned
                     ### compute this as  100 - idle
                     if tempHeadingFields[ columnCount ] == 'idle' :
-                        myStats = myStats + "{0}cpuPercent={1:f}".format( comma, 100 - float( field ))
+                        myStats = myStats + "{0}cpu_percent_used={1:f}".format( comma, 100 - float( field ))
 
                 columnCount += 1
 
@@ -680,7 +680,7 @@ def JAGetCPUPercent():
     Get total CPU usage that includes all types of use. This is computed as 100 - idle time.
 
     """
-    myStats = JAGetCPUTimesPercent( 'cpuPercent' )  
+    myStats = JAGetCPUTimesPercent( 'cpu_percent_used' )  
 
     return myStats
 
