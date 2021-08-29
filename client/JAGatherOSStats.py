@@ -423,7 +423,7 @@ def JAGetProcessStats( processNames, fields ):
             for processName in tempProcessNames:
                 ### if current process name is at starting position of the command
                 ###   gather stats 
-                if re.match( processName, tempCOMMAND) == True :
+                if re.match( processName, tempCommand) == True :
 
                     ### collect data if the field name is enabled for collection
                     for field in fieldNames:
