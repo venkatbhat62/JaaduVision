@@ -43,20 +43,29 @@ OSStats:
     Fields: percent
   MemoryVirtual:
     Name: virtual_memory
-    Fields: total,available,kbavail,memused
+    Fields: total,available,kbavail,memused,commit,kbmemfree
   MemorySwap:
     Name: swap_memory
     Fields: total,free,percent,kbswpfree,kbswpused,swpused
+  Process:
+    Name: process
+    ### process name, as it appears at 11th (last) column of ps aux command
+    ### can specify in CSV format
+    ProcessNames: -bash,ps aux
+    Fields: CPU,MEM,VSZ,RSS
   DiskIO:
     Name: disk_io_counters
-    Fields: read_count, write_count, read_bytes, write_bytes
+    Fields: read_count,write_count,read_bytes,write_bytes,tps,rtps,wtps
   FSUsage:
     Name: filesystem
+    ### file system name, as it appears at last column of df -h command
+    ### can specify in CSV format
+    ###  any space will be compared as is
     FileSystemNames: /init
     Fields: percent_used,size_used
   NetworkIO:
     Name: net_io_counters
-    Fields: bytes_sent, bytes_recv, packets_sent, packets_recv, errin, errout, dropin, dropout
+    Fields: bytes_sent,bytes_recv,packets_sent,packets_recv,errin,errout,dropin,dropout
   NetworkSockets: 
     Name: socket_stats
-    Fields: total, established, time_wait 
+    Fields: total,established,time_wait 

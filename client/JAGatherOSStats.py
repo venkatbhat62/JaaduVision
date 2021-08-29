@@ -294,6 +294,9 @@ try:
             if statType == 'filesystem' :
                 if value.get('FileSystemNames') != None:
                     fsNames = value.get('FileSystemNames')
+            elif statType == 'process' :
+                if value.get('ProcessNames') != None:
+                    fsNames = value.get('ProcessNames')
 
             JAOSStatsSpec[statType] = [ fields, fsNames ]
 
