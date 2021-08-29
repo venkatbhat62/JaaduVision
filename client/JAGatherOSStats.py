@@ -441,7 +441,13 @@ def JAGetProcessStats( processNames, fields ):
                             JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
                             continue
 
-                        myStats = myStats + '{0}{1}_{2}={3}'.format(comma,processName,field, fieldValue ) 
+                        processNameParts = processName.split('/')
+                        if processNameParts[-1] != None :
+                            shortProcessName = processNameParts[-1]
+                        else:
+                            shortProcessName
+
+                        myStats = myStats + '{0}{1}_{2}={3}'.format(comma,shortProcessName,field, fieldValue ) 
                         comma = ','
         except:
             ## ignore error
