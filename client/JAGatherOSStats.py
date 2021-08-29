@@ -486,8 +486,8 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
             if len(line) < 5:
                 continue
             try:
-                ### get max 5 items ( pass max number one less than actual, 0 based)
-                device, size, used, available, percent, mountpoint = line.split(' ', 4)
+                ### get max 5 items 
+                device, size, used, available, percent, mountpoint = line.split(' ', 5)
                 if mountpoint == fs:
 
                     ### take out '/' from file system name
