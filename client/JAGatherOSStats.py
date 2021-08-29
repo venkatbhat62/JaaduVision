@@ -285,7 +285,7 @@ try:
                 fields =  value.get( 'Fields')
 
             fsNames = ''
-            if statType == 'filesystem_usage' :
+            if statType == 'filesystem' :
                 if value.get('FileSystemNames') != None:
                     fsNames = value.get('FileSystemNames')
 
@@ -381,6 +381,9 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
         percent_used - percent usage
         size_used - used space in GB, any space less than GB is xlated to GB
 
+    Returns stats in the form
+        fsName_fieldName=fieldValue,fsName_fieldName=fieldValue,...
+        '/' is removed from file system name while printing above stats
     """
     myStats = ''
     comma = ''
@@ -410,7 +413,8 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
                 device, size, used, available, percent, mountpoint = line.split(' ', 5)
                 if mountpoint == fs:
 
-                    fsName = fs.replace('/','_')
+                    ### take out '/' from file system name
+                    fsName = fs.replace('/','')
 
                     ### collect data if the field name is enabled for collection
                     for field in fieldNames:
@@ -918,7 +922,7 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
             stats = psutil.net_io_counters()
             tempPostData = True
 
-        elif key == 'filesystem_usage':
+        elif key == 'filesystem':
             ### fsNames in index 1 of spec[]
             stats = JAGetFileSystemUsage( spec[1], fields)
             tempPostData = True
@@ -956,7 +960,7 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
             stats = JAGetNetworkIOCounters(fields)
             tempPostData = True
 
-        elif key == 'filesystem_usage':
+        elif key == 'filesystem':
             stats = JAGetFileSystemUsage( spec[1], fields)
             tempPostData = True
 

@@ -51,7 +51,7 @@ OSStats:
     Name: disk_io_counters
     Fields: read_count, write_count, read_bytes, write_bytes
   FSUsage:
-    Name: filesystem_usage
+    Name: filesystem
     FileSystemNames: /init
     Fields: percent_used,size_used
   NetworkIO:
