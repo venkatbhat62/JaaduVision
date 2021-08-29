@@ -414,9 +414,9 @@ def JAGetProcessStats( processNames, fields ):
         if len(line) < 5:
             continue
         try:
-            ### line is of the form
+            ### line is of the form with 11 columns total
             ### USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
-            parent, pid, CPUPercent, MEMPercent, VSZ, RSS, TTY, STAT, START, TIME, COMMAND = line.split(' ', 11)
+            parent, pid, CPUPercent, MEMPercent, VSZ, RSS, TTY, STAT, START, TIME, COMMAND = line.split(' ', 10)
 
             for processName in tempProcessNames:
                 ### if current process name is at starting position of the command
@@ -486,7 +486,8 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
             if len(line) < 5:
                 continue
             try:
-                device, size, used, available, percent, mountpoint = line.split(' ', 5)
+                ### get max 5 items ( pass max number one less than actual, 0 based)
+                device, size, used, available, percent, mountpoint = line.split(' ', 4)
                 if mountpoint == fs:
 
                     ### take out '/' from file system name
