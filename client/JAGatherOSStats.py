@@ -380,6 +380,73 @@ OSStatsToPost['platformName'] = platformName
 OSStatsToPost['siteName'] = siteName 
 OSStatsToPost['environment'] = environment
 
+def JAGetProcessStats( processNames, fields ):
+    """
+    This function gets CPU, MEM, VSZ, RSS used by processes 
+    Fields supported are
+        CPU, MEM, VSZ, RSS as given by ps aux command
+
+    Returns stats in the form
+        process_Name_field=fieldValue,process_Name_field=fieldValue,...
+    """
+    myStats = ''
+    comma = ''
+    global configFile
+    if processNames == None:
+        print('ERROR JAGetProcessStats() NO process name passed')
+        return None
+
+    ### separate field names
+    fieldNames = re.split(',', fields)
+
+    ### if in CSV format, separate the process names 
+    tempProcessNames = processNames.split(',')
+
+    ### get process stats for all processes
+    result = subprocess.run( ['ps', 'aux'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    index = 0
+    lines = result.stdout.decode('utf-8').split('\n')
+    for line in lines:
+        line = re.sub('\s+', ' ', line)
+        if len(line) < 5:
+            continue
+        try:
+            ### line is of the form
+            ### USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+            parent, pid, CPUPercent, MEMPercent, VSZ, RSS, TTY, STAT, START, TIME, COMMAND = line.split(' ', 11)
+
+            for processName in tempProcessNames:
+                ### if current process name is at starting position of the command
+                ###   gather stats 
+                if re.match( processName, COMMAND) == True :
+
+                    ### collect data if the field name is enabled for collection
+                    for field in fieldNames:
+                        if field == 'CPU':
+                            fieldValue = CPUPercent
+                        elif field == 'MEM':
+                            fieldValue = MEMPercent
+                        elif field == 'VSZ' :
+                            fieldValue = VSZ
+                        elif field == 'RSS' :
+                            fieldValue = RSS
+                        else:
+                            errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, check Fields definition in Process section of config file:{1}\n'.format(field, configFile)
+                            print( errorMsg )
+                            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                            continue
+
+                        myStats = myStats + '{0}{1}_{2}={3}'.format(comma,processName,field, fieldValue ) 
+                        comma = ','
+        except:
+            ## ignore error
+            if debugLevel > 0:
+                errorMsg = 'ERROR JAGetProcessStats() Not enough params in line:{0}\n'.format(line)
+                print( errorMsg )
+                JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+
+    return myStats
+
 def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
     """
     This function gets the file system usage
@@ -920,6 +987,10 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
             stats = psutil.swap_memory()
             tempPostData = True
 
+        elif key == 'process':
+            stats = JAGetProcessStats( spec[1], fields )
+            tempPostData = True
+
         elif key == 'disk_io_counters':
             stats = psutil.disk_io_counters()
             tempPostData = True
@@ -956,6 +1027,10 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
 
         elif key == 'swap_memory':
             stats = JAGetSwapMemory(fields)
+            tempPostData = True
+        
+        elif key == 'process':
+            stats = JAGetProcessStats( spec[1], fields )
             tempPostData = True
 
         elif key == 'disk_io_counters':
