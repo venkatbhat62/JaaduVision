@@ -1028,6 +1028,8 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
   elapsedTimeInSec = time.time() - logFileProcessingStartTime
   if elapsedTimeInSec < dataCollectDurationInSec :
        sleepTimeInSec = dataPostIntervalInSec - elapsedTimeInSec
+       if sleepTimeInSec < 0 :
+           sleepTimeInSec = 0
   else:
        sleepTimeInSec = 0
 
