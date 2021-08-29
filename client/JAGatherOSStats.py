@@ -447,7 +447,7 @@ def JAGetProcessStats( processNames, fields ):
                         else:
                             shortProcessName = processName
                         ### replace . with _
-                        shortProcessName = re.sub('.', '_', shortProcessName)
+                        shortProcessName = re.sub('\.', '_', shortProcessName)
 
                         myStats = myStats + '{0}{1}_{2}={3}'.format(comma,shortProcessName,field, fieldValue ) 
                         comma = ','
