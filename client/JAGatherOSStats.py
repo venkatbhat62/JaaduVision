@@ -256,7 +256,13 @@ try:
         if JASysStatFilePathName == None:
             if JAOSStats['SysStatPathName'] != None:
                 JASysStatFilePathName = '{0}'.format(JAOSStats['SysStatPathName'])
-                
+                ### replace any space
+                JASysStatFilePathName = re.sub('\s','', JASysStatFilePathName)
+
+                ### if path does not end with '/', add it.
+                if JASysStatFilePathName.endswith('/') != True :
+                    JASysStatFilePathName = JASysStatFilePathName + '/'
+
             if JASysStatFilePathName == None or JASysStatFilePathName == '': 
                 if OSType == 'Linux' :
                     if OSName == 'rhel' :
