@@ -418,10 +418,12 @@ def JAGetProcessStats( processNames, fields ):
             ### USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
             parent, pid, CPUPercent, MEMPercent, VSZ, RSS, TTY, STAT, START, TIME, COMMAND = line.split(' ', 10)
 
+            tempCommand = '{0}'.format(COMMAND)
+
             for processName in tempProcessNames:
                 ### if current process name is at starting position of the command
                 ###   gather stats 
-                if re.match( processName, COMMAND) == True :
+                if re.match( processName, tempCOMMAND) == True :
 
                     ### collect data if the field name is enabled for collection
                     for field in fieldNames:
