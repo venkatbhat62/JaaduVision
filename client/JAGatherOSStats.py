@@ -369,6 +369,14 @@ for procName in returnProcessNames:
             if procCount > 1:
                 JAOSStatsExit('WARN - another instance ({0}) is running, exiting\n'.format(procName) )
 
+### delete old log files
+result =  subprocess.run(['find', JAOSStatsLogFileName + '*', '-mtime', '+7'],stdout=subprocess.PIPE,stderr=subprocess.PIPE) 
+logFilesToDelete = result.stdout.decode('utf-8').split('\n')
+for deleteFileName in logFilesToDelete:
+    if deleteFileName != '':
+         os.remove( deleteFileName)
+
+
 returnResult = ''
 OSStatsToPost = {}
 

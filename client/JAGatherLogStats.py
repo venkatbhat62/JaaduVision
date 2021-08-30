@@ -164,6 +164,18 @@ def JAStatsExit(reason):
     JAGlobalLib.LogMsg( '{0} processing duration: {1} sec\n'.format( reason, JAStatsDurationInSec), statsLogFileName, True)
     sys.exit()
 
+### if another instance is running, exit
+result =  subprocess.run(['ps', '-ef'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+returnProcessNames = result.stdout.decode('utf-8').split('\n')
+procCount = 0
+for procName in returnProcessNames:
+   if re.search( 'JAGatherLogStats.py', procName ) != None :
+       if re.search( r'vi |vim |more |view ', procName ) == None:
+           procCount += 1
+           if procCount > 1:
+                JAStatsExit('WARN - another instance (' + procName + ') is running, exiting' )
+
+
 ### use default config file
 if configFile == None:
     configFile = "JAGatherLogStats.yml"
@@ -176,6 +188,9 @@ JAStatsSpec = defaultdict(dict)
 ### get current hostname
 import platform
 thisHostName = platform.node()
+### if long name with name.domain, make it short
+hostNameParts = thisHostName.split('\.')
+thisHostName = hostNameParts[0]
 
 ### based on current hostName, this variable will be set to Dev, Test, Uat, Prod etc
 myEnvironment= None
@@ -377,17 +392,12 @@ if debugLevel > 0:
     for key, spec in JAStatsSpec.items():
         print('DEBUG-1 Name: {0}, Fields: {1}'.format( key, spec))
 
-### if another instance is running, exit
-result =  subprocess.run(['ps', '-ef'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-returnProcessNames = result.stdout.decode('utf-8').split('\n')
-procCount = 0
-for procName in returnProcessNames:
-   if re.search( 'JAGatherLogStats.py', procName ) != None :
-       if re.search( r'vi |vim |more |view ', procName ) == None:
-           procCount += 1
-           if procCount > 1:
-                JAStatsExit('WARN - another instance (' + procName + ') is running, exiting' )
-
+### delete old log files
+result =  subprocess.run(['find', statsLogFileName + '*', '-mtime', '+7'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+logFilesToDelete = result.stdout.decode('utf-8').split('\n')
+for deleteFileName in logFilesToDelete:
+    if deleteFileName != '':
+        os.remove( deleteFileName)
 
 returnResult = ''
 logStatsToPost = defaultdict(dict) 
@@ -453,10 +463,10 @@ def JAPostDataToWebServer():
 
       ### post interval elapsed, post the data to web server
       returnResult = requests.post( webServerURL, data=json.dumps(tempLogStatsToPost), verify=verifyCertificate, headers=headers)
+      numPostings += 1
       if debugLevel > 1:
           print('DEBUG-2 logStatsToPost: {0}'.format(tempLogStatsToPost))
           print('DEBUG-2 Result of posting data to web server ' + webServerURL + ' :\n' + returnResult.text)
-          numPostings += 1
       else:
           if debugLevel > 1:
               print('DEBUG-2 No data to post for the key:{0}\n'.format( key ))
