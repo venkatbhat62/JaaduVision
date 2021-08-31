@@ -132,6 +132,9 @@ JAOSStatsSpec = {}
 ### get current hostname
 import platform
 thisHostName = platform.node()
+### if long name with name.domain, make it short
+hostNameParts = thisHostName.split('\.')
+thisHostName = hostNameParts[0]
 
 OSType, OSName, OSVersion = JAGlobalLib.JAGetOSInfo( sys.version_info, debugLevel)
 
