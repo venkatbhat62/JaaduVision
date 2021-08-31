@@ -189,7 +189,7 @@ JAStatsSpec = defaultdict(dict)
 import platform
 thisHostName = platform.node()
 ### if long name with name.domain, make it short
-hostNameParts = thisHostName.split('\.')
+hostNameParts = thisHostName.split('.')
 thisHostName = hostNameParts[0]
 
 ### based on current hostName, this variable will be set to Dev, Test, Uat, Prod etc
