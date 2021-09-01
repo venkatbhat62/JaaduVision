@@ -451,16 +451,19 @@ def JAPostDataToWebServer():
     for key, values in logStats.items():
         ### use temporary buffer for each posting
         tempLogStatsToPost = logStatsToPost.copy()
-        #for tempParam  in logStatsToPost:
-        #    tempLogStatsToPost[tempParam] = logStatsToPost[tempParam]
+
+        ### xlate count to transactions per second, get to two decimal position
+        fValues[0] = "{:.2f}".format( values[0] / dataPostIntervalInSec )
+        fValues[1] = "{:.2f}".format( values[2] / dataPostIntervalInSec )
+        fValues[2] = "{:.2f}".format( values[4] / dataPostIntervalInSec )
 
         tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
         if values[1] == True:
-            tempLogStatsToPost[key] += ',' + key + '_pass=' + str(values[0])
+            tempLogStatsToPost[key] += ',' + key + '_pass=' + fValues[0]
         if values[3] == True:
-            tempLogStatsToPost[key] += ',' + key + '_fail=' + str(values[2])
+            tempLogStatsToPost[key] += ',' + key + '_fail=' + fValues[1]
         if values[5] == True:
-            tempLogStatsToPost[key] += ',' + key + '_count=' + str(values[4])
+            tempLogStatsToPost[key] += ',' + key + '_count=' + fValues[2]
 
         if values[1] == True or values[3] == True or values[5] == True:
             ### clear stats for next sampling interval
