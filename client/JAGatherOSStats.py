@@ -1115,18 +1115,9 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
         timeStamp = JAGlobalLib.UTCDateTime() 
         OSStatsToPost[key] = 'timeStamp={0},{1}'.format(timeStamp, valuePairs)
 
-  ### Now post the data to web server
-  import requests
   import json
   headers= {'Content-type': 'application/json', 'Accept': 'text/plain'} 
-
-  if debugLevel > 1:
-        print ('DEBUG-2 OSStatsToPost:{0}'.format( OSStatsToPost) )
-  if disableWarnings == True:
-        requests.packages.urllib3.disable_warnings()
-
-  returnResult = requests.post( webServerURL, data=json.dumps(OSStatsToPost), verify=verifyCertificate, headers=headers)
-  print('INFO  - Result of posting data to web server {0} :\n{1}'.format(webServerURL, returnResult.text))
+  JAGlobalLib.JAPostJSONData( webServerURL, json.dumps(OSStatsToPost), verifyCertificate, headers, disableWarnings, debugLevel)
 
   ### if elapsed time is less than post interval, sleep till post interval elapses
   elapsedTimeInSec = time.time() - logFileProcessingStartTime

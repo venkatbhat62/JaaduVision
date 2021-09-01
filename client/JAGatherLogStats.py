@@ -413,11 +413,7 @@ logStatsToPost['platformName'] = platformName
 logStatsToPost['siteName'] = siteName 
 logStatsToPost['environment'] = environment
 
-import requests
 import json
-headers= {'Content-type': 'application/json', 'Accept': 'text/plain'} 
-if disableWarnings == True:
-    requests.packages.urllib3.disable_warnings()
 
 """
 def JAPostDataToWebServer()
@@ -433,10 +429,13 @@ Return values:
 
 def JAPostDataToWebServer():
     global logStats, debugLevel
-    global webServerURL, verifyCertificate, logStatsToPost
+    global webServerURL, verifyCertificate, logStatsToPost, disableWarnings
     timeStamp = JAGlobalLib.UTCDateTime() 
     if debugLevel > 1:
         print('DEBUG-2 JAPostDataToWebServer() ' + timeStamp + ' Posting the stats collected')
+
+    import json
+    headers= {'Content-type': 'application/json', 'Accept': 'text/plain'} 
 
     numPostings = 0
     ### sampling interval elapsed
@@ -462,14 +461,8 @@ def JAPostDataToWebServer():
             values[0] = values[2] = values[4] = 0
 
       ### post interval elapsed, post the data to web server
-      returnResult = requests.post( webServerURL, data=json.dumps(tempLogStatsToPost), verify=verifyCertificate, headers=headers)
+      JAGlobalLib.JAPostJSONData( webServerURL, json.dumps(tempLogStatsToPost), verifyCertificate, headers, disableWarnings, debugLevel )
       numPostings += 1
-      if debugLevel > 1:
-          print('DEBUG-2 logStatsToPost: {0}'.format(tempLogStatsToPost))
-          print('DEBUG-2 Result of posting data to web server ' + webServerURL + ' :\n' + returnResult.text)
-      else:
-          if debugLevel > 1:
-              print('DEBUG-2 No data to post for the key:{0}\n'.format( key ))
 
     JAGlobalLib.LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp + ' Number of stats posted: ' + str(numPostings) + '\n', statsLogFileName, True)
     return True

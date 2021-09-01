@@ -298,3 +298,32 @@ def JAGetOSType():
     """
     return platform.system()
 
+def JAPostJSONData(URL,data, verifyCertificate, headers, disableWarnings=True, debugLevel=0):
+
+    if debugLevel > 1:
+        print ('DEBUG-2 JAPostJSONData() URL:{0}, data:{1}, verifyCert: {2}, headers: {3}'.format( URL, data, verifyCertificate, headers) )
+
+    import importlib
+    try:
+        importlib.util.find_spec("requests")
+        importlib.util.find_spec("json")
+        useRequests = True
+    except ImportError:
+        useRequests = False
+
+    if useRequests == True:
+        import requests
+        import json
+
+        if disableWarnings == True:
+            requests.packages.urllib3.disable_warnings()
+
+        returnStatus = requests.post( URL, data, verify=verifyCertificate, headers=headers)
+        print('INIFO JAPostJSONData() returnStatus:{0}'.format( returnStatus.text ))
+            
+    else:
+        result =  subprocess.run(['curl', '-X', 'POST', URL, '-H', 'Content-Type: application/json', '-d', data],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        returnStatus = result.stdout.decode('utf-8').split('\n')
+        print('INFO JAPostJSONData() returnStatus:{0}'.format( returnStatus ))
+
+    return returnStatus
