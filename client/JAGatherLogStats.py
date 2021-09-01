@@ -440,7 +440,7 @@ def JAPostDataToWebServer():
         import requests
 
         if disableWarnings == True:
-        requests.packages.urllib3.disable_warnings()
+            requests.packages.urllib3.disable_warnings()
 
     numPostings = 0
     ### sampling interval elapsed
