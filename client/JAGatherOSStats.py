@@ -1115,9 +1115,36 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
         timeStamp = JAGlobalLib.UTCDateTime() 
         OSStatsToPost[key] = 'timeStamp={0},{1}'.format(timeStamp, valuePairs)
 
+  ### Now post the data to web server
   import json
   headers= {'Content-type': 'application/json', 'Accept': 'text/plain'} 
-  JAGlobalLib.JAPostJSONData( webServerURL, json.dumps(OSStatsToPost), verifyCertificate, headers, disableWarnings, debugLevel)
+  if sys.version_info >= (3,3):
+    import importlib
+    try:
+          importlib.util.find_spec("requests")
+          importlib.util.find_spec("json")
+          useRequests = True
+    except ImportError:
+          useRequests = False
+  else:
+    useRequests = False
+
+  import json
+  data = json.dumps(OSStatsToPost)
+  if useRequests == True:
+    import requests
+
+    if debugLevel > 1:
+        print ('DEBUG-2 OSStatsToPost:{0}'.format( OSStatsToPost) )
+    if disableWarnings == True:
+        requests.packages.urllib3.disable_warnings()
+
+    returnResult = requests.post( webServerURL, data, verify=verifyCertificate, headers=headers)
+    print('INFO  - Result of posting data to web server {0} :\n{1}'.format(webServerURL, returnResult.text))
+  else:
+      result =  subprocess.run(['curl', '-X', 'POST', webServerURL, '-H', 'Content-Type: application/json', '-d', data],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+      returnStatus = result.stdout.decode('utf-8').split('\n')
+      print('INFO JAPostJSONData() returnStatus:{0}'.format( returnStatus ))
 
   ### if elapsed time is less than post interval, sleep till post interval elapses
   elapsedTimeInSec = time.time() - logFileProcessingStartTime
