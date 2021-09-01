@@ -303,12 +303,15 @@ def JAPostJSONData(URL,data, verifyCertificate, headers, disableWarnings=True, d
     if debugLevel > 1:
         print ('DEBUG-2 JAPostJSONData() URL:{0}, data:{1}, verifyCert: {2}, headers: {3}'.format( URL, data, verifyCertificate, headers) )
 
-    import importlib
-    try:
-        importlib.util.find_spec("requests")
-        importlib.util.find_spec("json")
-        useRequests = True
-    except ImportError:
+    if sys.version_info >= (3,3):
+        import importlib
+        try:
+            importlib.util.find_spec("requests")
+            importlib.util.find_spec("json")
+            useRequests = True
+        except ImportError:
+            useRequests = False
+    else:
         useRequests = False
 
     if useRequests == True:
