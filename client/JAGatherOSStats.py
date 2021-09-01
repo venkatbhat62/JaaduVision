@@ -1142,7 +1142,7 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
     returnResult = requests.post( webServerURL, data, verify=verifyCertificate, headers=headers)
     print('INFO  - Result of posting data to web server {0} :\n{1}'.format(webServerURL, returnResult.text))
   else:
-      result =  subprocess.run(['curl', '-X', 'POST', webServerURL, '-H', 'Content-Type: application/json', '-d', data],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+      result =  subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Content-Type: application/json", '-d', data],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
       returnStatus = result.stdout.decode('utf-8').split('\n')
       print('INFO JAPostJSONData() returnStatus:{0}'.format( returnStatus ))
 
