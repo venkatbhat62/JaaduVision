@@ -176,6 +176,9 @@ JAStatsSpec = defaultdict(dict)
 ### get current hostname
 import platform
 thisHostName = platform.node()
+## if hostname has domain name, strip it
+hostNameParts = thisHostName.split('.')
+thisHostName = hostNameParts[0]
 
 ### based on current hostName, this variable will be set to Dev, Test, Uat, Prod etc
 myEnvironment= None
