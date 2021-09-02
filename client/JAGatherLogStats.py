@@ -167,8 +167,6 @@ def JAStatsExit(reason):
 ### use default config file
 if configFile == None:
     configFile = "JAGatherLogStats.yml"
-### list containing log file names
-JALogFileNames = []
 
 ### stats spec with service name as key
 JAStatsSpec = defaultdict(dict) 
@@ -455,9 +453,9 @@ def JAPostDataToWebServer():
         tempLogStatsToPost = logStatsToPost.copy()
 
         ### xlate count to transactions per second, get to two decimal position
-        fValues[0] = "{:.2f}".format( values[0] / dataPostIntervalInSec )
-        fValues[1] = "{:.2f}".format( values[2] / dataPostIntervalInSec )
-        fValues[2] = "{:.2f}".format( values[4] / dataPostIntervalInSec )
+        fValues.append( "{:.2f}".format( values[0] / dataPostIntervalInSec ) )
+        fValues.append( "{:.2f}".format( values[2] / dataPostIntervalInSec ) )
+        fValues.append( "{:.2f}".format( values[4] / dataPostIntervalInSec ) )
 
         tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
         if values[1] == True:
