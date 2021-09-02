@@ -446,6 +446,8 @@ def JAPostDataToWebServer():
             requests.packages.urllib3.disable_warnings()
 
     numPostings = 0
+    fValues = []
+
     ### sampling interval elapsed
     ### push current sample stats to the data to be posted to the web server
     for key, values in logStats.items():
