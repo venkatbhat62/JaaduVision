@@ -34,14 +34,18 @@ Cutomization for log stats collection
 Installation at host being monitored
   Install the scripts under client directory under a service account that can access all log files
     to be parsed, whose stats are to be uploaded to web server
-  If OS stats are to be gathered, add a crontab to run JAGatherOSStats.py
-   * * * * * cd <path>;python3 JAGatherOSStats.py -c <OSSpecificConfigFile> 
-   This is to post data every minute. 
-   
-  If log stats are to be gathered, add a crontab to run JAGatherLogStats.py
-   */6 * * * * cd <path>;python3 JAGatherLogStats.py -c <ComponentSpecificConfigFile>
-   Adjust the frequency of this run based on value specified for DataCollectDurationInSec
-    Above setup is to run every 10 min, when DataCollectDurationInSec is 600 seconds
+  To gather and post OS stats every minute and continue the task for one hour, set below parameters in JAGatherOSStats.yml
+     DataPostIntervalInSec: 60
+     DataCollectDurationInSec: 3580
+  Add a crontab to run JAGatherOSStats.py every hour
+   1 * * * * cd <path>;python3 JAGatherOSStats.py -c <OSSpecificConfigFile>  
+
+  To gather and post Log stats every minute and continue the task for one hour, set below parameters in JAGatherLogStats.yml
+     DataPostIntervalInSec: 60
+     DataCollectDurationInSec: 3580
+
+  Add a crontab to run JAGatherLogStats.py every hour
+   1 * * * * cd <path>;python3 JAGatherLogStats.py -c <ComponentSpecificConfigFile>
   
 Installation of python3 scripts on web server
    Place all files from cgi-bin of distribution folder under cgi-bin of web server
