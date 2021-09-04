@@ -57,12 +57,17 @@ Environment:
      DataPostIntervalInSec: 60
      # once the job is started, run until this time. This is to allow job running from crontab at certain periodicity 
      DataCollectDurationInSec: 600
+     ### SKIP gathering log stats when average CPU usage % exceeds below limit over previous
+     ###   10 DataPostIntervalInSec intervals
+     MaxCPUUsageLevel: 70
      ### while posting data to web server, defaults to False
      DisableWarnings: True
      ### do not verify web server certificate, defaults to True
      VerifyCertificate: False
      # post stats to below web server
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+     ### debug level 0, no debug, 1 to 4, 4 being max details
+     DebugLevel: 1
 
 LogFile:
     SyslogError:
