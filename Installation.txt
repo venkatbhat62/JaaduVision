@@ -1,10 +1,13 @@
 Installation
 
-Prerequisites
+Preferred Prerequisites
     Python3.8
-Import modules apart that may not be installed with base Python3
+Preferred - Import modules apart that may not be installed with base Python3
    yaml
    requests
+
+Tools works with python 2.7.5 and without yaml, requests modules also local code to handle equivalent functions.
+
 
 Downloading project artifacts
   Using git, clone this project using the command
