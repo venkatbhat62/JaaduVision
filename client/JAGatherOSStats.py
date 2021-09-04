@@ -36,27 +36,41 @@ import JAGlobalLib
 import time
 import subprocess
 
+### MAJOR 1, minor 00, buildId 01
+JAVersion = "01.00.01"
+
 ## global default parameters
+### config file containing OS Stats to be collected, intervals, and WebServer info
 configFile = '' 
+### web server URL to post the OS stats data, per environment
 webServerURL = ''
+### how often to post the data to Web Server
 dataPostIntervalInSec = 0
+### how long to collect the data once the process is started
 dataCollectDurationInSec = 0
+### debug level 0, none, 1 to 3, 3 highest info
 debugLevel = 0
+### log file name to log debug messages
 JAOSStatsLogFileName =  None 
 
 # path name to search for sysstat or sar files on Linux hosts
 JASysStatFilePathName  = None
 
+### used to post the data with host identifier, not used for grafana
+###  stored in stats file on web server for other processing
 componentName = ''
 platformName = ''
 siteName = ''
+### file system names whose usage level is to be collected
 JAOSStatsFileSystemName = None
 
 ### take current timestamp
 JAOSStatsStartTime = datetime.datetime.now()
 
+### these are used to get sar data using -s and -e options
 JAFromTimeString = None
 JAToTimeString =  None
+### used to derive the sar data file name based on today's date
 JADayOfMonth = None
 
 
@@ -118,7 +132,7 @@ def JAOSStatsExit(reason):
     JAGlobalLib.LogMsg('{0}, processing duration:{1} sec\n'.format(reason,JAOSStatsDurationInSec ), JAOSStatsLogFileName, True)
     sys.exit()
 
-### use default config file
+### use default config file, expect this file in home directory where this script is placed
 if configFile == '':
     configFile = "JAGatherOSStats.yml"
 
@@ -129,6 +143,7 @@ if configFile == '':
 ###    CSV field names match to the field names referred in psutil.
 
 JAOSStatsSpec = {}
+
 ### get current hostname
 import platform
 thisHostName = platform.node()
@@ -136,11 +151,13 @@ thisHostName = platform.node()
 hostNameParts = thisHostName.split('.')
 thisHostName = hostNameParts[0]
 
+### get OSType, OSName, and OSVersion. These are used to execute different python
+###  functions based on compatibility to the environment
 OSType, OSName, OSVersion = JAGlobalLib.JAGetOSInfo( sys.version_info, debugLevel)
 
-### show warnings by default 
+### show warnings by default, used while posting data to Web Server
 disableWarnings = None
-### verify server certificate by default
+### verify server certificate by default, used while posting data to Web Server
 verifyCertificate = None
 
 def JAGatherEnvironmentSpecs( key, values ):
@@ -226,6 +243,7 @@ if sys.version_info >= (3,3):
 
     try:
         importlib.util.find_spec("psutil")
+
         psutilModulePresent = True
     except ImportError:
         psutilModulePresent = False
@@ -296,9 +314,11 @@ try:
             fsNames = ''
             if statType == 'filesystem' :
                 if value.get('FileSystemNames') != None:
+                    ### file system names will be in CSV format
                     fsNames = value.get('FileSystemNames')
             elif statType == 'process' :
                 if value.get('ProcessNames') != None:
+                    ### process names will be in CSV format
                     fsNames = value.get('ProcessNames')
 
             JAOSStatsSpec[statType] = [ fields, fsNames ]
@@ -309,8 +329,8 @@ try:
 except OSError as err:
     JAOSStatsExit('ERROR - Can not open configFile:|{0}|, OS error: {1}\n'.format(configFile,err)) 
 
+print('INFO  - Parameters after reading configFile:{0}, webServerURL:{1}, dataPostIntervalInSec:{2}, dataCollectDurationInSec:{3}, sysstatPathName: {4}, debugLevel: {5}, JAVersion: {6}\n'.format(configFile, webServerURL, dataPostIntervalInSec, dataCollectDurationInSec, JASysStatFilePathName, debugLevel, JAVersion))
 if debugLevel > 0:
-    print('DEBUG-1 Parameters after reading configFile:{0}, webServerURL:{1}, dataPostIntervalInSec:{2}, dataCollectDurationInSec:{3}, debugLevel: {4}\n'.format(configFile, webServerURL, dataPostIntervalInSec, dataCollectDurationInSec, debugLevel))
     for key, spec in JAOSStatsSpec.items():
         fields = spec[0] 
         fsNames = spec[1] 
@@ -357,7 +377,7 @@ except ImportError:
         subprocess.run = sp_run
         # ^ This monkey patch allows it work on Python 2 or 3 the same way
 
-if platform.system() == 'Windows':
+if OSType == 'Windows':
     result =  subprocess.run(['tasklist'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
 
 else:
@@ -373,8 +393,14 @@ for procName in returnProcessNames:
                 JAOSStatsExit('WARN - another instance ({0}) is running, exiting\n'.format(procName) )
 
 ### delete old log files
-result =  subprocess.run(['find', JAOSStatsLogFileName + '*', '-mtime', '+7'],stdout=subprocess.PIPE,stderr=subprocess.PIPE) 
-logFilesToDelete = result.stdout.decode('utf-8').split('\n')
+if OSType == 'Windows':
+    ### TBD expand this later 
+    logFilesToDelete = None
+
+else:
+    result =  subprocess.run(['find', JAOSStatsLogFileName + '*', '-mtime', '+7'],stdout=subprocess.PIPE,stderr=subprocess.PIPE) 
+    logFilesToDelete = result.stdout.decode('utf-8').split('\n')
+
 for deleteFileName in logFilesToDelete:
     if deleteFileName != '':
          os.remove( deleteFileName)
@@ -416,11 +442,16 @@ def JAGetProcessStats( processNames, fields ):
     ### if in CSV format, separate the process names 
     tempProcessNames = processNames.split(',')
 
-    ### get process stats for all processes
-    result = subprocess.run( ['ps', 'aux'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    index = 0
-    lines = result.stdout.decode('utf-8').split('\n')
-    for line in lines:
+    if OSType == 'windows':
+        print("ERROR JAGetProcessStats() not supported on Windows yet")
+        return None
+
+    else:
+      ### get process stats for all processes
+      result = subprocess.run( ['ps', 'aux'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      index = 0
+      lines = result.stdout.decode('utf-8').split('\n')
+      for line in lines:
         line = re.sub('\s+', ' ', line)
         if len(line) < 5:
             continue
@@ -496,7 +527,12 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
 
     ### if in CSV format, separate the file system names 
     tempFileSystemNames = fileSystemNames.split(',')
-    for fs in tempFileSystemNames:
+
+    if OSType == 'windows':
+        print("ERROR JAGetProcessStats() not supported on Windows yet")
+        return None
+    else:
+      for fs in tempFileSystemNames:
         if os.path.isdir(  fs ) != True:
             print("ERROR File System {0} not present, can't gather stats for it".format(fs) )
             continue
@@ -562,7 +598,10 @@ def JAGetSocketStats(fields, recursive=False):
     comma = '' 
     ### separate field names
     fieldNames = re.split(',', fields)
-    
+   
+    ### netstat -an works on unix, as well as in windows power shell
+    ###   output columns are different
+    ###  Since only ESTA, TIME_WAIT strings are searched, column order does not matter
     result = subprocess.run( ['netstat', '-an'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     lines = result.stdout.decode('utf-8').split('\n')
     
@@ -961,6 +1000,17 @@ def JAGetNetworkIOCounters(fields, recursive=False):
 if psutilModulePresent == True :
     import psutil
 
+
+### reduce process priority
+if OSType == 'windows':
+    if psutilModulePresent == True:
+        p.nice(psutil.LOW_PRIORITY_CLASS)
+else:
+    ### on all unix hosts, reduce to lowest priority
+    os.nice(19) 
+    if debugLevel > 1:
+        print("DEBUG-2 process priority: {0}".format( os.nice(0)) )
+
 ### get current time in seconds since 1970 jan 1
 programStartTime = loopStartTimeInSec = time.time()
 statsEndTimeInSec = loopStartTimeInSec + dataCollectDurationInSec
@@ -1006,6 +1056,11 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
             stats = psutil.cpu_percent(interval=1)
             tempPostData = True
 
+            ## stats is of the form stats <value>
+            value = '{:.2f}'.format(stats)
+            ### write current CPU usage to history
+            JAGlobalLib.JAWriteCPUUsageHistory( value )
+
         elif key == 'virtual_memory':
             stats = psutil.virtual_memory()
             tempPostData = True
@@ -1047,6 +1102,10 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
         elif key == 'cpu_percent':
             stats = JAGetCPUPercent()
             tempPostData = True
+            ## stats is of the form stats=<value>
+            label, value = re.split('=', '{0}'.format( stats) )
+            ### write current CPU usage to history
+            JAGlobalLib.JAWriteCPUUsageHistory( value )
 
         elif key == 'virtual_memory':
             stats = JAGetVirtualMemory(fields)

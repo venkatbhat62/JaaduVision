@@ -16,7 +16,9 @@ Parameters passed are:
             default - get it from JAGatherLogStats.yml
     processSingleLogFileName - process only this log file, skip the rest
             useful to debug single log file at a time to refine regular expression spec for services
-
+    maxCPUUsageLevel - SKIP gathering log stats when average CPU usage over previous 10 
+          dataPostIntervalInSec interval exceeds this limit.
+          default - get it from JAGatherLogStats.yml
     debugLevel - 0, 1, 2, 3
         default = 0
 
@@ -34,6 +36,10 @@ import datetime
 import JAGlobalLib
 import time
 import subprocess
+
+###   Major 01, minor 00, buildId 01
+JAVersion = "01.00.01"
+
 try:
     from subprocess import CompletedProcess
 except ImportError:
@@ -89,6 +95,7 @@ disableWarnings = None
 verifyCertificate = None
 cacheLogFileName = None
 processSingleLogFileName = None
+maxCPUUsageLevel = 0 
 
 ### contains current stats
 logStats = defaultdict(dict)
@@ -178,6 +185,10 @@ thisHostName = platform.node()
 hostNameParts = thisHostName.split('.')
 thisHostName = hostNameParts[0]
 
+### get OSType, OSName, and OSVersion. These are used to execute different python
+###  functions based on compatibility to the environment
+OSType, OSName, OSVersion = JAGlobalLib.JAGetOSInfo( sys.version_info, debugLevel)
+
 ### based on current hostName, this variable will be set to Dev, Test, Uat, Prod etc
 myEnvironment= None
 
@@ -201,8 +212,8 @@ Return value
 def JAGatherEnvironmentSpecs( key, values ):
 
     ### declare global variables
-    global dataPostIntervalInSec, dataCollectDurationInSec 
-    global webServerURL, disableWarnings, verifyCertificate, numSamplesToPost
+    global dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageLevel 
+    global webServerURL, disableWarnings, verifyCertificate, numSamplesToPost, debugLevel
 
     for myKey, myValue in values.items():
         if debugLevel > 1 :
@@ -221,6 +232,21 @@ def JAGatherEnvironmentSpecs( key, values ):
                     dataCollectDurationInSec = int(myValue)
                 elif key == 'All': 
                     dataCollectDurationInSec = 600 
+        
+        elif myKey == 'MaxCPUUsageLevel': 
+            if maxCPUUsageLevel == 0:
+                if myValue != None:
+                    maxCPUUsageLevel = int(myValue)
+                elif key == 'All': 
+                    maxCPUUsageLevel = 70
+
+        elif myKey == 'DebugLevel': 
+            if debugLevel == 0:
+                if myValue != None:
+                    debugLevel = int(myValue)
+                elif key == 'All': 
+                    debugLevel = 0 
+
 
         elif myKey == 'WebServerURL':
             if webServerURL == None:
@@ -255,8 +281,8 @@ def JAGatherEnvironmentSpecs( key, values ):
                 elif key == 'All':
                     verifyCertificate = True
 
-    if debugLevel > 1 :
-        print('DEBUG-2 JAGatherEnvironmentSpecs(), DataPostIntervalInSec:{0}, DataCollectDurationInSec: {1}, DisableWarnings: {2}, verifyCertificate: {3}, WebServerURL: {4}'.format( dataPostIntervalInSec, dataCollectDurationInSec, disableWarnings, verifyCertificate, webServerURL))
+    if debugLevel > 0:
+        print('DEBUG-1 Parameters after reading configFile: {0}, WebServerURL: {1},  DataPostIntervalInSec: {2}, DataCollectDurationInSec: {3}, MaxCPUUsageLevel: {4}, DebugLevel: {5}'.format( configFile, webServerURL,dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageLevel, debugLevel) )
 
 ### check whether yaml module is present
 yamlModulePresent = False
@@ -313,6 +339,25 @@ try:
                     ###  read all parameters defined for this environment
                     JAGatherEnvironmentSpecs( key, value )
                     myEnvironment = key 
+
+        ### if conig file does not have values for below, assign default values
+        if dataPostIntervalInSec == 0:
+            ### 60 seconds 
+            dataPostIntervalInSec = 60
+        if dataCollectDurationInSec == 0:
+            ### close to one hour
+            dataCollectDurationInSec = 3580
+        if disableWarnings == None:
+            disableWarnings = True
+        if verifyCertificate == None:
+            verifyCertificate = False
+        if maxCPUUsageLevel == 0:
+            ### SKIP processing log files when CPU usage exceeds 70%
+            maxCPUUsageLevel = 70
+        if statsLogFileName ==  None:
+            statsLogFileName = "JAGatherLogStats.log"
+        if cacheLogFileName == None:
+            cacheLogFileName = "JAGatherLogStats.cache"
 
         dateTimeFormatType = None 
         ### read spec for each log file
@@ -372,8 +417,8 @@ try:
 except OSError as err:
     JAStatsExit('ERROR - Can not open configFile:|' + configFile + '|' + "OS error: {0}".format(err) + '\n')
 
+print('INFO  DataPostIntervalInSec:{0}, DataCollectDurationInSec: {1}, DisableWarnings: {2}, VerifyCertificate: {3}, WebServerURL: {4}, MaxCPUUsageLevel: {5}, DebugLevel: {6}, Version: {7}'.format( dataPostIntervalInSec, dataCollectDurationInSec, disableWarnings, verifyCertificate, webServerURL, maxCPUUsageLevel, debugLevel, JAVersion))
 if debugLevel > 0:
-    print('DEBUG-1 Parameters after reading configFile: {0}, webServerURL: {1},  dataPostIntervalInSec: {2}, dataCollectDurationInSec: {3}, debugLevel: {4}'.format( configFile, webServerURL,dataPostIntervalInSec, dataCollectDurationInSec, debugLevel) )
     for key, spec in JAStatsSpec.items():
         print('DEBUG-1 Name: {0}, Fields: {1}'.format( key, spec))
 
@@ -593,7 +638,7 @@ def JAReadFileInfo():
          JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
 
 
-def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
+def JAProcessLogFile( logFileName, startTimeInSec, gatherLogStatsEnabled, debugLevel ):
 
    logFileNames = JAGlobalLib.JAFindModifiedFiles( logFileName, startTimeInSec, debugLevel)
 
@@ -650,10 +695,31 @@ def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
                 logFileInfo[fileName]['filePosition']='ERROR'
                 continue
 
-       ### get the date time format to be used while parsing this log file
-       #dateTimeFormat = logFileInfo[fileName].get('DateTimeFormat') 
-       #dateTimeFormatType = logFileInfo[fileName].get('DateTimeFormatType') 
-       while True:
+       ### if gatherLogStatsEnabled is set to False, just move the file pointer to end of the file
+       ###  so that next time, search can start from that position onwards.
+       ###  do not search for patterns in log lines
+       ###  this is to avoid overloading the system when CPU usage is higher than max limit set
+       if gatherLogStatsEnabled == False:
+         try:
+            ### position 0 bytes from end of file
+            file.seek(0,2)
+            ### end of file, save position info 
+            logFileInfo[fileName]['fileName'] = fileName 
+            logFileInfo[fileName]['filePointer'] = file
+            logFileInfo[fileName]['filePosition'] = file.tell()
+            logFileInfo[fileName]['prevTime'] = time.time()
+
+         except OSError as err:
+            errorMsg = 'ERROR - JAProcessLogFile() Can not go to end of file in logFile:|' + fileName + '|' + "OS error: {0}".format(err) + '\n'
+            print(errorMsg)
+            JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+            ### store error status so that next round, this will not be tried
+            logFileInfo[fileName]['filePosition']='ERROR'
+            continue
+
+       else:
+         ### gatherLogStats enabled 
+         while True:
            ### read line by line
            tempLine = file.readline()
            if not tempLine:
@@ -699,12 +765,26 @@ def JAProcessLogFile( logFileName, startTimeInSec, debugLevel ):
 ### read file info saved during prev run
 JAReadFileInfo()
 
+### reduce process priority
+if OSType == 'windows':
+    if psutilModulePresent == True:
+        p.nice(psutil.LOW_PRIORITY_CLASS)
+else:
+    ### on all unix hosts, reduce to lowest priority
+    os.nice(19)
+    if debugLevel > 1:
+        print("DEBUG-2 process priority: {0}".format( os.nice(0)) )
+
 ### get current time in seconds since 1970 jan 1
 programStartTime = loopStartTimeInSec = time.time() 
 statsEndTimeInSec = loopStartTimeInSec + dataCollectDurationInSec
 
 ### first time, sleep for dataPostIntervalInSec so that log file can be processed and posted after waking up
 sleepTimeInSec = dataPostIntervalInSec
+
+### initially, enable log stats gathering.
+### disable this if CPU usage average exceeds the threshold level set
+JAGatherLogStatsEnabled = True
 
 ### until the end time, keep checking the log file for presence of patterns
 ###   and post the stats per post interval
@@ -720,13 +800,23 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
    ### take current time, it will be used to find files modified since this time for next round
    logFileProcessingStartTime = time.time()
 
+   averageCPUUsage = JAGlobalLib.JAGetAverageCPUUsage()
+   if averageCPUUsage > maxCPUUsageLevel :
+       JAGatherLogStatsEnabled = False
+
    ## gather log stats for all logs
    for logFileName in sorted (JAStatsSpec.keys()):
-        JAProcessLogFile( logFileName, loopStartTimeInSec, debugLevel )
+        JAProcessLogFile( logFileName, loopStartTimeInSec, JAGatherLogStatsEnabled, debugLevel )
 
-   ### post collected stats to Web Server
-   JAPostDataToWebServer()
-
+   ### post the data to web server if the gathering is enabled.
+   if JAGatherLogStatsEnabled == True :
+        ### post collected stats to Web Server
+        JAPostDataToWebServer()
+   else:
+       errorMsg = "WARN  Current CPU Usage: {0} is above max CPU usage level specified: {1}, Skipped gathering Log stats".format( averageCPUUsage, maxCPUUsageLevel)
+       print( errorMsg )
+       JAGlobalLib.LogMsg( errorMsg, statsLogFileName, True)
+       
    ### if elapsed time is less than post interval, sleep till post interval elapses
    elapsedTimeInSec = time.time() - logFileProcessingStartTime
    if elapsedTimeInSec < dataPostIntervalInSec :

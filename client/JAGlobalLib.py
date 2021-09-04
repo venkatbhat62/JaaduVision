@@ -8,6 +8,8 @@
 """
 import datetime, platform, re, sys, os
 
+JACPUUsageFileName = 'JACPUUsage.data'
+
 def UTCDateTime():
     return datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f%Z")
 
@@ -297,4 +299,74 @@ def JAGetOSType():
         Returns values like Linux, Windows
     """
     return platform.system()
+
+def JAWriteCPUUsageHistory( CPUUsage, logFileName=None, debugLevel=0):
+    """
+    Write CPU usage data to given file name
+    Keep 10 sample values
+
+    First line has the average value of max 10 samples 
+    Rest of the lines have values of 10 samples, current CPUUsage passed as last line
+
+    Returns True up on success, False if file could not be opened
+    """
+    historyCPUUsage, average = JAReadCPUUsageHistory() 
+    if historyCPUUsage == None:
+        ### first time, start with empty list
+        historyCPUUsage = []
+    else:
+        if len( historyCPUUsage ) == 10:
+            ### history has 10 samples, drop the oldest sample
+            historyCPUUsage.pop(0)
+
+    ### append current CPU Usage to the list
+    historyCPUUsage.append( float(CPUUsage) )
+    average = sum(historyCPUUsage) / len( historyCPUUsage)
+
+    try:
+        with open( JACPUUsageFileName, "w") as file:
+            file.write( '{:.2f}\n'.format( average) )
+            for value in historyCPUUsage:
+                file.write('{:.2f}\n'.format( value ))
+            file.close()
+            return True
+
+    except OSError as err:
+        errorMsg = 'ERROR - JAWriteCPUUsageStats() Can not open file: {0} to save CPU usage info, error:{1}\n'.format( JACPUUsageFileName, err)
+        print(errorMsg)
+        if logFileName != None:
+            JAGlobalLib.LogMsg( errorMsg, logFileName, True)
+        return False
+
+def JAReadCPUUsageHistory( logFileName=None, debugLevel=0):
+    """
+    Read CPU usage data from a file
+    Return CPUUsage values in list form, return avarge value separtely
+    Return None if file could not be read
+
+    """
+    try:
+        if os.path.exists( JACPUUsageFileName ) == False:
+            return None, None
+        with open( JACPUUsageFileName, "r") as file:
+            average = float( file.readline().strip() )
+            CPUUsage = []
+            while True:
+                tempLine = file.readline()
+                if not tempLine:
+                    break
+                CPUUsage.append( float( tempLine.strip() ) )
+            file.close()
+            return CPUUsage, average 
+
+    except OSError as err:
+        errorMsg = 'ERROR - JAReadCPUUsageStats() Can not open file: {0} to read CPU usage info, error:{1}\n'.format( JACPUUsageFileName, err)
+        print(errorMsg)
+        if logFileName != None:
+            JAGlobalLib.LogMsg( errorMsg, logFileName, True)
+        return False
+
+def JAGetAverageCPUUsage( ):
+    tempCPUUsage, average = JAReadCPUUsageHistory()
+    return average
 
