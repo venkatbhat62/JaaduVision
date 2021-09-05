@@ -611,7 +611,7 @@ def JAGetSocketStats(fields, recursive=False):
     socketTotal = 0
 
     for line in lines:
-        if re.match(r'tcp|udp', line) == None:
+        if re.match(r'^tcp|^udp', line) == None:
             ### skip this line, not a TCP or UDP connection line
             continue
         if len(line) < 5:
