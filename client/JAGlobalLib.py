@@ -40,7 +40,7 @@ def JAGetDayOfMonth( deltaSeconds ):
 
 def LogMsg(logMsg, fileName, appendDate=True):
     if appendDate == True:
-        logFileName = fileName + "." + UTCDateForFileName()
+        logFileName = "{0}.{1}".format( fileName, UTCDateForFileName())
     else:
         logFileName = fileName
 

@@ -13,6 +13,9 @@
 #     PatternCount: string in regular expression syntax to idicate pass instance
 #         presence of this string in a line will increment metric <ServiceName>_count
 #         use this when Pass or Fail is not needed, just need to account for an incident like alarms
+#     Priority: 1 or 2 or 3, default 3
+#         This pattern will be searched when currnet average CPU usage is below MaxCPUUsageForEvents[priority]
+# 
 # NOTE - make no space after pattern strings
 #  Escape regular expression special characters in pattern spec like \/
 #   Non-special characters match themselves. Special characters don't match themselves −
@@ -52,6 +55,9 @@ Environment:
      HostName: (...)(p)(...)([0-9][0-9])
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
    All:
+     # max time allowed for log file processing during each sampling interval
+     #  below 30 second value is half of 60 seconds specified for sampling interval
+     MaxProcessingTimeForAllEvents: 30
      # post data to web server per this interval. if sampling interval is 10, post interval is 60,
      #    it will post 6 samples in one post. This is to optimize data post operation.
      DataPostIntervalInSec: 60
@@ -59,7 +65,13 @@ Environment:
      DataCollectDurationInSec: 600
      ### SKIP gathering log stats when average CPU usage % exceeds below limit over previous
      ###   10 DataPostIntervalInSec intervals
-     MaxCPUUsageLevel: 70
+     MaxCPUUsageForAllEvents: 80
+     ### SKIP gathering log stats with priority 1 when average CPU usage % exceeds below limit
+     MaxCPUUsageForPriority1Events: 70
+     ### SKIP gathering log stats with priority 2 when average CPU usage % exceeds below limit
+     MaxCPUUsageForPriority2Events: 60
+     ### SKIP gathering log stats with priority 3 when average CPU usage % exceeds below limit
+     MaxCPUUsageForPriority3Events: 50
      ### while posting data to web server, defaults to False
      DisableWarnings: True
      ### do not verify web server certificate, defaults to True
@@ -73,37 +85,44 @@ LogFile:
     SyslogError:
       LogFileName: /var/log/syslog
       PatternCount: Error
+      Priority: 3
 
     SyslogSession:
       LogFileName: /var/log/syslog
       PatternCount: Started Session
+      Priority: 3
 
     AuthlogInvalidUser:
       LogFileName: /var/log/auth.log
       PatternCount: Invalid user
+      Priority: 3
 
     ApacheGrafana:
       LogFileName: /var/log/apache2/access.log*
       PatternPass: /grafana(.*)HTTP/\d.\d" [2..|3..]
       PatternFail: /grafana(.*)HTTP/\d.\d" [4..|5..]
+      Priority: 2
   
     ApachePrometheus:
       LogFileName: /var/log/apache2/access.log*
       PatternPass: /prometheus(.*)HTTP/\d.\d" [2..|3..]
       PatternFail: /prometheus(.*)HTTP/\d.\d" [4..|5..]
+      Priority: 2
 
     ApacheSaveStats:
       LogFileName: /var/log/apache2/access.log*
       PatternPass: /JASaveStats.py(.*)HTTP/\d.\d" [2..|3..]
       PatternFail: /JASaveStats.py(.*)HTTP/\d.\d" [4..|5..]
+      Priority: 1
 
     ApacheError:
       LogFileName: /var/log/apache2/error.log* 
       PatternCount: \[cgi:error\] 
+      Priority: 1
 
     TestStats:
       LogFileName: JATest.log*
       PatternPass: TestMsg Pass
       PatternFail: TestMsg Fail
       PatternCount: TestMsg Count
-
+      Priority: 1
