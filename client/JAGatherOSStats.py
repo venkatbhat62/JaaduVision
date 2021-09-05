@@ -242,9 +242,10 @@ if sys.version_info >= (3,3):
         yamlModulePresent = False
 
     try:
-        importlib.util.find_spec("psutil")
-
-        psutilModulePresent = True
+        if importlib.util.find_spec("psutil") != None:
+            psutilModulePresent = True
+        else:
+            psutilModulePresent = False
     except ImportError:
         psutilModulePresent = False
 
@@ -442,7 +443,7 @@ def JAGetProcessStats( processNames, fields ):
     ### if in CSV format, separate the process names 
     tempProcessNames = processNames.split(',')
 
-    if OSType == 'windows':
+    if OSType == 'Windows':
         print("ERROR JAGetProcessStats() not supported on Windows yet")
         return None
 
@@ -528,7 +529,7 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
     ### if in CSV format, separate the file system names 
     tempFileSystemNames = fileSystemNames.split(',')
 
-    if OSType == 'windows':
+    if OSType == 'Windows':
         print("ERROR JAGetProcessStats() not supported on Windows yet")
         return None
     else:
@@ -669,7 +670,7 @@ def JAGetCPUTimesPercent(fields, recursive=False):
             print("ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats")
             return myStats
 
-    elif OSType == 'windows' :
+    elif OSType == 'Windows' :
         print("ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats")
         return myStats
 
@@ -749,7 +750,7 @@ def JAGetVirtualMemory(fields, recursive=False):
             print("ERROR JAGetCPUPercent() install psutils on this server to get OS stats")
             return myStats
 
-    elif OSType == 'windows' :
+    elif OSType == 'Windows' :
         print("ERROR JAGetCPUPercent() install psutils on this server to get OS stats")
         return myStats
 
@@ -813,7 +814,7 @@ def JAGetSwapMemory(fields, recursive=False):
             print("ERROR JAGetSwapMemory() install psutils on this server to get OS stats")
             return myStats
 
-    elif OSType == 'windows' :
+    elif OSType == 'Windows' :
         print("ERROR JAGetSwapMemory() install psutils on this server to get OS stats")
         return myStats
 
@@ -877,7 +878,7 @@ def JAGetDiskIOCounters(fields, recursive=False):
             print("ERROR JAGetDiskIOCounters() install psutils on this server to get OS stats")
             return myStats
 
-    elif OSType == 'windows' :
+    elif OSType == 'Windows' :
         print("ERROR JAGetDiskIOCounters() install psutils on this server to get OS stats")
         return myStats
 
@@ -941,7 +942,7 @@ def JAGetNetworkIOCounters(fields, recursive=False):
             print("ERROR JAGetNetworkIOCounters() install psutils on this server to get OS stats")
             return myStats
 
-    elif OSType == 'windows' :
+    elif OSType == 'Windows' :
         print("ERROR JAGetNetworkIOCounters() install psutils on this server to get OS stats")
         return myStats
 
@@ -1002,7 +1003,7 @@ if psutilModulePresent == True :
 
 
 ### reduce process priority
-if OSType == 'windows':
+if OSType == 'Windows':
     if psutilModulePresent == True:
         p.nice(psutil.LOW_PRIORITY_CLASS)
 else:

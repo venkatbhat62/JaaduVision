@@ -215,24 +215,28 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
     returnFileNames = []
     fileNames = {}
 
-    ### get all file names in desired directory
-    for file in os.listdir( myDirPath ) :
-        ### select the file name that matches to passed file name
-        if fnmatch.fnmatch(file, fileNameWithoutPath) :
-    
-            if debugLevel > 2 :
-                print('DEBUG-3 JAFileFilesModified() fileName: {0}, match to desired fileNamePattern: {1}'.format(file, fileNameWithoutPath) )
-
-            ### make full file name including path/name
-            fullFileName = myDirPath + '/' + file
-
-            ### now check the file modified time, if greater than or equal to passed time, save the file name
-            fileModifiedTime = os.path.getmtime ( fullFileName )
-            if fileModifiedTime >= sinceTimeInSec :
-                fileNames[ fileModifiedTime ] = fullFileName 
+    try:
+        ### get all file names in desired directory
+        for file in os.listdir( myDirPath ) :
+            ### select the file name that matches to passed file name
+            if fnmatch.fnmatch(file, fileNameWithoutPath) :
+        
                 if debugLevel > 2 :
-                    print('DEBUG-3 JAFileFilesModified() fileName: {0}, modified time: {1}, later than desired time: {2}'.format( file, fileModifiedTime, sinceTimeInSec) )
+                    print('DEBUG-3 JAFileFilesModified() fileName: {0}, match to desired fileNamePattern: {1}'.format(file, fileNameWithoutPath) )
 
+                ### make full file name including path/name
+                fullFileName = myDirPath + '/' + file
+
+                ### now check the file modified time, if greater than or equal to passed time, save the file name
+                fileModifiedTime = os.path.getmtime ( fullFileName )
+                if fileModifiedTime >= sinceTimeInSec :
+                    fileNames[ fileModifiedTime ] = fullFileName 
+                    if debugLevel > 2 :
+                        print('DEBUG-3 JAFileFilesModified() fileName: {0}, modified time: {1}, later than desired time: {2}'.format( file, fileModifiedTime, sinceTimeInSec) )
+    except OSError as err:
+        errorMsg = "ERROR JAFileFilesModified() Not able to find files in fileName: {0}, error:{1}".format( myDirPath, err)
+        print( errorMsg)
+        
     sortedFileNames = []
     for fileModifiedTime, fileName in sorted ( fileNames.items() ):
         sortedFileNames.append( fileName )
@@ -347,7 +351,7 @@ def JAReadCPUUsageHistory( logFileName=None, debugLevel=0):
     """
     try:
         if os.path.exists( JACPUUsageFileName ) == False:
-            return None, None
+            return [0], 0
         with open( JACPUUsageFileName, "r") as file:
             average = float( file.readline().strip() )
             CPUUsage = []
@@ -364,7 +368,7 @@ def JAReadCPUUsageHistory( logFileName=None, debugLevel=0):
         print(errorMsg)
         if logFileName != None:
             JAGlobalLib.LogMsg( errorMsg, logFileName, True)
-        return False
+        return [0], 0
 
 def JAGetAverageCPUUsage( ):
     tempCPUUsage, average = JAReadCPUUsageHistory()

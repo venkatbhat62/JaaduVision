@@ -332,8 +332,17 @@ if sys.version_info >= (3, 3):
             yamlModulePresent = False
     except ImportError:
         yamlModulePresent = False
+
+    try:
+        if importlib.util.find_spec("psutil") != None:
+            psutilModulePresent = True
+        else:
+            psutilModulePresent = False
+    except ImportError:
+        psutilModulePresent = False
 else:
     yamlModulePresent = False
+    psutilModulePresent = False
 
 # read default parameters and OS Stats collection spec
 try:
@@ -485,20 +494,21 @@ if debugLevel > 0:
 
 if OSType == 'Windows':
     ### 
- 
+    result =  subprocess.run(['tasklist'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
 else :
     # if another instance is running, exit
     result = subprocess.run(
         ['ps', '-ef'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    returnProcessNames = result.stdout.decode('utf-8').split('\n')
-    procCount = 0
-    for procName in returnProcessNames:
-        if re.search('JAGatherLogStats.py', procName) != None:
-            if re.search(r'vi |vim |more |view ', procName) == None:
-                procCount += 1
-                if procCount > 1:
-                    JAStatsExit('WARN - another instance (' +
-                                procName + ') is running, exiting')
+
+returnProcessNames = result.stdout.decode('utf-8').split('\n')
+procCount = 0
+for procName in returnProcessNames:
+    if re.search('JAGatherLogStats.py', procName) != None:
+        if re.search(r'vi |vim |more |view ', procName) == None:
+            procCount += 1
+            if procCount > 1:
+                JAStatsExit('WARN - another instance (' +
+                            procName + ') is running, exiting')
 
 
 returnResult = ''
@@ -542,10 +552,15 @@ def JAPostDataToWebServer():
 
     if sys.version_info >= (3, 3):
         import importlib
+        import importlib.util
         try:
-            importlib.util.find_spec("requests")
+            if importlib.util.find_spec("requests") != None:
+                useRequests = True
+            else:
+                useRequests = False
+
             importlib.util.find_spec("json")
-            useRequests = True
+            
         except ImportError:
             useRequests = False
     else:
@@ -834,7 +849,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 JAReadFileInfo()
 
 # reduce process priority
-if OSType == 'windows':
+if OSType == 'Windows':
+
     if psutilModulePresent == True:
         p.nice(psutil.LOW_PRIORITY_CLASS)
 else:
