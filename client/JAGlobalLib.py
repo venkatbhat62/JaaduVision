@@ -399,6 +399,8 @@ def JAReadTimeStamp( fileName):
     This function reads the time stamp from a given file
     """
     try:
+        if os.path.exists(fileName) == False:
+            return 0
         with open (fileName, "r") as file:
             prevTime = float( file.readline().strip() )
             file.close()
