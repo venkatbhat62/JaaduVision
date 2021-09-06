@@ -5,18 +5,18 @@ Posts jobName=LogStats, hostName=<thisHostName>, fileName as parameter in URL
 Posts <key> {metric1=value1, metric2=value2...} one line per key type as data
 
 Parameters passed are:
-    configFile - yaml file containing stats to be collected
+-c    configFile - yaml file containing stats to be collected
         default - JAGatherLogStats.yml 
-    webServerURL - post the data collected to web server 
+-U    webServerURL - post the data collected to web server 
         default - get it from JAGatherLogStats.yml 
-    dataPostIntervalInSec - post data at this periodicity, in seconds
+-i    dataPostIntervalInSec - post data at this periodicity, in seconds
         default - get it from JAGatherLogStats.yml
-    dataCollectDurationInSec - collect data for this duration once started
+-d    dataCollectDurationInSec - collect data for this duration once started
             when started from crontab, run for this duration and exit
             default - get it from JAGatherLogStats.yml
-    processSingleLogFileName - process only this log file, skip the rest
+-L    processSingleLogFileName - process only this log file, skip the rest
             useful to debug single log file at a time to refine regular expression spec for services
-    debugLevel - 0, 1, 2, 3, 4
+-D    debugLevel - 0, 1, 2, 3, 4
         default = 0
 
 returnResult
@@ -868,7 +868,9 @@ logFileProcessingStartTime = time.time()
 # open all log files, position the file pointer to the end of the file
 # this is to avoid counting transactions outside one minute window and showing higher tps than actual
 for logFileName in sorted(JAStatsSpec.keys()):
-    JAProcessLogFile(logFileName, loopStartTimeInSec, logFileProcessingStartTime,
+    ### pass 0 for start time reference so that only latest file is picked for processing
+    ### pass False for JAGatherLogStatsEnabled so that file pointers are moved to end of file
+    JAProcessLogFile(logFileName, 0, logFileProcessingStartTime,
                         False, debugLevel)
 
 # until the end time, keep checking the log file for presence of patterns

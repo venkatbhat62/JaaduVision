@@ -195,6 +195,7 @@ import os
 def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
     """
         This function returns file names in a directory that are modified since given GMT time in seconds
+        if sinceTimeInSec is 0, latest file is picked up regardless of modified time
         Can be used instead of find command
     """
     head_tail = os.path.split( fileName )
@@ -244,6 +245,11 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
     if debugLevel > 0 :
         print('DEBUG-1 JAFileFilesModified() modified files in:{0}, since gmtTimeInSec:{1}, fileNames:{2}'.format( fileName, sinceTimeInSec, sortedFileNames) )
 
+    ### if sinceTimeInSec is zero, pick up latest file only
+    if sinceTimeInSec == 0:
+        if len(sortedFileNames) > 0:
+            return sortedFileNames[-1]
+    
     return sortedFileNames
 
 def JAGetOSInfo(pythonVersion, debugLevel):
