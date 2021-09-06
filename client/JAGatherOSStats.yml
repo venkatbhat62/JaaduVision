@@ -37,15 +37,18 @@ Environment:
 OSStats:
   CPUTimes:
     Name: cpu_times_percent
+    ### while using sar data on Unix hosts, field names to match output of sar -u
     Fields: user, system, idle, iowait
   CPUPercent:
     Name: cpu_percent
     Fields: percent
   MemoryVirtual:
     Name: virtual_memory
+    ### while using sar data on Unix hosts, field names to match output of sar -r
     Fields: total,available,kbavail,memused,commit,kbmemfree
   MemorySwap:
     Name: swap_memory
+    ### while using sar data on Unix hosts, field names to match output of sar -S
     Fields: total,free,percent,kbswpfree,kbswpused,swpused
   Process:
     Name: process
@@ -55,6 +58,7 @@ OSStats:
     Fields: CPU,MEM,VSZ,RSS
   DiskIO:
     Name: disk_io_counters
+    ### while using sar data on Unix hosts, field names to match output of sar -b
     Fields: read_count,write_count,read_bytes,write_bytes,tps,rtps,wtps
   FSUsage:
     Name: filesystem
@@ -65,7 +69,9 @@ OSStats:
     Fields: percent_used,size_used
   NetworkIO:
     Name: net_io_counters
+    ### while using sar data on Unix hosts, field names to match output of sar -n EDEV
     Fields: bytes_sent,bytes_recv,packets_sent,packets_recv,errin,errout,dropin,dropout
   NetworkSockets: 
     Name: socket_stats
+    # netstat -an command used to get this stat
     Fields: total,established,time_wait 

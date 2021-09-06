@@ -820,7 +820,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                     pattern0 = values[0]
                     pattern1 = values[1]
                     pattern2 = values[2]
-                    eventPriority = values[3]
+                    eventPriority = int(values[3])
 
                     if debugLevel > 3:
                         print('DEBUG-4 JAProcessLogFile() searching for pattern:{0}|{1}|{2}\n'.format(
