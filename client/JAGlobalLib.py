@@ -248,7 +248,8 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
     ### if sinceTimeInSec is zero, pick up latest file only
     if sinceTimeInSec == 0:
         if len(sortedFileNames) > 0:
-            return sortedFileNames[-1]
+            ### return single file as list
+            return [sortedFileNames[-1]]
     
     return sortedFileNames
 
