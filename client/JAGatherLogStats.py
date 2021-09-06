@@ -862,6 +862,15 @@ sleepTimeInSec = dataPostIntervalInSec
 # disable this if CPU usage average exceeds the threshold level set
 JAGatherLogStatsEnabled = True
 
+# take current time, it will be used to find files modified since this time for next round
+logFileProcessingStartTime = time.time()
+
+# open all log files, position the file pointer to the end of the file
+# this is to avoid counting transactions outside one minute window and showing higher tps than actual
+for logFileName in sorted(JAStatsSpec.keys()):
+    JAProcessLogFile(logFileName, loopStartTimeInSec, logFileProcessingStartTime,
+                        False, debugLevel)
+
 # until the end time, keep checking the log file for presence of patterns
 # and post the stats per post interval
 while loopStartTimeInSec <= statsEndTimeInSec:
