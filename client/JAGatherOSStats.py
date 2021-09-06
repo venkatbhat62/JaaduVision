@@ -378,20 +378,17 @@ except ImportError:
         subprocess.run = sp_run
         # ^ This monkey patch allows it work on Python 2 or 3 the same way
 
-if OSType == 'Windows':
-    result =  subprocess.run(['tasklist'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+### read the last time this process was started, 
+###   if the time elapsed is less than dataCollectDurationInSec, 
+###   prev instance is still running, get out
+prevStartTime = JAGlobalLib.JAReadTimeStamp( "JAGatherOSStats.PrevStartTime")
+if prevStartTime > 0:
+    currentTime = time.time()
+    if ( prevStartTime +  dataCollectDurationInSec) > currentTime:
+        JAOSStatsExit('WARN - another instance of this program is running, exiting')
 
-else:
-    result =  subprocess.run(['ps', '-ef'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-
-returnProcessNames = result.stdout.decode('utf-8').split('\n')
-procCount = 0
-for procName in returnProcessNames:
-    if re.search( 'JAGatherOSStats.py', procName ) != None :
-        if re.search( r'vi |vim |more |view |cat ', procName ) == None:
-            procCount += 1
-            if procCount > 1:
-                JAOSStatsExit('WARN - another instance ({0}) is running, exiting\n'.format(procName) )
+### Create a file with current time stamp
+JAGlobalLib.JAWriteTimeStamp("JAGatherOSStats.PrevStartTime")
 
 ### delete old log files
 if OSType == 'Windows':
@@ -1224,6 +1221,9 @@ if sys.version_info >= (3,3):
     myProcessingTime = time.process_time()
 else:
     myProcessingTime = 'N/A'
+
+### write prev start time of 0 so that next time process will run
+JAGlobalLib.JAWriteTimeStamp("JAGatherOSStats.PrevStartTime", 0)
 
 programEndTime = time.time()
 programExecTime = programEndTime - programStartTime
