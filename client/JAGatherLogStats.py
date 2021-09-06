@@ -34,7 +34,6 @@ from collections import defaultdict
 import os
 import sys
 import re
-import datetime
 import JAGlobalLib
 import time
 import subprocess
@@ -492,24 +491,17 @@ if debugLevel > 0:
     for key, spec in JAStatsSpec.items():
         print('DEBUG-1 Name: {0}, Fields: {1}'.format(key, spec))
 
-if OSType == 'Windows':
-    ### 
-    result =  subprocess.run(['tasklist'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
-else :
-    # if another instance is running, exit
-    result = subprocess.run(
-        ['ps', '-ef'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+### read the last time this process was started, 
+###   if the time elapsed is less than dataCollectDurationInSec, 
+###   prev instance is still running, get out
+prevStartTime = JAGlobalLib.JAReadTimeStamp( "JAGatherLogStats.PrevStartTime")
+if prevStartTime > 0:
+    currentTime = time.time()
+    if ( prevStartTime +  dataCollectDurationInSec) > currentTime:
+        JAStatsExit('WARN - another instance of this program is running, exiting')
 
-returnProcessNames = result.stdout.decode('utf-8').split('\n')
-procCount = 0
-for procName in returnProcessNames:
-    if re.search('JAGatherLogStats.py', procName) != None:
-        if re.search(r'vi |vim |more |view ', procName) == None:
-            procCount += 1
-            if procCount > 1:
-                JAStatsExit('WARN - another instance (' +
-                            procName + ') is running, exiting')
-
+### Create a file with current time stamp
+JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.PrevStartTime")
 
 returnResult = ''
 logStatsToPost = defaultdict(dict)
@@ -925,5 +917,9 @@ else:
 
 programEndTime = time.time()
 programExecTime = programEndTime - programStartTime
+
+### write prev start time of 0 so that next time process will run
+JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.PrevStartTime", 0)
+
 JAStatsExit('PASS  Processing time this program: {0}, programExecTime: {1}'.format(
     myProcessingTime, programExecTime))

@@ -374,3 +374,37 @@ def JAGetAverageCPUUsage( ):
     tempCPUUsage, average = JAReadCPUUsageHistory()
     return average
 
+def JAWriteTimeStamp(fileName, currentTime=None):
+    """
+    This function writes current time to given filename
+    If currentTime is not passed, current time is taken and written to the file
+    """
+    import time
+    if currentTime == None:
+        currentTime = time.time()
+    
+    try:
+        with open (fileName, "w") as file:
+            file.write( '{:.2f}\n'.format( currentTime) )
+            file.close()
+            return True
+
+    except OSError as err:
+        errorMsg = 'ERROR - JAWriteTimeStamp() Can not open file: {0} to save current time, error:{1}\n'.format( fileName, err)
+        print(errorMsg)
+        return False
+
+def JAReadTimeStamp( fileName):
+    """
+    This function reads the time stamp from a given file
+    """
+    try:
+        with open (fileName, "r") as file:
+            prevTime = float( file.readline().strip() )
+            file.close()
+            return prevTime
+
+    except OSError as err:
+        errorMsg = 'INFO - JAReadTimeStamp() Can not open file: {0} to save current time, error:{1}\n'.format( fileName, err)
+        print(errorMsg)
+        return 0
