@@ -644,7 +644,7 @@ def JAWriteFileInfo():
             for key, value in logFileInfo.items():
                 tempPosition = logFileInfo[key]['filePosition']
                 tempPrevTime = logFileInfo[key]['prevTime']
-                file.write('{0} {1} {2}\n'.format(
+                file.write('{0} {1} {2}'.format(
                     key, tempPosition, tempPrevTime))
                 numItems += 1
                 # close log file that was opened before
@@ -838,7 +838,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
 
 # read file info saved during prev run
-JAReadFileInfo()
+# JAReadFileInfo()
 
 # reduce process priority
 if OSType == 'Windows':
@@ -919,7 +919,7 @@ while loopStartTimeInSec <= statsEndTimeInSec:
 
 
 # Save file info to be used next round
-JAWriteFileInfo()
+# JAWriteFileInfo()
 
 if sys.version_info >= (3, 3):
     myProcessingTime = time.process_time()
