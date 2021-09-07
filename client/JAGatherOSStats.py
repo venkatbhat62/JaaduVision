@@ -5,17 +5,17 @@ Posts jobName=OSStats, hostName=<thisHostName>, fileName as parameter in URL
 Posts <key> {metric1=value1, metric2=value2...} one line per key type as data
 
 Parameters passed are:
-    configFile - yaml file containing stats to be collected
+-c    configFile - yaml file containing stats to be collected
         default - get it from JAGlobalVars.yml 
-    webServerURL - post the data collected to web server 
+-U    webServerURL - post the data collected to web server 
         default - get it from JAGlobalVars.yml
-    dataPostIntervalInSec - sample data at this periodicity, in seconds
+-i    dataPostIntervalInSec - sample data at this periodicity, in seconds
         default - get it from JAGlobalVars.yml
-    dataCollectDurationInSec - post data for this duration, in seconds
+-d    dataCollectDurationInSec - post data for this duration, in seconds
         default - get it from JAGlobalVars.yml
             if dataPostIntervalInSec is one min, and dataCollectDurationInSec is 10 min,  
                 it will post 10 samples
-    debugLevel - 0, 1, 2, 3
+-D    debugLevel - 0, 1, 2, 3
         default = 0
 
 returnResult
@@ -80,8 +80,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-D", type=int, help="debug level 0 - None, 1,2,3-highest level")
 parser.add_argument("-c", help="yaml file containing stats to be collected, default - JAGatherOSStats.yml")
 parser.add_argument("-U", help="web server URL to post the data, default - get it from configFile")
-parser.add_argument("-i", type=int, help="sampling interval, default - get it from configFile")
-parser.add_argument("-I", type=int, help="data post interval, default - get it from configFile")
+parser.add_argument("-i", type=int, help="data post interval, default - get it from configFile")
+parser.add_argument("-d", type=int, help="data collection duration, default - get it from configFile")
 parser.add_argument("-C", help="component name, default - none")
 parser.add_argument("-P", help="platform name, default - none")
 parser.add_argument("-S", help="site name, default - none")
@@ -101,8 +101,8 @@ if args.U:
 if args.i:
     dataPostIntervalInSec = args.i
 
-if args.I:
-    dataCollectDurationInSec = args.I
+if args.d:
+    dataCollectDurationInSec = args.d
 
 if args.C:
     componentName = args.C
