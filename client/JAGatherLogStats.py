@@ -973,6 +973,19 @@ else:
     if debugLevel > 1:
         print("DEBUG-2 process priority: {0}".format(os.nice(0)))
 
+### delete old log files
+if OSType == 'Windows':
+    ### TBD expand this later 
+    logFilesToDelete = None
+
+else:
+    result =  subprocess.run(['find', statsLogFileName + '*', '-mtime', '+7'],stdout=subprocess.PIPE,stderr=subprocess.PIPE) 
+    logFilesToDelete = result.stdout.decode('utf-8').split('\n')
+
+for deleteFileName in logFilesToDelete:
+    if deleteFileName != '':
+         os.remove( deleteFileName)
+
 # get current time in seconds since 1970 jan 1
 programStartTime = loopStartTimeInSec = time.time()
 statsEndTimeInSec = loopStartTimeInSec + dataCollectDurationInSec
