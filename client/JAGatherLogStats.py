@@ -919,6 +919,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         for tempResult in tempResults:
                                             if numStats % 2 == 0:
                                                 if len(tempStats) <= numStats :
+                                                    ### if current name has space, replace it with '_'
+                                                    tempResult = re.sub('\s','_',tempResult)
                                                     ### current tempResult is not yet in the list, append it
                                                     tempStats.append(tempResult)
                                             else:
