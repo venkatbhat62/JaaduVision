@@ -900,7 +900,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 
                                 if index == patternIndexForPatternSum or index == patternIndexForPatternAverage :
                                     ### special processing needed to extract the statistics from current line
-                                    myResults = re.findall( values[index], tempLine)
+                                    searchPattern = values[index]
+                                    myResults = re.findall( r'{0}'.format(searchPattern), tempLine)
                                     if myResults != None and len(myResults) > 0 :
                                         ### current line has stats in one or more places. Aggregate the values
                                         ### the pattern spec is in the format
