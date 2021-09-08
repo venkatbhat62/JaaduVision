@@ -48,7 +48,8 @@ patternIndexForPriority = 0
 patternIndexForPatternPass = 1
 patternIndexForPatternFail = 2
 patternIndexForPatternCount = 3
-patternIndexForPatternStats = 4
+patternIndexForPatternSum = 4
+patternIndexForPatternAverage = 5
 
 try:
     from subprocess import CompletedProcess
@@ -404,10 +405,10 @@ try:
             # SKIP processing priority 1 events of log files when CPU usage exceeds 70%
             maxCPUUsageForEvents[1] = 70
         if maxCPUUsageForEvents[2] == 0:
-            # SKIP processing priority 1 events of log files when CPU usage exceeds 60%
+            # SKIP processing priority 2 events of log files when CPU usage exceeds 60%
             maxCPUUsageForEvents[2] = 60
         if maxCPUUsageForEvents[3] == 0:
-            # SKIP processing priority 1 events of log files when CPU usage exceeds 50%
+            # SKIP processing priority 3 events of log files when CPU usage exceeds 50%
             maxCPUUsageForEvents[3] = 50
         if statsLogFileName == None:
             statsLogFileName = "JAGatherLogStats.log"
@@ -423,11 +424,15 @@ try:
         # PatternPass: string containing regular expression
         # PatternFail: string containing regular expression
         # PatternCount: string containing regular expression
+        # PatternSum: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
+        # PatternAverage: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
         for key, value in JAStats['LogFile'].items():
+            
+            tempPatternList = [ None] * (patternIndexForPatternAverage+1)
+            tempPatternPresent = [False] * (patternIndexForPatternAverage+1)
+            
             ## default priority 3, lowest
-            tempPatternList = [ None, None, None, None, None ]
             tempPatternList[patternIndexForPriority] = 3
-            tempPatternPresent = [False, False, False, False, False]
             tempPatternPresent[patternIndexForPriority] = True
 
             if value.get('LogFileName') != None:
@@ -450,9 +455,13 @@ try:
                 tempPatternList[patternIndexForPatternCount] = value.get('PatternCount')
                 tempPatternPresent[patternIndexForPatternCount] = True
 
-            if value.get('PatternStats') != None:
-                tempPatternList[patternIndexForPatternStats] = value.get('PatternStats')
-                tempPatternPresent[patternIndexForPatternStats] = True
+            if value.get('PatternSum') != None:
+                tempPatternList[patternIndexForPatternSum] = value.get('PatternSum')
+                tempPatternPresent[patternIndexForPatternSum] = True
+
+            if value.get('PatternAverage') != None:
+                tempPatternList[patternIndexForPatternAverage] = value.get('PatternAverage')
+                tempPatternPresent[patternIndexForPatternAverage] = True
 
             if value.get('Priority') != None:
                 tempPatternList[patternIndexForPriority] = value.get('Priority')
@@ -473,8 +482,13 @@ try:
             logStats[key][patternIndexForPatternCount*2] = 0
             logStats[key][patternIndexForPatternCount*2+1] = tempPatternPresent[patternIndexForPatternCount]
             ### data to be posted may have multiple values, initialize it to be a list
-            logStats[key][patternIndexForPatternStats*2] = []
-            logStats[key][patternIndexForPatternStats*2+1] = tempPatternPresent[patternIndexForPatternStats]
+            logStats[key][patternIndexForPatternSum*2] = 0
+            ### for sum, data is posted if sample count is non=zero, no pattern present flag used
+            logStats[key][patternIndexForPatternSum*2+1] = []
+            ### data to be posted may have multiple values, initialize it to be a list
+            logStats[key][patternIndexForPatternAverage*2] = 0
+            ### for average, data is posted if sample count is non=zero, no pattern present flag used
+            logStats[key][patternIndexForPatternAverage*2+1] = []
             
                              
 except OSError as err:
@@ -561,31 +575,86 @@ def JAPostDataToWebServer():
             requests.packages.urllib3.disable_warnings()
 
     numPostings = 0
-    fValues = [0,0,0,0,0,0,0,0,0]
 
     # sampling interval elapsed
     # push current sample stats to the data to be posted to the web server
+    # key - service name
+    # values -  value1, presentFlag1, value2, presentFlag2,....
+    # { 'AlarmCRIT': [ 0, False, 0, False, 2, True, 0, False],
+    #   'ApacheICDR': [ 2, True, 0, False, 0, False, 0, False]}
+    #                    pass      fail     count     stats
     for key, values in logStats.items():
         # use temporary buffer for each posting
         tempLogStatsToPost = logStatsToPost.copy()
 
-        # xlate count to transactions per second, get to two decimal position
-        fValues[patternIndexForPatternPass]     = "{:.2f}".format(values[patternIndexForPatternPass*2] / dataPostIntervalInSec)
-        fValues[patternIndexForPatternFail]     = "{:.2f}".format(values[patternIndexForPatternFail*2] / dataPostIntervalInSec)
-        fValues[patternIndexForPatternCount]    = "{:.2f}".format(values[patternIndexForPatternCount*2] / dataPostIntervalInSec)
+        postData = False
 
         tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
-        if values[1] == True:
-            tempLogStatsToPost[key] += ',' + key + '_pass=' + fValues[patternIndexForPatternPass]
-        if values[3] == True:
-            tempLogStatsToPost[key] += ',' + key + '_fail=' + fValues[patternIndexForPatternFail]
-        if values[5] == True:
-            tempLogStatsToPost[key] += ',' + key + '_count=' + fValues[patternIndexForPatternCount]
+         
+        if values[patternIndexForPatternPass*2+1] == True:
+            tempLogStatsToPost[key] += ",{0}_pass={1:.2f}".format(key,values[patternIndexForPatternPass*2] / dataPostIntervalInSec)
+            logStats[key][patternIndexForPatternPass*2] = 0
+            postData = True
+        if values[patternIndexForPatternFail*2+1] == True:
+            tempLogStatsToPost[key] += ",{0}_fail={1:.2f}".format(key,values[patternIndexForPatternFail*2] / dataPostIntervalInSec)
+            logStats[key][patternIndexForPatternFail*2] = 0
+            postData = True
+        if values[patternIndexForPatternCount*2+1] == True:
+            tempLogStatsToPost[key] += ",{0}_count={1:.2f}".format(key, values[patternIndexForPatternCount*2] / dataPostIntervalInSec)
+            logStats[key][patternIndexForPatternCount*2] = 0
+            postData = True
+        if values[patternIndexForPatternSum*2] > 0 :
+            postData = True
+            ### sample count is non-zero, stats has value to post
+            tempResults = list(values[patternIndexForPatternSum*2+1])
 
-        if values[patternIndexForPatternPass*2+1] == True or values[patternIndexForPatternFail*2+1] == True or values[patternIndexForPatternCount*2+1] == True:
-            # clear stats for next sampling interval
-            values[patternIndexForPatternPass] = values[patternIndexForPatternFail] = values[patternIndexForPatternCount] = 0
+            if debugLevel > 3:
+                print("DEBUG-4 JAPostDataToWebServer() PatternSum:{0}".format(tempResults))
 
+            ### tempResults is in the form: [ name1, value1, name, value2,....]
+            ### divide the valueX with sampling interval to get tps value
+            index = 0
+            paramName = ''
+            while index < len(tempResults):
+                if index % 2 > 0:
+                    ### current index has value
+                    ### divide the valueX with sampling interval to get tps value
+                    tempResultAverage = tempResults[index] / dataPostIntervalInSec
+                    tempLogStatsToPost[key] += ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultAverage)
+                else:
+                    ### current index has param name
+                    paramName = tempResults[index]
+                index += 1
+            ### reset count and param list
+            logStats[key][patternIndexForPatternSum*2] = 0
+            logStats[key][patternIndexForPatternSum*2+1] = []
+
+        if values[patternIndexForPatternAverage*2] > 0 :
+            postData = True
+            ### sample count is non-zero, stats has value to post
+            tempResults = list(values[patternIndexForPatternAverage*2+1])
+
+            if debugLevel > 3:
+                print("DEBUG-4 JAPostDataToWebServer() PatternAverage:{0}".format(tempResults))
+
+            ### tempResults is in the form: [ name1, value1, name, value2,....]
+            ### divide the valueX with sample count to get average value
+            index = 0
+            paramName = ''
+            while index < len(tempResults):
+                if index % 2 > 0:
+                    ### current index has value
+                    tempResultAverage = tempResults[index] / values[patternIndexForPatternAverage*2]
+                    tempLogStatsToPost[key] += ",{0}_{1}_average={2:.2f}".format( key, paramName, tempResultAverage)
+                else:
+                    ### current index has param name
+                    paramName = tempResults[index]
+                index += 1
+            ### reset count and param list
+            logStats[key][patternIndexForPatternAverage*2] = 0
+            logStats[key][patternIndexForPatternAverage*2+1] = []
+
+        if postData == True :
             data = json.dumps(tempLogStatsToPost)
             if useRequests == True:
                 # post interval elapsed, post the data to web server
@@ -803,52 +872,81 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                     print(
                         'DEBUG-4 JAProcessLogFile() processing log line:' + tempLine + '\n')
 
+                # search results are stored in logStats in below form
+                # key - service name
+                # values -  value1, presentFlag1, value2, presentFlag2,....
+                # { 'AlarmCRIT': [ 0, False, 0, False, 2, True, 0, False],
+                #   'ApacheICDR': [ 2, True, 0, False, 0, False, 0, False]}
+                #                    pass      fail     count     stats
+
                 # search for pass, fail, count, stats patterns of each service associated with this log file
                 for key, values in JAStatsSpec[logFileName].items():
                     eventPriority = int(values[patternIndexForPriority])
                     
                     if debugLevel > 3:
-                        print('DEBUG-4 JAProcessLogFile() searching for patterns:{0}|{1}|{2}|{3}\n'.format(
-                            values[patternIndexForPatternPass], values[patternIndexForPatternFail], values[patternIndexForPatternCount], values[patternIndexForPatternStats]))
+                        print('DEBUG-4 JAProcessLogFile() searching for patterns:{0}|{1}|{2}|{3}|{4}\n'.format(
+                            values[patternIndexForPatternPass], values[patternIndexForPatternFail], values[patternIndexForPatternCount], 
+                            values[patternIndexForPatternSum], values[patternIndexForPatternAverage]))
                     if averageCPUUsage < maxCPUUsageForEvents[eventPriority]:
                         ### proceed with search if current CPU usage is lower than max CPU usage allowed
                         index = 0
+                        ### values is indexed from 0 to patternIndexForPatternSum / patternIndexForPatternAverage
+                        ### logStats[key] is indexed with twice the value
                         while index < len(values):
+
                             if index != patternIndexForPriority:
-                                if index == patternIndexForPatternStats:
+                                logStatsKeyValueIndexEven = index * 2
+                                logStatsKeyValueIndexOdd = logStatsKeyValueIndexEven + 1
+                                
+                                if index == patternIndexForPatternSum or index == patternIndexForPatternAverage :
                                     ### special processing needed to extract the statistics from current line
                                     myResults = re.findall( values[index], tempLine)
-                                    if myResults != None:
+                                    if myResults != None and len(myResults) > 0 :
                                         ### current line has stats in one or more places. Aggregate the values
                                         ### the pattern spec is in the format
                                         ###   <pattern>(Key1)<pattern>(value1)<pattern>key2<pattern>value2....
                                         numStats = 0
-                                        tempStats = []
+
+                                        ### make a copy of current list values
+                                        tempStats = list(logStats[key][logStatsKeyValueIndexOdd])
+
                                         ### myResults is of the form = [ (key1, value1, key2, value2....)]
                                         tempResults = myResults.pop(0)
 
-                                        ### tempResults is of the form = [ key1, value1, key2, value2....]
+                                        if debugLevel > 3:
+                                            print("DEBUG-4 JAProcessLogFile() processing line with PatternSum or PatternAverage, search result:{0}\n Previous values:{1}".format(myResults, tempStats))
+
                                         for tempResult in tempResults:
                                             if numStats % 2 == 0:
-                                                ### stats key name in tempResult
-                                                tempStats[numStats] = tempResult
+                                                if len(tempStats) <= numStats :
+                                                    ### current tempResult is not yet in the list, append it
+                                                    tempStats.append(tempResult)
                                             else:
-                                                ### stats value in tempResult.
-                                                tempStats[numStats] += float(tempResult)
+                                                if len(tempStats) <= numStats:
+                                                    ### current tempResult is not yet in the list, append it
+                                                    tempStats.append(float(tempResult))
+                                                else:
+                                                    ### add to existing value
+                                                    tempStats[numStats] += float(tempResult)
+                                            numStats += 1
                                         ### increment sample count
-                                        logStats[key][index*2] += 1
+                                        logStats[key][logStatsKeyValueIndexEven] += 1
                                         ### store tempStats as list
-                                        logStats[key][index*2+1] = list(tempStats)
+                                        logStats[key][logStatsKeyValueIndexOdd] = list(tempStats)
                                         if debugLevel > 3:
-                                            print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}'.format(
-                                                key, values[index], logStats[key][index] ))
-                            
-
-                                elif values[index] != None and re.search( values[index]) != None:
+                                            print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, numSamples:{2}, stats: {3}'.format(
+                                                key, values[index], logStats[key][logStatsKeyValueIndexEven], logStats[key][logStatsKeyValueIndexOdd] ))
+                                        ### get out of the loop
+                                        break
+                                elif values[index] != None and re.search( values[index], tempLine) != None:
                                     ### matching pattern found, increemnt the count 
-                                    logStats[key][index*2] += 1  
-                                    logStats[key][index*2+1] += True
+                                    logStats[key][logStatsKeyValueIndexEven] += 1
 
+                                    if debugLevel > 3:
+                                        print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}'.format(
+                                                key, values[index], logStats[key][logStatsKeyValueIndexEven] ))
+                                    ### get out of the loop
+                                    break
                             ### increment index so that search continues with next pattern
                             index += 1
 

@@ -30,7 +30,7 @@ stepTime = 5
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("-D", type=int, help="debug level 0 - None, 1,2,3-highest level")
-parser.add_argument("-d", type=int, help="duratoin in seconds")
+parser.add_argument("-d", type=int, help="duration in seconds")
 parser.add_argument("-s", help="simulator type, random (default), sawtooth")
 
 args = parser.parse_args()
@@ -69,10 +69,16 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
     time.sleep( sleepTimeInSec)
 
     ### log messages to log file
-    for count in range( int(sleepTimeInSec / 5) ):
+    for count in range( int(sleepTimeInSec / 8) ):
         JAGlobalLib.LogMsg('TestMsg Pass\n', testLogFileName, True)
+        
         if count % 2 > 0:
             JAGlobalLib.LogMsg('TestMsg Fail\n', testLogFileName, True)
-        if count % 3 > 0:
+            msg = "leading text key1 {0} dummy1 key2 {1:.2f} dummy2\n".format( sleepTimeInSec, sleepTimeInSec/2)
+            JAGlobalLib.LogMsg(msg, testLogFileName, True)
+            msg = "tps key1 {0} dummy1 key2 {1:.2f} dummy2\n".format( sleepTimeInSec, sleepTimeInSec/2)
+            JAGlobalLib.LogMsg(msg, testLogFileName, True)
+        elif count % 3 > 0:
             JAGlobalLib.LogMsg('TestMsg Count\n', testLogFileName, True)
-
+    
+            

@@ -122,7 +122,17 @@ LogFile:
 
     TestStats:
       LogFileName: JATest.log*
+      ### tps = number of instances divided by sampling interval
       PatternPass: TestMsg Pass
+      ### tps = number of instances divided by sampling interval
       PatternFail: TestMsg Fail
+      ### tps = number of instances divided by sampling interval
       PatternCount: TestMsg Count
+      # PatternSum: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
+      # value is summed over the sampling interval, tps is computed by diving sampling interval
+      PatternSum: leading text (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy
+      # PatternAverage: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
+      # value is summed over the sampling interval, average value is computed by dividing number of samples in that sampling interval
+      PatternAverage: tps (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy
+
       Priority: 1
