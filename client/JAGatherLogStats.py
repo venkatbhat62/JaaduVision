@@ -898,7 +898,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 logStatsKeyValueIndexEven = index * 2
                                 logStatsKeyValueIndexOdd = logStatsKeyValueIndexEven + 1
                                 
-                                if index == patternIndexForPatternSum or index == patternIndexForPatternAverage :
+                                if (index == patternIndexForPatternSum or index == patternIndexForPatternAverage ) and values[index] != None :
                                     ### special processing needed to extract the statistics from current line
                                     searchPattern = values[index]
                                     myResults = re.findall( r'{0}'.format(searchPattern), tempLine)
