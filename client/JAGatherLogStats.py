@@ -894,11 +894,11 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         ### logStats[key] is indexed with twice the value
                         while index < len(values):
 
-                            if index != patternIndexForPriority:
+                            if index != patternIndexForPriority and values[index] != None :
                                 logStatsKeyValueIndexEven = index * 2
                                 logStatsKeyValueIndexOdd = logStatsKeyValueIndexEven + 1
                                 
-                                if (index == patternIndexForPatternSum or index == patternIndexForPatternAverage ) and values[index] != None :
+                                if index == patternIndexForPatternSum or index == patternIndexForPatternAverage :
                                     ### special processing needed to extract the statistics from current line
                                     searchPattern = values[index]
                                     myResults = re.findall( r'{0}'.format(searchPattern), tempLine)
@@ -941,7 +941,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                 key, values[index], logStats[key][logStatsKeyValueIndexEven], logStats[key][logStatsKeyValueIndexOdd] ))
                                         ### get out of the loop
                                         break
-                                elif values[index] != None and re.search( values[index], tempLine) != None:
+                                elif re.search( values[index], tempLine) != None:
                                     ### matching pattern found, increemnt the count 
                                     logStats[key][logStatsKeyValueIndexEven] += 1
 
