@@ -396,7 +396,8 @@ if OSType == 'Windows':
     logFilesToDelete = None
 
 else:
-    result =  subprocess.run(['find', JAOSStatsLogFileName + '*', '-mtime', '+7'],stdout=subprocess.PIPE,stderr=subprocess.PIPE) 
+    tempFileNameToDelete = '{0}*'.format(JAOSStatsLogFileName)
+    result =  subprocess.run(['find', tempFileNameToDelete, '-mtime', '+7'],stdout=subprocess.PIPE,stderr=subprocess.PIPE) 
     logFilesToDelete = result.stdout.decode('utf-8').split('\n')
 
 for deleteFileName in logFilesToDelete:
