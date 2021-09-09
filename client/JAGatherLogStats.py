@@ -590,17 +590,19 @@ def JAPostDataToWebServer():
         postData = False
 
         tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
-         
+        
+        floatDataPostIntervalInSec = float(dataPostIntervalInSec)
+
         if values[patternIndexForPatternPass*2+1] == True:
-            tempLogStatsToPost[key] += ",{0}_pass={1:.2f}".format(key,values[patternIndexForPatternPass*2] / dataPostIntervalInSec)
+            tempLogStatsToPost[key] += ",{0}_pass={1:.2f}".format(key,float(values[patternIndexForPatternPass*2]) / floatDataPostIntervalInSec)
             logStats[key][patternIndexForPatternPass*2] = 0
             postData = True
         if values[patternIndexForPatternFail*2+1] == True:
-            tempLogStatsToPost[key] += ",{0}_fail={1:.2f}".format(key,values[patternIndexForPatternFail*2] / dataPostIntervalInSec)
+            tempLogStatsToPost[key] += ",{0}_fail={1:.2f}".format(key,float(values[patternIndexForPatternFail*2]) / floatDataPostIntervalInSec)
             logStats[key][patternIndexForPatternFail*2] = 0
             postData = True
         if values[patternIndexForPatternCount*2+1] == True:
-            tempLogStatsToPost[key] += ",{0}_count={1:.2f}".format(key, values[patternIndexForPatternCount*2] / dataPostIntervalInSec)
+            tempLogStatsToPost[key] += ",{0}_count={1:.2f}".format(key, float(values[patternIndexForPatternCount*2])/ floatDataPostIntervalInSec)
             logStats[key][patternIndexForPatternCount*2] = 0
             postData = True
         if values[patternIndexForPatternSum*2] > 0 :
@@ -619,7 +621,7 @@ def JAPostDataToWebServer():
                 if index % 2 > 0:
                     ### current index has value
                     ### divide the valueX with sampling interval to get tps value
-                    tempResultAverage = tempResults[index] / dataPostIntervalInSec
+                    tempResultAverage = float(tempResults[index]) / floatDataPostIntervalInSec
                     tempLogStatsToPost[key] += ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultAverage)
                 else:
                     ### current index has param name
@@ -644,7 +646,7 @@ def JAPostDataToWebServer():
             while index < len(tempResults):
                 if index % 2 > 0:
                     ### current index has value
-                    tempResultAverage = tempResults[index] / values[patternIndexForPatternAverage*2]
+                    tempResultAverage = float(tempResults[index]) / float(values[patternIndexForPatternAverage*2])
                     tempLogStatsToPost[key] += ",{0}_{1}_average={2:.2f}".format( key, paramName, tempResultAverage)
                 else:
                     ### current index has param name
