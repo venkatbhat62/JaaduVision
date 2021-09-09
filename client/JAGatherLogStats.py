@@ -898,10 +898,11 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 logStatsKeyValueIndexEven = index * 2
                                 logStatsKeyValueIndexOdd = logStatsKeyValueIndexEven + 1
                                 
+                                searchPattern = r'{0}'.format(values[index])
                                 if index == patternIndexForPatternSum or index == patternIndexForPatternAverage :
                                     ### special processing needed to extract the statistics from current line
-                                    searchPattern = values[index]
-                                    myResults = re.findall( r'{0}'.format(searchPattern), tempLine)
+                                    
+                                    myResults = re.findall( searchPattern, tempLine)
                                     if myResults != None and len(myResults) > 0 :
                                         ### current line has stats in one or more places. Aggregate the values
                                         ### the pattern spec is in the format
@@ -941,7 +942,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                 key, values[index], logStats[key][logStatsKeyValueIndexEven], logStats[key][logStatsKeyValueIndexOdd] ))
                                         ### get out of the loop
                                         break
-                                elif re.search( values[index], tempLine) != None:
+                                elif re.search(searchPattern, tempLine) != None:
                                     ### matching pattern found, increemnt the count 
                                     logStats[key][logStatsKeyValueIndexEven] += 1
 
