@@ -533,7 +533,11 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
     else:
       for fs in tempFileSystemNames:
         if os.path.isdir(  fs ) != True:
-            print("ERROR File System {0} not present, can't gather stats for it".format(fs) )
+            ### diff hosts may have diff file systems, it is allowed to list file system spec to include
+            ###  file system of all host types, even though each host does not have all file systems.
+            ### this is NOT an error condition
+            if debugLevel > 0:
+                print("INFO File System {0} not present, can't gather stats for it".format(fs) )
             continue
 
         result = subprocess.run( ['df', '-h', fs], stdout=subprocess.PIPE, stderr=subprocess.PIPE)

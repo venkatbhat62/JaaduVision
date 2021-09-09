@@ -65,6 +65,8 @@ OSStats:
     ### file system name, as it appears at last column of df -h command
     ### can specify in CSV format
     ###  any space will be compared as is
+    ### can include file system of many host types, if file system is not present, 
+    ###   it will be skipped from a host while collecting data.
     FileSystemNames: /init
     Fields: percent_used,size_used
   NetworkIO:
