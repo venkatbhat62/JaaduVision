@@ -446,7 +446,7 @@ try:
             tempPatternPresent[patternIndexForPriority] = True
 
             if value.get('LogFileName') != None:
-                logFileName = str(value.get('LogFileName'))
+                logFileName = str(value.get('LogFileName')).strip()
 
             if processSingleLogFileName != None:
                 # need to process single log file, skip rest
