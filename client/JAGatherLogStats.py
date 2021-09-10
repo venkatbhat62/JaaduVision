@@ -454,23 +454,23 @@ try:
                     continue
 
             if value.get('PatternPass') != None:
-                tempPatternList[patternIndexForPatternPass] = value.get('PatternPass')
+                tempPatternList[patternIndexForPatternPass] = str(value.get('PatternPass')).strip()
                 tempPatternPresent[patternIndexForPatternPass] = True
 
             if value.get('PatternFail') != None:
-                tempPatternList[patternIndexForPatternFail] = value.get('PatternFail')
+                tempPatternList[patternIndexForPatternFail] = str(value.get('PatternFail')).strip()
                 tempPatternPresent[patternIndexForPatternFail] = True
                 
             if value.get('PatternCount') != None:
-                tempPatternList[patternIndexForPatternCount] = value.get('PatternCount')
+                tempPatternList[patternIndexForPatternCount] = str(value.get('PatternCount')).strip()
                 tempPatternPresent[patternIndexForPatternCount] = True
 
             if value.get('PatternSum') != None:
-                tempPatternList[patternIndexForPatternSum] = value.get('PatternSum')
+                tempPatternList[patternIndexForPatternSum] = str(value.get('PatternSum')).strip()
                 tempPatternPresent[patternIndexForPatternSum] = True
 
             if value.get('PatternAverage') != None:
-                tempPatternList[patternIndexForPatternAverage] = value.get('PatternAverage')
+                tempPatternList[patternIndexForPatternAverage] = str(value.get('PatternAverage')).strip()
                 tempPatternPresent[patternIndexForPatternAverage] = True
 
             if value.get('Priority') != None:
