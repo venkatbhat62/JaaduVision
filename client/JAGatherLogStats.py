@@ -37,6 +37,8 @@ import re
 import JAGlobalLib
 import time
 import subprocess
+import signal
+
 
 # Major 01, minor 00, buildId 01
 JAVersion = "01.00.01"
@@ -185,11 +187,19 @@ if debugLevel > 0:
         configFile, webServerURL, dataPostIntervalInSec, dataCollectDurationInSec, debugLevel, componentName, platformName, siteName, environment, processSingleLogFileName))
 
 
+def JASignalHandler(sig, frame):
+    JAStatsExit("Control-C pressed")
+
+signal.signal(signal.SIGINT, JASignalHandler)
+
+
 def JAStatsExit(reason):
     print(reason)
     JAStatsDurationInSec = statsEndTimeInSec - statsStartTimeInSec
     JAGlobalLib.LogMsg('{0} processing duration: {1} sec\n'.format(
         reason, JAStatsDurationInSec), statsLogFileName, True)
+    ### write prev start time of 0 so that next time process will run
+    JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.PrevStartTime", 0)
     sys.exit()
 
 
@@ -1067,9 +1077,6 @@ else:
 
 programEndTime = time.time()
 programExecTime = programEndTime - programStartTime
-
-### write prev start time of 0 so that next time process will run
-JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.PrevStartTime", 0)
 
 JAStatsExit('PASS  Processing time this program: {0}, programExecTime: {1}'.format(
     myProcessingTime, programExecTime))

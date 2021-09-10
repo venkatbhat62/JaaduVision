@@ -35,6 +35,7 @@ import datetime
 import JAGlobalLib
 import time
 import subprocess
+import signal
 
 ### MAJOR 1, minor 00, buildId 01
 JAVersion = "01.00.01"
@@ -124,12 +125,20 @@ if args.l:
 if debugLevel > 0 :
     print('DEBUG-1 Parameters passed configFile:{0}, webServerURL:{1}, dataPostIntervalInSec:{2}, debugLevel:{3}, componentName:{4}, plaformName:{5}, siteName: {6}, environment: {7}\n'.format(configFile, webServerURL, dataPostIntervalInSec, dataCollectDurationInSec, debugLevel, componentName, platformName, siteName, environment))
 
+def JASignalHandler(sig, frame):
+    JAOSStatsExit("Control-C pressed")
+
+signal.signal(signal.SIGINT, JASignalHandler)
+
+
 def JAOSStatsExit(reason):
     print(reason)
     JAOSStatsEndTime = datetime.datetime.now()
     JAOSStatsDuration = JAOSStatsEndTime - JAOSStatsStartTime
     JAOSStatsDurationInSec = JAOSStatsDuration.total_seconds()
     JAGlobalLib.LogMsg('{0}, processing duration:{1} sec\n'.format(reason,JAOSStatsDurationInSec ), JAOSStatsLogFileName, True)
+    ### write prev start time of 0 so that next time process will run
+    JAGlobalLib.JAWriteTimeStamp("JAGatherOSStats.PrevStartTime", 0)
     sys.exit()
 
 ### use default config file, expect this file in home directory where this script is placed
@@ -1226,9 +1235,6 @@ if sys.version_info >= (3,3):
     myProcessingTime = time.process_time()
 else:
     myProcessingTime = 'N/A'
-
-### write prev start time of 0 so that next time process will run
-JAGlobalLib.JAWriteTimeStamp("JAGatherOSStats.PrevStartTime", 0)
 
 programEndTime = time.time()
 programExecTime = programEndTime - programStartTime
