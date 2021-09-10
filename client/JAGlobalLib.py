@@ -192,7 +192,7 @@ def JAYamlLoad(fileName ):
         return yamlData
 
 import os
-def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
+def JAFindModifiedFiles(fileName, thisHostName, sinceTimeInSec, debugLevel):
     """
         This function returns file names in a directory that are modified since given GMT time in seconds
         if sinceTimeInSec is 0, latest file is picked up regardless of modified time
@@ -206,6 +206,10 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
         myDirPath = head_tail[0]
 
     fileNameWithoutPath = head_tail[1]
+
+    ### if fileName has variable {HOSTNAME}, replace that with current short hostname
+    if re.search(r'{HOSTNAME}', fileNameWithoutPath) != None:
+        fileNameWithoutPath = re.sub(r'{HOSTNAME}', thisHostName, fileNameWithoutPath)
 
     if debugLevel > 1 :
         print('DEBUG-2 JAFileFilesModified() filePath:{0}, fileName: {1}'.format( myDirPath, fileNameWithoutPath))

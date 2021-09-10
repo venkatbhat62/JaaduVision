@@ -772,9 +772,9 @@ def JAReadFileInfo():
 
 
 def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, gatherLogStatsEnabled, debugLevel):
-    global averageCPUUsage
+    global averageCPUUsage, thisHostName
     logFileNames = JAGlobalLib.JAFindModifiedFiles(
-        logFileName, startTimeInSec, debugLevel)
+        logFileName, thisHostName, startTimeInSec, debugLevel)
 
     if logFileNames == None:
         return False
@@ -996,9 +996,10 @@ else:
     result =  subprocess.run(['find', '-name', tempFileNameToDelete, '-mtime', '+7'],stdout=subprocess.PIPE,stderr=subprocess.PIPE) 
     logFilesToDelete = result.stdout.decode('utf-8').split('\n')
 
-for deleteFileName in logFilesToDelete:
-    if deleteFileName != '':
-         os.remove( deleteFileName)
+if logFilesToDelete != None:
+    for deleteFileName in logFilesToDelete:
+        if deleteFileName != '':
+            os.remove( deleteFileName)
 
 # get current time in seconds since 1970 jan 1
 programStartTime = loopStartTimeInSec = time.time()

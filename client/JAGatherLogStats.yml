@@ -84,6 +84,7 @@ Environment:
 LogFile:
     SyslogError:
       LogFileName: /var/log/syslog
+      #LogFileName: /var/log/{HOSTNAME}syslog
       PatternCount: Error
       Priority: 3
 

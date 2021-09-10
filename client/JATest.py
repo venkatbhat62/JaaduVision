@@ -81,4 +81,4 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
         elif count % 3 > 0:
             JAGlobalLib.LogMsg('TestMsg Count\n', testLogFileName, True)
     
-            
+JAGlobalLib.JAFindModifiedFiles( "{HOSTNAME}Test.py", "JA", 0, 3)            
