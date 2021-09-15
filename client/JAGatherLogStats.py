@@ -41,17 +41,21 @@ import signal
 
 
 # Major 01, minor 00, buildId 01
-JAVersion = "01.00.01"
+JAVersion = "01.00.02"
 
 ### number of patterns that can be searched in log line per Service
-###   Priority, PatternPass, PatternFail, PatternCount, PatternStats
-###     0          1           2              3             4
+###   Priority, PatternPass, PatternFail, PatternCount, PatternSum, PatternAverage, PatternLog
+###     0          1           2              3             4               5            6
 patternIndexForPriority = 0
 patternIndexForPatternPass = 1
 patternIndexForPatternFail = 2
 patternIndexForPatternCount = 3
 patternIndexForPatternSum = 4
 patternIndexForPatternAverage = 5
+patternIndexForPatternLog = 6
+### keep this one higher than patternIndex values above
+## it is used to initialize list later.
+maxPatternIndex = 7
 
 try:
     from subprocess import CompletedProcess
@@ -120,7 +124,13 @@ maxCPUUsageForEvents = [0, 0, 0, 0]
 averageCPUUsage = 0
 
 # contains current stats
+# key1 - serviceName
 logStats = defaultdict(dict)
+
+# contains log lines to be sent to web server
+# key1 = serviceName (similar to key1 of logStats)
+# key2 = logFileName
+logLines = defaultdict(dict)
 
 # take current timestamp
 statsStartTimeInSec = statsEndTimeInSec = time.time()
@@ -438,8 +448,8 @@ try:
         # PatternAverage: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
         for key, value in JAStats['LogFile'].items():
             
-            tempPatternList = [ None] * (patternIndexForPatternAverage+1)
-            tempPatternPresent = [False] * (patternIndexForPatternAverage+1)
+            tempPatternList = [ None] * (maxPatternIndex)
+            tempPatternPresent = [False] * (maxPatternIndex)
             
             ## default priority 3, lowest
             tempPatternList[patternIndexForPriority] = 3
@@ -476,6 +486,10 @@ try:
             if value.get('Priority') != None:
                 tempPatternList[patternIndexForPriority] = value.get('Priority')
 
+            if value.get('PatternLog') != None:
+                tempPatternList[patternIndexForPatternLog] = str(value.get('PatternLog')).strip()
+                tempPatternPresent[patternIndexForPatternLog] = True
+
             if logFileName != None:     
                 JAStatsSpec[logFileName][key] = list(tempPatternList)
                     
@@ -500,6 +514,9 @@ try:
             ### for average, data is posted if sample count is non=zero, no pattern present flag used
             logStats[key][patternIndexForPatternAverage*2+1] = []
             
+            ### initialize logLines[key] list to empty list
+            logLines[key] = []
+
                              
 except OSError as err:
     JAStatsExit('ERROR - Can not open configFile:|' +
@@ -525,6 +542,7 @@ JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.PrevStartTime")
 
 returnResult = ''
 logStatsToPost = defaultdict(dict)
+logLinesToPost = defaultdict(dict)
 
 # data to be posted to the web server
 # pass fileName containing thisHostName and current dateTime in YYYYMMDD form
@@ -537,6 +555,18 @@ logStatsToPost['componentName'] = componentName
 logStatsToPost['platformName'] = platformName
 logStatsToPost['siteName'] = siteName
 logStatsToPost['environment'] = environment
+
+# data to be posted to the web server
+# pass fileName containing thisHostName and current dateTime in YYYYMMDD form
+logLinesToPost['fileName'] = thisHostName + \
+    ".LogLines." + JAGlobalLib.UTCDateForFileName()
+logLinesToPost['jobName'] = 'loki'
+logLinesToPost['hostName'] = thisHostName
+logLinesToPost['debugLevel'] = debugLevel
+logLinesToPost['componentName'] = componentName
+logLinesToPost['platformName'] = platformName
+logLinesToPost['siteName'] = siteName
+logLinesToPost['environment'] = environment
 
 headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
 
@@ -556,7 +586,7 @@ Return values:
 
 def JAPostDataToWebServer():
     global logStats, debugLevel
-    global webServerURL, verifyCertificate, logStatsToPost
+    global webServerURL, verifyCertificate, logStatsToPost, logLinesToPost
     timeStamp = JAGlobalLib.UTCDateTime()
     if debugLevel > 1:
         print('DEBUG-2 JAPostDataToWebServer() ' +
@@ -692,6 +722,52 @@ def JAPostDataToWebServer():
 
     JAGlobalLib.LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp +
                        ' Number of stats posted: ' + str(numPostings) + '\n', statsLogFileName, True)
+
+    numPostings = 0
+    
+    ### now post log lines collected
+    # key - service name
+    # list - log lines associated with that service name
+    for key, lines in logLines.items():
+        ### if no value to post, skip it
+        if len(lines) == 0:
+            continue
+
+        # use temporary buffer for each posting
+        tempLogLinesToPost = logLinesToPost.copy()
+
+        tempLogLinesToPost[key] = 'timeStamp=' + timeStamp
+        ### values has log files in list
+        for line in lines:
+            line = line.rstrip('\n')
+            tempLogLinesToPost[key] += ',' + line
+
+        ### empty the list
+        logLines[key] = []
+
+        if debugLevel > 1:
+            print('DEBUG-2 JAPostDataToWebServer() logLinesToPost: {0}'.format(tempLogLinesToPost))
+
+        data = json.dumps(tempLogLinesToPost)
+
+        if useRequests == True:
+            # post interval elapsed, post the data to web server
+            returnResult = requests.post(
+                webServerURL, data, verify=verifyCertificate, headers=headers)
+            
+            print('INFO JAPostDataToWebServer() Result of posting log lines to web server ' +
+                    webServerURL + ' :\n' + returnResult.text)
+            numPostings += 1
+        else:
+            result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
+                                    "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            returnStatus = result.stdout.decode('utf-8').split('\n')
+            print('INFO JAPostDataToWebServer() result of posting log lines to web server:{0}\n{1}'.format(
+                webServerURL, returnStatus))
+            numPostings += 1
+
+    JAGlobalLib.LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp +
+                       ' Number of log lines posted: ' + str(numPostings) + '\n', statsLogFileName, True)
     return True
 
 
@@ -902,11 +978,24 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                     if averageCPUUsage < maxCPUUsageForEvents[eventPriority]:
                         ### proceed with search if current CPU usage is lower than max CPU usage allowed
                         index = 0
+
+                        patternMatched = False
                         ### values is indexed from 0 to patternIndexForPatternSum / patternIndexForPatternAverage
                         ### logStats[key] is indexed with twice the value
                         while index < len(values):
 
-                            if index != patternIndexForPriority and values[index] != None :
+                            if index == patternIndexForPriority or values[index] == None:
+                                index += 1
+                                continue
+
+                            if index == patternIndexForPatternLog :
+                                searchPattern = r'{0}'.format(values[index])
+                                ### search for matching PatternLog regardless of whether stats type pattern is found or not.
+                                if re.search(searchPattern, tempLine) != None:
+                                    ### matching pattern found, collect this log line
+                                    logLines[key].append(tempLine)
+
+                            elif patternMatched != True:
                                 logStatsKeyValueIndexEven = index * 2
                                 logStatsKeyValueIndexOdd = logStatsKeyValueIndexEven + 1
                                 
@@ -953,7 +1042,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, numSamples:{2}, stats: {3}'.format(
                                                 key, values[index], logStats[key][logStatsKeyValueIndexEven], logStats[key][logStatsKeyValueIndexOdd] ))
                                         ### get out of the loop
-                                        break
+                                        patternMatched = True
                                 elif re.search(searchPattern, tempLine) != None:
                                     ### matching pattern found, increemnt the count 
                                     logStats[key][logStatsKeyValueIndexEven] += 1
@@ -962,7 +1051,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}'.format(
                                                 key, values[index], logStats[key][logStatsKeyValueIndexEven] ))
                                     ### get out of the loop
-                                    break
+                                    patternMatched = True
+                            
                             ### increment index so that search continues with next pattern
                             index += 1
 

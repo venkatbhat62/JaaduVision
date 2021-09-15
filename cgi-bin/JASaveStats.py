@@ -26,10 +26,12 @@ Return Result
  Post the data to pushgateway using jobname, instance
    one metric posted per line
 
-Author: havembha@gmail.com 2021-07-11
+2021-07-11 havembha@gmail.com
+    Initial version 
 
-Features to be added
-   Make saving data on web server optional, passing file name optional
+2021-09-11 havembha@gmaill.com
+    Skipped storing data locally on server if JADirStats is not specified or empty or set to "None"
+    Added capability to save log lines to the same stats file and post the log lines to loki URL
 
 """
 import os,sys,json,re
@@ -37,6 +39,7 @@ import datetime
 import yaml
 import requests
 import JAGlobalLib
+
 
 def JASaveStatsExit(reason):
     if re.match('^ERROR ', reason):
@@ -58,14 +61,27 @@ def JASaveStatsError(reason):
 
 JASaveStatsStartTime = datetime.datetime.now()
 
+JAPushGatewayURL = JALokiGatewayURL = None
+
 ### read global parameters
 with open('JAGlobalVars.yml','r') as file:
     JAGlobalVars = yaml.load(file, Loader=yaml.FullLoader)
     JALogDir = JAGlobalVars['JALogDir']
     JADisableWarnings = JAGlobalVars['JADisableWarnings']
     JALogFileName = JALogDir + "/" + JAGlobalVars['JASaveStats']['LogFileName']
-    JADirStats = JAGlobalVars['JASaveStats']['Dir']
+    if JAGlobalVars['JASaveStats']['Dir'] != None:
+        JADirStats = JAGlobalVars['JASaveStats']['Dir']
+        if JADirStats == 'None' or JADirStats == '':
+            JADirStats =  None
+    else:
+        # Dir to store stats not specified, DO NOT save stats locally
+        JADirStats = None
+
+    ### URL to send the data to prometheus push gateway
     JAPushGatewayURL = JAGlobalVars['JASaveStats']['PushGatewayURL']
+
+    ### URL to send the log lines to Loki gateway
+    JALokiGatewayURL = JAGlobalVars['JASaveStats']['LokiGatewayURL']
 
 contentLength = int(os.environ["CONTENT_LENGTH"])
 reqBody = sys.stdin.read(contentLength)
@@ -75,25 +91,39 @@ print('Content-Type: text/html; charset=utf-8\n')
 returnResult='PASS - Saved data'
 
 ### prepare server side fileName to store data
-if postedData['fileName'] == None:
-    JASaveStatsError('fileName not passed')
+if JADirStats != None:
+    if postedData['fileName'] == None:
+        ### if valid JADirStats is present, expect fileName to be passed to save the data locally 
+        JASaveStatsError('fileName not passed')
+    else:
+        fileName = JADirStats + '/' + postedData['fileName']
 else:
-    fileName = JADirStats + '/' + postedData['fileName']
+    fileName = None
 
 if postedData['jobName'] == None:
     JASaveStatsError('jobName not passed')
 else:
     jobName = postedData['jobName']
+    if jobName == 'loki':
+        postToLoki = True
+    else:
+        postToLoki = False
 
 if postedData['hostName'] == None:
     JASaveStatsError('hostName not passed')
 else:
     hostName = postedData['hostName']
 
-## make initial part of URL 
+if JAPushGatewayURL == None or JALokiGatewayURL == None:
+    JASaveStatsError('config error - need valid JAPushGatewayURL and JALokiGatewayURL')
+
+## make initial part of pushgateway URL 
 pushGatewayURL = JAPushGatewayURL + "/metrics/job/" + jobName + "/instance/" + hostName
 prefixParams = ''
 appendToURL = ''
+
+## make initial part of Lokigateway URL
+lokiGatewayURL = JALokiGatewayURL + "/api/prom/push"
 
 if postedData['debugLevel'] == None:
     debugLevel = 0
@@ -115,8 +145,10 @@ else:
 if postedData['siteName'] != None:
     appendToURL = appendToURL + "/site/" + postedData['siteName'] 
     prefixParams = prefixParams + ",site=" + postedData['siteName']
+    siteName = postedData['siteName']
 else:
     prefixParams = prefixParams + ",site="
+    siteName = "unknown"
 
 if postedData['componentName'] != None:
     appendToURL = appendToURL + "/component/" + postedData['componentName']
@@ -128,17 +160,22 @@ if hostName != None:
     prefixParams = prefixParams + ",host=" + hostName
 
 if debugLevel > 1:
-    JAGlobalLib.LogMsg('DEBUG-2 pushGatewayURL: ' + pushGatewayURL + ', appendToURL: ' + appendToURL + ', prefixParams: ' + prefixParams + '\n', JALogFileName, True)
+    JAGlobalLib.LogMsg('DEBUG-2 Stats Dir:' + JADirStats + ', fileName: ' + fileName + ', pushGatewayURL: ' + pushGatewayURL + ', appendToURL: ' + appendToURL + ', prefixParams: ' + prefixParams + '\n', JALogFileName, True)
 
 ### Now post the data to web server
-headers= {'Content-type': 'application/x-www-form-urlencoded', 'Accept': '*/*'}
+headersForPushGateway= {'Content-type': 'application/x-www-form-urlencoded', 'Accept': '*/*'}
+headersForLokiGateway = {'Content-Type: application/json'}
 
 if JADisableWarnings == True:
     requests.packages.urllib3.disable_warnings()
 
 ### open the file in append mode and save data
 try:
-    fpo = open( fileName, 'a')
+    if fileName != None:
+        ### save data locally if fileName is specified
+        fpo = open( fileName, 'a')
+        print('DEBUG-3 JASaveStats.py fileName: {0}, postToLoki {1}'.format(fileName, postToLoki))
+
     ### while writing values to file and posting to pushgateway, skip below keys
     skipKeyList = ['debugLevel','fileName','environment','siteName','platformName','componentName','hostName']
 
@@ -146,47 +183,96 @@ try:
         if key not in skipKeyList:
             if debugLevel > 2:
                 print('DEBUG-3 JASaveStats.py processing key: {0}, value: {1}'.format(key, value))
+                
 
-            ### SKIP LogStats, OSStats  
-            if value == 'LogStats' or value == 'OSStats' :
+            ### SKIP LogStats, OSStats, loki  
+            if value == 'LogStats' or value == 'OSStats' or value == 'loki':
                 continue
+            
+            if fileName != None:
+                ### save this data with prefixParams that identifies environment, site, platform, component, host 
+                fpo.write( '{0},{1},{2}\n'.format(prefixParams, key, value ) )
+                if debugLevel > 2:
+                    print('DEBUG-3 JASaveStats.py wrote data: {0},{1},{2} to file'.format(prefixParams,key, value))
 
-            ### save this data with prefixParams that identifies environment, site, platform, component, host 
-            fpo.write( '{0},{1}\n'.format(prefixParams, value ) )
+            if postToLoki == True:
+                ### need to post log lines to loki
+                ### data posted has lines with , separation
+                """
+                logLinesToPost = ''
+                valuePairs = str(value)
+                items = valuePairs.split(',')
 
-            ### convert data 
-            ### from p1=v1,p2=v2,... 
-            ### to 
-            ###    p1 v1
-            ###    p2 v2
-            ### replace =, remove space, and make one metric per line to post to PushGatewayURL
-            valuePairs = str(value)
-            items = valuePairs.split(',')
-            statsToPost = ''
+                for item in items:
+                    logLinesToPost += (item + '\n')
+                    if debugLevel > 2: 
+                        print('DEBUG-3 JASaveStats.py item : {0}'.format(item )) 
+                """
+                curr_datetime = datetime.datetime.utcnow()
+                curr_datetime = curr_datetime.isoformat('T')
+                myDateTime = str(curr_datetime)+"-00:00"
 
-            ### remove timeStamp=value from the list. Prometheous scraper uses scaping time for reference.
-            ###    this sample from source can't be used for time series graphs
-            items.pop(0)
+                payload = {
+                    'streams': [
+                        {
+                            'labels': '{source=\"' + hostName + '\"}',
+                            'entries': [
+                                {
+                                    'ts': myDateTime,
+                                    'line': value
+                                }
+                            ]
+                        }
+                    ]
+                    }
+                payload = json.dumps(payload)
+                if debugLevel > 0:
+                    print("DEBUG-1 JASaveStats.py payload:|{0}|, lokiGatewayURL:|{1}|".format(payload, lokiGatewayURL))
 
-            for item in items:
-                statsToPost += (item + '\n')
-                if debugLevel > 2: 
-                    JAGlobalLib.LogMsg('DEBUG-3 item : {0}\n'.format(item ), JALogFileName, True) 
+                try:
+                    returnResult = requests.post( lokiGatewayURL, data=payload, headers=headersForLokiGateway)
+                    returnResult.raise_for_status()
 
-            statsToPost = statsToPost.replace('=', ' ')
-            returnResult = requests.post( pushGatewayURL, data=statsToPost, headers=headers)
+                    if debugLevel > 0:
+                        print('DEBUG-1 JASaveStats.py log line(s): {0} posted to loki with result:{1}\n'.format(value,returnResult))
+                except requests.exceptions.HTTPError as err:
+                    print("ERROR JASaveStats.py " + err.response.text)
+                    raise SystemExit(err)
 
-            if debugLevel > 0:
-                JAGlobalLib.LogMsg('DEBUG-1 data posted:{0} with result:{1}\n\n'.format(statsToPost,returnResult), JALogFileName, True)
+            else:
+                ### convert data 
+                ### from p1=v1,p2=v2,... 
+                ### to 
+                ###    p1 v1
+                ###    p2 v2
+                ### replace =, remove space, and make one metric per line to post to PushGatewayURL
+                valuePairs = str(value)
+                items = valuePairs.split(',')
+                statsToPost = ''
+
+                ### remove timeStamp=value from the list. Prometheous scraper uses scaping time for reference.
+                ###    this sample from source can't be used for time series graphs
+                items.pop(0)
+
+                for item in items:
+                    statsToPost += (item + '\n')
+                    if debugLevel > 2: 
+                        print('DEBUG-3 item : {0}\n'.format(item ) )
+
+                statsToPost = statsToPost.replace('=', ' ')
+                returnResult = requests.post( pushGatewayURL, data=statsToPost, headers=headersForPushGateway)
+
+                if debugLevel > 0:
+                    print('DEBUG-1 JASaveStats.py data: {0} posted to prometheus push gateway with result:{1}\n\n'.format(statsToPost,returnResult))
 
         else:
             if debugLevel > 3:
                 print('DEBUG-4 JASaveStats.py skipping key:{0} this data not added to stats key\n'.format(key) )
-
-    fpo.close()
+    if fileName != None:
+        fpo.close()
 
 except OSError as err:
-    JASaveStatsError('Can not open file:|' + fileName + '|' + "OS error: {0}".format(err) )
+    JASaveStatsError('ASaveStats.py Can not open file:|' + fileName + '|' + "OS error: {0}".format(err) )
 
 ### print status and get out
 JASaveStatsExit(str(returnResult))

@@ -15,7 +15,27 @@
 #         use this when Pass or Fail is not needed, just need to account for an incident like alarms
 #     Priority: 1 or 2 or 3, default 3
 #         This pattern will be searched when currnet average CPU usage is below MaxCPUUsageForEvents[priority]
-# 
+#     PatternSum: leading text (\w+) text (\d+) text (\w+) text (\d+) ....
+#                               key1      value1      key2       value2
+#         Prometheus metrics ServiceName_keyx_sum
+#                value is summed over sampling interval and divided by sampling interval to derive tps
+#
+#     PatternAverage: leading text (\w+) text (\d+) text (\w+) text (\d+) ....
+#                               key1      value1      key2       value2
+#         Prometheus metrics ServiceName_keyx_average
+#                value is summed over sampling interval and divided by number of samples within that sammpling interval
+#     NOTE - for all patterns above, once a search matches, no further search done to match other patterns. 
+#           search for PatternLog is done so that log line collection can still be done after pattern match.
+#           In order to optimize the processing time, it is recommended to put frequently occuring patterns
+#            at the beginning of a log file. Less frequently occuring patterns at the end of the list.
+#
+#     PatternLog: send this log line to web server with jobName=loki so that log line is posted to loki gateway
+#                 all log lines of a log file are combined and sent to web server
+#                 log lines of different log files are sent with different label value
+#                 label name is set to hostname from where log is collected
+#                 Unlike all other pattern search, after matching PatternLog, search will continue so that
+#                   pattern occurrence will be counted for a log line that is collected
+#
 # NOTE - make no space after pattern strings
 #  Escape regular expression special characters in pattern spec like \/
 #   Non-special characters match themselves. Special characters don't match themselves −
@@ -122,11 +142,12 @@ LogFile:
       Priority: 1
 
     TestStats:
-      LogFileName: JATest.log*
+      LogFileName: client/JATest.log*
       ### tps = number of instances divided by sampling interval
       PatternPass: TestMsg Pass
       ### tps = number of instances divided by sampling interval
       PatternFail: TestMsg Fail
+      PatternLog: TestMsg Fail
       ### tps = number of instances divided by sampling interval
       PatternCount: TestMsg Count
       # PatternSum: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
@@ -134,6 +155,5 @@ LogFile:
       PatternSum: leading text (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy
       # PatternAverage: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
       # value is summed over the sampling interval, average value is computed by dividing number of samples in that sampling interval
-      PatternAverage: tps (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy
-
+      PatternAverage: tps (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy      
       Priority: 1

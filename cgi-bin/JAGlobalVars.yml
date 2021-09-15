@@ -19,6 +19,7 @@ JASaveStats:
     Dir: /var/www/JaaduAudit/Stats
     ## URL where pushgateway is present, to post the stats
     PushGatewayURL: http://localhost:9091
+    LokiGatewayURL: http://localhost:9081
 # 
 JADisableWarnings: True
 JAVerifyCertificate: False
