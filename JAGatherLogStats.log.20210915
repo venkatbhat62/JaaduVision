@@ -1,0 +1,107 @@
+2021-09-15T22:34:39.176591 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:34:37.118202 Number of stats posted: 8
+2021-09-15T22:34:39.177090 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:34:37.118202 Number of log lines posted: 0
+2021-09-15T22:35:39.255110 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:35:37.127108 Number of stats posted: 8
+2021-09-15T22:35:39.256705 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:35:37.127108 Number of log lines posted: 0
+2021-09-15T22:36:39.183137 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:36:37.142955 Number of stats posted: 8
+2021-09-15T22:36:39.186139 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:36:37.142955 Number of log lines posted: 0
+2021-09-15T22:37:39.121969 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:37:37.151578 Number of stats posted: 8
+2021-09-15T22:37:39.121969 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:37:37.151578 Number of log lines posted: 0
+2021-09-15T22:38:39.179402 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:38:37.158746 Number of stats posted: 8
+2021-09-15T22:40:43.240215 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:38:37.158746 Number of log lines posted: 0
+2021-09-15T22:40:45.163909 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:40:43.244692 Number of stats posted: 8
+2021-09-15T22:40:45.164910 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:40:43.244692 Number of log lines posted: 0
+2021-09-15T22:41:45.228360 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:41:43.256290 Number of stats posted: 8
+2021-09-15T22:41:45.229422 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:41:43.256290 Number of log lines posted: 0
+2021-09-15T22:43:37.477222 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:43:35.435671 Number of stats posted: 8
+2021-09-15T22:43:37.478217 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:43:35.435671 Number of log lines posted: 0
+2021-09-15T22:46:02.105173 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:46:00.125528 Number of stats posted: 8
+2021-09-15T22:46:02.106179 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:46:00.125528 Number of log lines posted: 0
+2021-09-15T22:46:14.514642 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:46:12.541123 Number of stats posted: 8
+2021-09-15T22:46:14.514642 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:46:12.541123 Number of log lines posted: 0
+2021-09-15T22:47:04.179618 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:47:02.134313 Number of stats posted: 8
+2021-09-15T22:50:45.205774 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:47:02.134313 Number of log lines posted: 1
+2021-09-15T22:50:47.116767 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:50:45.212613 Number of stats posted: 8
+2021-09-15T22:50:47.394305 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:50:45.212613 Number of log lines posted: 1
+2021-09-15T22:51:47.294216 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:51:45.229673 Number of stats posted: 8
+2021-09-15T22:51:47.571041 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:51:45.229673 Number of log lines posted: 1
+2021-09-15T22:52:47.216200 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:52:45.240495 Number of stats posted: 8
+2021-09-15T22:55:41.352869 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:52:45.240495 Number of log lines posted: 1
+2021-09-15T22:55:43.316566 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:55:41.359228 Number of stats posted: 8
+2021-09-15T22:55:43.586028 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:55:41.359228 Number of log lines posted: 1
+2021-09-15T22:56:43.328501 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:56:41.369952 Number of stats posted: 8
+2021-09-15T22:56:43.594574 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:56:41.369952 Number of log lines posted: 1
+2021-09-15T22:57:43.394496 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:57:41.373188 Number of stats posted: 8
+2021-09-15T22:57:43.688132 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:57:41.373188 Number of log lines posted: 1
+2021-09-15T22:58:43.329968 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:58:41.385390 Number of stats posted: 8
+2021-09-15T22:58:43.627420 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:58:41.385390 Number of log lines posted: 1
+2021-09-15T22:59:43.385043 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:59:41.391727 Number of stats posted: 8
+2021-09-15T22:59:43.675677 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T22:59:41.391727 Number of log lines posted: 1
+2021-09-15T23:00:43.450044 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:00:41.408974 Number of stats posted: 8
+2021-09-15T23:00:43.761324 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:00:41.408974 Number of log lines posted: 1
+2021-09-15T23:01:43.352903 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:01:41.423613 Number of stats posted: 8
+2021-09-15T23:01:43.621290 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:01:41.423613 Number of log lines posted: 1
+2021-09-15T23:02:43.430031 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:02:41.425026 Number of stats posted: 8
+2021-09-15T23:02:43.720696 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:02:41.425026 Number of log lines posted: 1
+2021-09-15T23:03:43.369109 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:03:41.437119 Number of stats posted: 8
+2021-09-15T23:03:43.658196 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:03:41.437119 Number of log lines posted: 1
+2021-09-15T23:04:43.438048 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:04:41.449729 Number of stats posted: 8
+2021-09-15T23:04:43.702136 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:04:41.449729 Number of log lines posted: 1
+2021-09-15T23:05:43.528080 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:05:41.450125 Number of stats posted: 8
+2021-09-15T23:05:43.804931 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:05:41.450125 Number of log lines posted: 1
+2021-09-15T23:06:43.362353 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:06:41.461456 Number of stats posted: 8
+2021-09-15T23:06:43.601833 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:06:41.461456 Number of log lines posted: 1
+2021-09-15T23:07:43.505639 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:07:41.464838 Number of stats posted: 8
+2021-09-15T23:07:43.744555 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:07:41.464838 Number of log lines posted: 1
+2021-09-15T23:08:43.521566 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:08:41.479441 Number of stats posted: 8
+2021-09-15T23:08:43.783459 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:08:41.479441 Number of log lines posted: 1
+2021-09-15T23:09:43.438133 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:09:41.492023 Number of stats posted: 8
+2021-09-15T23:09:43.704377 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:09:41.492023 Number of log lines posted: 1
+2021-09-15T23:10:43.539180 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:10:41.497743 Number of stats posted: 8
+2021-09-15T23:10:43.786609 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:10:41.497743 Number of log lines posted: 1
+2021-09-15T23:11:43.535711 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:11:41.503804 Number of stats posted: 8
+2021-09-15T23:11:43.797664 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:11:41.503804 Number of log lines posted: 1
+2021-09-15T23:12:43.562108 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:12:41.513682 Number of stats posted: 8
+2021-09-15T23:12:43.819924 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:12:41.513682 Number of log lines posted: 1
+2021-09-15T23:13:43.496994 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:13:41.528977 Number of stats posted: 8
+2021-09-15T23:13:43.776348 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:13:41.528977 Number of log lines posted: 1
+2021-09-15T23:14:43.553820 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:14:41.542551 Number of stats posted: 8
+2021-09-15T23:14:43.822350 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:14:41.542551 Number of log lines posted: 1
+2021-09-15T23:15:43.495718 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:15:41.550357 Number of stats posted: 8
+2021-09-15T23:15:43.744028 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:15:41.550357 Number of log lines posted: 1
+2021-09-15T23:16:43.671986 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:16:41.562935 Number of stats posted: 8
+2021-09-15T23:16:43.928833 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:16:41.562935 Number of log lines posted: 1
+2021-09-15T23:17:43.590811 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:17:41.574300 Number of stats posted: 8
+2021-09-15T23:17:43.833990 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:17:41.574300 Number of log lines posted: 1
+2021-09-15T23:18:43.619372 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:18:41.573638 Number of stats posted: 8
+2021-09-15T23:18:43.871573 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:18:41.573638 Number of log lines posted: 1
+2021-09-15T23:19:43.629964 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:19:41.595122 Number of stats posted: 8
+2021-09-15T23:19:43.895441 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:19:41.595122 Number of log lines posted: 1
+2021-09-15T23:20:43.668022 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:20:41.597693 Number of stats posted: 8
+2021-09-15T23:20:43.930313 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:20:41.597693 Number of log lines posted: 1
+2021-09-15T23:21:43.760545 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:21:41.620155 Number of stats posted: 8
+2021-09-15T23:21:44.033791 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:21:41.620155 Number of log lines posted: 1
+2021-09-15T23:22:43.720294 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:22:41.629298 Number of stats posted: 8
+2021-09-15T23:22:43.974780 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:22:41.629298 Number of log lines posted: 1
+2021-09-15T23:23:43.782830 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:23:41.640391 Number of stats posted: 8
+2021-09-15T23:23:44.045545 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:23:41.640391 Number of log lines posted: 1
+2021-09-15T23:24:43.735768 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:24:41.645387 Number of stats posted: 8
+2021-09-15T23:24:43.989839 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:24:41.645387 Number of log lines posted: 1
+2021-09-15T23:25:43.768142 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:25:41.652766 Number of stats posted: 8
+2021-09-15T23:25:43.987524 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:25:41.652766 Number of log lines posted: 1
+2021-09-15T23:26:43.680271 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:26:41.656516 Number of stats posted: 8
+2021-09-15T23:26:43.948461 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:26:41.656516 Number of log lines posted: 1
+2021-09-15T23:27:43.743447 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:27:41.670791 Number of stats posted: 8
+2021-09-15T23:27:44.011369 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:27:41.670791 Number of log lines posted: 1
+2021-09-15T23:28:43.737719 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:28:41.682002 Number of stats posted: 8
+2021-09-15T23:28:43.993123 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:28:41.682002 Number of log lines posted: 1
+2021-09-15T23:29:43.795808 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:29:41.696079 Number of stats posted: 8
+2021-09-15T23:29:44.071865 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:29:41.696079 Number of log lines posted: 1
+2021-09-15T23:30:43.701037 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:30:41.714869 Number of stats posted: 8
+2021-09-15T23:30:43.915161 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:30:41.714869 Number of log lines posted: 1
+2021-09-15T23:31:43.834244 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:31:41.714207 Number of stats posted: 8
+2021-09-15T23:31:44.099581 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:31:41.714207 Number of log lines posted: 1
+2021-09-15T23:32:43.690327 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:32:41.720932 Number of stats posted: 8
+2021-09-15T23:32:43.914436 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:32:41.720932 Number of log lines posted: 1
+2021-09-15T23:33:43.757169 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:33:41.723339 Number of stats posted: 8
+2021-09-15T23:33:44.031678 INFO  JAPostDataToWebServer() timeStamp: 2021-09-15T23:33:41.723339 Number of log lines posted: 1
+2021-09-15T23:33:44.032713 PASS  Processing time this program: 6.34375, programExecTime: 3606.9343054294586 processing duration: 3600.0238695144653 sec

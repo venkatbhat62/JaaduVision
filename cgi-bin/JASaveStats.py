@@ -164,7 +164,7 @@ if debugLevel > 1:
 
 ### Now post the data to web server
 headersForPushGateway= {'Content-type': 'application/x-www-form-urlencoded', 'Accept': '*/*'}
-headersForLokiGateway = {'Content-Type: application/json'}
+headersForLokiGateway = {'Content-Type': 'application/json'}
 
 if JADisableWarnings == True:
     requests.packages.urllib3.disable_warnings()
@@ -232,9 +232,9 @@ try:
                 try:
                     returnResult = requests.post( lokiGatewayURL, data=payload, headers=headersForLokiGateway)
                     returnResult.raise_for_status()
-
+                    
                     if debugLevel > 0:
-                        print('DEBUG-1 JASaveStats.py log line(s): {0} posted to loki with result:{1}\n'.format(value,returnResult))
+                        print('DEBUG-1 JASaveStats.py log line(s): {0} posted to loki with result:{1}\n'.format(value,returnResult.text))
                 except requests.exceptions.HTTPError as err:
                     print("ERROR JASaveStats.py " + err.response.text)
                     raise SystemExit(err)
