@@ -122,6 +122,10 @@ pushGatewayURL = JAPushGatewayURL + "/metrics/job/" + jobName + "/instance/" + h
 prefixParams = ''
 appendToURL = ''
 
+#instance=\"' + hostName + '\", site=\"' + siteName + '\", component=\"' + componentName + '\", platform=\"' + platformName + '\",
+labelParams = ''
+comma = ''
+
 ## make initial part of Lokigateway URL
 lokiGatewayURL = JALokiGatewayURL + "/api/prom/push"
 
@@ -139,6 +143,8 @@ else:
 if postedData['platformName'] != None:
     appendToURL = appendToURL + "/platform/" + postedData['platformName']
     prefixParams = prefixParams + ",platform=" + postedData['platformName']
+    labelParams += 'platform=\"' + postedData['platformName'] + '\"'
+    comma = ','
 else:
     prefixParams = prefixParams + ",platform="
 
@@ -146,18 +152,22 @@ if postedData['siteName'] != None:
     appendToURL = appendToURL + "/site/" + postedData['siteName'] 
     prefixParams = prefixParams + ",site=" + postedData['siteName']
     siteName = postedData['siteName']
+    labelParams += comma + ' site=\"' + postedData['siteName'] + '\"'
+    comma = ','
 else:
     prefixParams = prefixParams + ",site="
-    siteName = "unknown"
 
 if postedData['componentName'] != None:
     appendToURL = appendToURL + "/component/" + postedData['componentName']
     prefixParams = prefixParams + ",component=" + postedData['componentName']
+    labelParams += comma + ' component=\"' + postedData['componentName'] + '\"'
+    comma = ','
 else:
     prefixParams = prefixParams + ",component=" 
 
 if hostName != None:
     prefixParams = prefixParams + ",host=" + hostName
+    labelParams += comma + ' instance=\"' + hostName + '\"'
 
 if debugLevel > 1:
     JAGlobalLib.LogMsg('DEBUG-2 Stats Dir:' + JADirStats + ', fileName: ' + fileName + ', pushGatewayURL: ' + pushGatewayURL + ', appendToURL: ' + appendToURL + ', prefixParams: ' + prefixParams + '\n', JALogFileName, True)
@@ -199,23 +209,21 @@ try:
                 ### need to post log lines to loki
                 ### data posted has lines with , separation
                 """
-                logLinesToPost = ''
-                valuePairs = str(value)
-                items = valuePairs.split(',')
-
-                for item in items:
-                    logLinesToPost += (item + '\n')
-                    if debugLevel > 2: 
-                        print('DEBUG-3 JASaveStats.py item : {0}'.format(item )) 
+                Post log lines to Loki with labels instance, site, component, and platform. Values of these labels are from posted values
+                  instance - hostName
+                  site - siteName
+                  component - componentName
+                  platform - platformName 
                 """
                 curr_datetime = datetime.datetime.utcnow()
                 curr_datetime = curr_datetime.isoformat('T')
                 myDateTime = str(curr_datetime)+"-00:00"
 
+                # 'labels': '{instance=\"' + hostName + '\", site=\"' + siteName + '\", component=\"' + componentName + '\", platform=\"' + platformName + '\"}',
                 payload = {
                     'streams': [
                         {
-                            'labels': '{source=\"' + hostName + '\"}',
+                            'labels': '{' + labelParams + '}',
                             'entries': [
                                 {
                                     'ts': myDateTime,
