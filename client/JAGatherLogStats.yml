@@ -15,6 +15,7 @@
 #         use this when Pass or Fail is not needed, just need to account for an incident like alarms
 #     Priority: 1 or 2 or 3, default 3
 #         This pattern will be searched when currnet average CPU usage is below MaxCPUUsageForEvents[priority]
+#
 #     PatternSum: leading text (\w+) text (\d+) text (\w+) text (\d+) ....
 #                               key1      value1      key2       value2
 #         Prometheus metrics ServiceName_keyx_sum
@@ -24,6 +25,15 @@
 #                               key1      value1      key2       value2
 #         Prometheus metrics ServiceName_keyx_average
 #                value is summed over sampling interval and divided by number of samples within that sammpling interval
+#
+#     PatternDelta: leading text (\w+) text (\d+) text (\w+) text (\d+) ....
+#                               key1      value1      key2       value2
+#         Prometheus metrics ServiceName_keyx_delta
+#                current value is subtracted from previous sample value and summed over the sampling period.
+#                at the end of sampling period, tps is calcuated by dividing the sum with sampling period. 
+#                When the this script starts, first sample value is stored as previous value, any change from the value seen
+#                  in previous run to current run is not computed to keep the tool simple.
+# 
 #     NOTE - for all patterns above, once a search matches, no further search done to match other patterns. 
 #           search for PatternLog is done so that log line collection can still be done after pattern match.
 #           In order to optimize the processing time, it is recommended to put frequently occuring patterns
@@ -92,6 +102,11 @@ Environment:
      MaxCPUUsageForPriority2Events: 60
      ### SKIP gathering log stats with priority 3 when average CPU usage % exceeds below limit
      MaxCPUUsageForPriority3Events: 50
+     ### max log lines per service, per sampling interval
+     ###  when log lines exceed this count, from 11th line till last line withing the sampling interval,
+     ###    lines will be counted and reported as "..... XXX more lines...."
+     ### this is to reduce the data sent to central web server, posted to loki, cached by loki and stored under grafana
+     MaxLogLines: 10
      ### while posting data to web server, defaults to False
      DisableWarnings: True
      ### do not verify web server certificate, defaults to True
@@ -152,8 +167,18 @@ LogFile:
       PatternCount: TestMsg Count
       # PatternSum: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
       # value is summed over the sampling interval, tps is computed by diving sampling interval
+      # line is of the form: 2021-09-18T14:57:07.088995 leading text key1 54 dummy1 key2 27.00 dummy2
+      #                                                              kkkk vv        kkkk vvvvv
       PatternSum: leading text (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy
       # PatternAverage: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
       # value is summed over the sampling interval, average value is computed by dividing number of samples in that sampling interval
-      PatternAverage: tps (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy      
+      # line is of the form: 2021-09-18T14:57:07.088995 tps key1 54 dummy1 key2 27.00 dummy2
+      #                                                     kkkk  vv       kkkk vvvvv
+      PatternAverage: tps (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy  
+      # PatternDelta: leading text (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy
+      # prev sample value is subracted from current sample to find the change or delta value.
+      # these delta values are summed over the sampling interval and divided by sampling intervall to get tps
+      # line is of the form: 2021-09-18T14:57:07.089993 total key1 9 dummy1 total key2 4.50 dummy2
+      #                                                       kkkk v              kkkk vvvv
+      PatternDelta: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy    
       Priority: 1

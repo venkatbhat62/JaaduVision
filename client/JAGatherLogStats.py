@@ -52,10 +52,11 @@ patternIndexForPatternFail = 2
 patternIndexForPatternCount = 3
 patternIndexForPatternSum = 4
 patternIndexForPatternAverage = 5
-patternIndexForPatternLog = 6
+patternIndexForPatternDelta = 6
+patternIndexForPatternLog = 7
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
-maxPatternIndex = 7
+maxPatternIndex = 8
 
 try:
     from subprocess import CompletedProcess
@@ -116,6 +117,11 @@ disableWarnings = None
 verifyCertificate = None
 cacheLogFileName = None
 processSingleLogFileName = None
+
+### max log lines per service, per sampling interval
+###  when log lines exceed this count, from 11th line till last line withing the sampling interval,
+###    lines will be counted and reported as "..... XXX more lines...."
+maxLogLines = None
 # list contains the max cpu usage levels for all events, priority 1,2,3 events
 # index 0 - for all events, index 1 for priority 1, index 3 for priority 3
 maxCPUUsageForEvents = [0, 0, 0, 0]
@@ -234,7 +240,6 @@ OSType, OSName, OSVersion = JAGlobalLib.JAGetOSInfo(
 # based on current hostName, this variable will be set to Dev, Test, Uat, Prod etc
 myEnvironment = None
 
-numSamplesToPost = None
 """
 JAGatherEnvironmentSpecs( key, values )
 This function parses the environment variables defined for a given environment like Dev, Test, UAT
@@ -257,7 +262,7 @@ def JAGatherEnvironmentSpecs(key, values):
 
     # declare global variables
     global dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageForEvents, maxProcessingTimeForAllEvents
-    global webServerURL, disableWarnings, verifyCertificate, numSamplesToPost, debugLevel
+    global webServerURL, disableWarnings, verifyCertificate, debugLevel, maxLogLines
 
     for myKey, myValue in values.items():
         if debugLevel > 1:
@@ -302,6 +307,11 @@ def JAGatherEnvironmentSpecs(key, values):
             if debugLevel == 0:
                 if myValue != None:
                     debugLevel = int(myValue)
+
+        elif myKey == 'MaxLogLines':
+            if maxLogLines == 0:
+                if myValue != None:
+                    maxLogLines = int(myValue)
 
         elif myKey == 'WebServerURL':
             if webServerURL == None:
@@ -413,7 +423,7 @@ try:
            maxProcessingTimeForAllEvents = dataPostIntervalInSec / 2 
         if dataCollectDurationInSec == 0:
             # close to one hour
-            dataCollectDurationInSec = 3580
+            dataCollectDurationInSec = 3540
         if disableWarnings == None:
             disableWarnings = True
         if verifyCertificate == None:
@@ -430,6 +440,9 @@ try:
         if maxCPUUsageForEvents[3] == 0:
             # SKIP processing priority 3 events of log files when CPU usage exceeds 50%
             maxCPUUsageForEvents[3] = 50
+        if maxLogLines == None:
+            maxLogLines = 10
+
         if statsLogFileName == None:
             statsLogFileName = "JAGatherLogStats.log"
         if cacheLogFileName == None:
@@ -483,6 +496,10 @@ try:
                 tempPatternList[patternIndexForPatternAverage] = str(value.get('PatternAverage')).strip()
                 tempPatternPresent[patternIndexForPatternAverage] = True
 
+            if value.get('PatternDelta') != None:
+                tempPatternList[patternIndexForPatternDelta] = str(value.get('PatternDelta')).strip()
+                tempPatternPresent[patternIndexForPatternDelta] = True
+
             if value.get('Priority') != None:
                 tempPatternList[patternIndexForPriority] = value.get('Priority')
 
@@ -513,6 +530,9 @@ try:
             logStats[key][patternIndexForPatternAverage*2] = 0
             ### for average, data is posted if sample count is non=zero, no pattern present flag used
             logStats[key][patternIndexForPatternAverage*2+1] = []
+            logStats[key][patternIndexForPatternDelta*2] = 0
+            ### for delta, data is posted if sample count is non=zero, no pattern present flag used
+            logStats[key][patternIndexForPatternDelta*2+1] = []
             
             ### initialize logLines[key] list to empty list
             logLines[key] = []
@@ -541,8 +561,18 @@ if prevStartTime > 0:
 JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.PrevStartTime")
 
 returnResult = ''
+
+### contains key, value pairs of stats to be posted
 logStatsToPost = defaultdict(dict)
+
+### has key, logline pairs of logs to be posted
 logLinesToPost = defaultdict(dict)
+
+### contains previous sample value of PatternDelta type, key is derived as <serviceName>_<paramName>_delta
+previousSampleValues = defaultdict(float)
+
+### contains number of log lines collected per key, key is derived as <serviceName>
+logLinesCount = defaultdict(int)
 
 # data to be posted to the web server
 # pass fileName containing thisHostName and current dateTime in YYYYMMDD form
@@ -661,8 +691,8 @@ def JAPostDataToWebServer():
                 if index % 2 > 0:
                     ### current index has value
                     ### divide the valueX with sampling interval to get tps value
-                    tempResultAverage = float(tempResults[index]) / floatDataPostIntervalInSec
-                    tempLogStatsToPost[key] += ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultAverage)
+                    tempResultSum = float(tempResults[index]) / floatDataPostIntervalInSec
+                    tempLogStatsToPost[key] += ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultSum)
                 else:
                     ### current index has param name
                     paramName = tempResults[index]
@@ -671,7 +701,35 @@ def JAPostDataToWebServer():
             logStats[key][patternIndexForPatternSum*2] = 0
             logStats[key][patternIndexForPatternSum*2+1] = []
 
-        if values[patternIndexForPatternAverage*2] > 0 :
+        if values[patternIndexForPatternDelta*2] > 0 :
+            postData = True
+            ### sample count is non-zero, stats has value to post
+            tempResults = list(values[patternIndexForPatternDelta*2+1])
+
+            if debugLevel > 3:
+                print("DEBUG-4 JAPostDataToWebServer() PatternDelta:{0}".format(tempResults))
+
+            ### tempResults is in the form: [ name1, value1, name, value2,....]
+            # prev sample value is subracted from current sample to find the change or delta value.
+            # these delta values are summed over the sampling interval and divided by sampling intervall to get tps
+            index = 0
+            paramName = ''
+            while index < len(tempResults):
+                if index % 2 > 0:
+                    ### current index has value
+                    ### divide the valueX with sampling interval to get tps value
+                    tempResultDelta = float(tempResults[index]) / floatDataPostIntervalInSec
+                    tempLogStatsToPost[key] += ",{0}_{1}_delta={2:.2f}".format( key, paramName, tempResultDelta)
+
+                else:
+                    ### current index has param name
+                    paramName = tempResults[index]
+                index += 1
+            ### reset count and param list
+            logStats[key][patternIndexForPatternDelta*2] = 0
+            logStats[key][patternIndexForPatternDelta*2+1] = []
+
+        elif values[patternIndexForPatternAverage*2] > 0 :
             postData = True
             ### sample count is non-zero, stats has value to post
             tempResults = list(values[patternIndexForPatternAverage*2+1])
@@ -737,10 +795,17 @@ def JAPostDataToWebServer():
         tempLogLinesToPost = logLinesToPost.copy()
 
         tempLogLinesToPost[key] = 'timeStamp=' + timeStamp
+
         ### values has log files in list
         for line in lines:
-            line = line.rstrip('\n')
-            tempLogLinesToPost[key] += ',' + line
+            # line = line.rstrip('\n')
+            tempLogLinesToPost[key] += line
+
+        if int(logLinesCount[key]) > maxLogLines:
+            ### show total number of lines seen
+            ###  lines exceeding maxLogLines are not collected in logLines[]
+            tempLogLinesToPost[key] += ',' + "..... {0} total lines in this sampling interval .....".format( logLinesCount[key] )
+        logLinesCount[key] = 0
 
         ### empty the list
         logLines[key] = []
@@ -972,15 +1037,15 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                     eventPriority = int(values[patternIndexForPriority])
                     
                     if debugLevel > 3:
-                        print('DEBUG-4 JAProcessLogFile() searching for patterns:{0}|{1}|{2}|{3}|{4}\n'.format(
+                        print('DEBUG-4 JAProcessLogFile() searching for patterns:{0}|{1}|{2}|{3}|{4}|{5}\n'.format(
                             values[patternIndexForPatternPass], values[patternIndexForPatternFail], values[patternIndexForPatternCount], 
-                            values[patternIndexForPatternSum], values[patternIndexForPatternAverage]))
+                            values[patternIndexForPatternSum], values[patternIndexForPatternAverage],values[patternIndexForPatternDelta]))
                     if averageCPUUsage < maxCPUUsageForEvents[eventPriority]:
                         ### proceed with search if current CPU usage is lower than max CPU usage allowed
                         index = 0
 
                         patternMatched = False
-                        ### values is indexed from 0 to patternIndexForPatternSum / patternIndexForPatternAverage
+                        ### values is indexed from 0 to patternIndexForPatternSum / patternIndexForPatternAverage / patternIndexForPatternDelta
                         ### logStats[key] is indexed with twice the value
                         while index < len(values):
 
@@ -993,14 +1058,18 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 ### search for matching PatternLog regardless of whether stats type pattern is found or not.
                                 if re.search(searchPattern, tempLine) != None:
                                     ### matching pattern found, collect this log line
-                                    logLines[key].append(tempLine)
+                                    if int(logLinesCount[key]) < maxLogLines:
+                                        ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
+                                        logLines[key].append(tempLine)
+                                    ### increment the logLinesCount
+                                    logLinesCount[key] += 1
 
                             elif patternMatched != True:
                                 logStatsKeyValueIndexEven = index * 2
                                 logStatsKeyValueIndexOdd = logStatsKeyValueIndexEven + 1
                                 
                                 searchPattern = r'{0}'.format(values[index])
-                                if index == patternIndexForPatternSum or index == patternIndexForPatternAverage :
+                                if index == patternIndexForPatternSum or index == patternIndexForPatternAverage or index == patternIndexForPatternDelta :
                                     ### special processing needed to extract the statistics from current line
                                     
                                     myResults = re.findall( searchPattern, tempLine)
@@ -1017,22 +1086,40 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         tempResults = myResults.pop(0)
 
                                         if debugLevel > 3:
-                                            print("DEBUG-4 JAProcessLogFile() processing line with PatternSum or PatternAverage, search result:{0}\n Previous values:{1}".format(myResults, tempStats))
-
+                                            print("DEBUG-4 JAProcessLogFile() processing line with PatternDelta, PatternSum or PatternAverage, search result:{0}\n Previous values:{1}".format(myResults, tempStats))
+                                        tempKey = ''
                                         for tempResult in tempResults:
+                                                
                                             if numStats % 2 == 0:
+                                                ### key portion of key/value pair
                                                 if len(tempStats) <= numStats :
                                                     ### if current name has space, replace it with '_'
                                                     tempResult = re.sub('\s','_',tempResult)
                                                     ### current tempResult is not yet in the list, append it
                                                     tempStats.append(tempResult)
+                                                ### save the key name, this is used to make a combined key later <serviceName>_<key>
+                                                tempKey = tempResult
                                             else:
+                                                ## value portion of key/ value pair
+                                                ## if index is patternIndexForPatternDelta, tempResult is cumulative value, need to subtract previous sample
+                                                ## value to get delta value and store it as current sample value.
+                                                if  index == patternIndexForPatternDelta:
+                                                    serviceNameSubKey = "{0}_{1}".format( key, tempKey)
+                                                    tempResultToStore = float(tempResult)
+                                                    if previousSampleValues[serviceNameSubKey] != None:
+                                                        ### previous value present, subtract prev value from current value to get delta value for current sample
+                                                        tempResult = float(tempResult) - previousSampleValues[serviceNameSubKey]
+                                                    
+                                                    ### store current sample value as is as previous sample
+                                                    previousSampleValues[serviceNameSubKey] = tempResultToStore
+
                                                 if len(tempStats) <= numStats:
                                                     ### current tempResult is not yet in the list, append it
                                                     tempStats.append(float(tempResult))
                                                 else:
                                                     ### add to existing value
                                                     tempStats[numStats] += float(tempResult)
+
                                             numStats += 1
                                         ### increment sample count
                                         logStats[key][logStatsKeyValueIndexEven] += 1

@@ -189,6 +189,7 @@ try:
     ### while writing values to file and posting to pushgateway, skip below keys
     skipKeyList = ['debugLevel','fileName','environment','siteName','platformName','componentName','hostName']
 
+    statsType = None
     for key, value in postedData.items():
         if key not in skipKeyList:
             if debugLevel > 2:
@@ -197,11 +198,13 @@ try:
 
             ### SKIP LogStats, OSStats, loki  
             if value == 'LogStats' or value == 'OSStats' or value == 'loki':
+                statsType = value
                 continue
             
             if fileName != None:
-                ### save this data with prefixParams that identifies environment, site, platform, component, host 
+                ### save this data with prefixParams that identifies statsType, environment, site, platform, component, host 
                 fpo.write( '{0},{1},{2}\n'.format(prefixParams, key, value ) )
+
                 if debugLevel > 2:
                     print('DEBUG-3 JASaveStats.py wrote data: {0},{1},{2} to file'.format(prefixParams,key, value))
 
@@ -215,37 +218,43 @@ try:
                   component - componentName
                   platform - platformName 
                 """
-                curr_datetime = datetime.datetime.utcnow()
-                curr_datetime = curr_datetime.isoformat('T')
-                myDateTime = str(curr_datetime)+"-00:00"
+                
 
-                # 'labels': '{instance=\"' + hostName + '\", site=\"' + siteName + '\", component=\"' + componentName + '\", platform=\"' + platformName + '\"}',
-                payload = {
-                    'streams': [
-                        {
-                            'labels': '{' + labelParams + '}',
-                            'entries': [
-                                {
-                                    'ts': myDateTime,
-                                    'line': value
-                                }
-                            ]
+                tempLines = value.split('\n')
+                lineCount = 1
+                for line in tempLines:
+                    curr_datetime = datetime.datetime.utcnow()
+                    curr_datetime = curr_datetime.isoformat('T')
+                    myDateTime = str(curr_datetime) + "-00:00"
+                    # 'labels': '{instance=\"' + hostName + '\", site=\"' + siteName + '\", component=\"' + componentName + '\", platform=\"' + platformName + '\"}',
+                    payload = {
+                        'streams': [
+                            {
+                                'labels': '{' + labelParams + '}',
+                                'entries': [
+                                    {
+                                        'ts': myDateTime,
+                                        'line': " " + line
+                                    }
+                                ]
+                            }
+                        ]
                         }
-                    ]
-                    }
-                payload = json.dumps(payload)
-                if debugLevel > 0:
-                    print("DEBUG-1 JASaveStats.py payload:|{0}|, lokiGatewayURL:|{1}|".format(payload, lokiGatewayURL))
+                    payload = json.dumps(payload)
+                    if debugLevel > 1:
+                        print("DEBUG-1 JASaveStats.py payload:|{0}|, lokiGatewayURL:|{1}|".format(payload, lokiGatewayURL))
 
-                try:
-                    returnResult = requests.post( lokiGatewayURL, data=payload, headers=headersForLokiGateway)
-                    returnResult.raise_for_status()
-                    
-                    if debugLevel > 0:
-                        print('DEBUG-1 JASaveStats.py log line(s): {0} posted to loki with result:{1}\n'.format(value,returnResult.text))
-                except requests.exceptions.HTTPError as err:
-                    print("ERROR JASaveStats.py " + err.response.text)
-                    raise SystemExit(err)
+                    try:
+                        returnResult = requests.post( lokiGatewayURL, data=payload, headers=headersForLokiGateway)
+                        returnResult.raise_for_status()
+                        
+                        if debugLevel > 0:
+                            print('DEBUG-1 JASaveStats.py log line: {0} posted to loki with result:{1}\n'.format(line,returnResult.text))
+                    except requests.exceptions.HTTPError as err:
+                        print("ERROR JASaveStats.py " + err.response.text)
+                        raise SystemExit(err)
+
+                    lineCount += 1
 
             else:
                 ### convert data 

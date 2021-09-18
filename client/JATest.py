@@ -68,15 +68,22 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
 
     time.sleep( sleepTimeInSec)
 
+    rampupCount = 0
     ### log messages to log file
     for count in range( int(sleepTimeInSec / 8) ):
         JAGlobalLib.LogMsg('TestMsg Pass\n', testLogFileName, True)
         
         if count % 2 > 0:
+            # to test PatternSum
             JAGlobalLib.LogMsg('TestMsg Fail\n', testLogFileName, True)
             msg = "leading text key1 {0} dummy1 key2 {1:.2f} dummy2\n".format( sleepTimeInSec, sleepTimeInSec/2)
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
+            # to test PatternAverage
             msg = "tps key1 {0} dummy1 key2 {1:.2f} dummy2\n".format( sleepTimeInSec, sleepTimeInSec/2)
+            JAGlobalLib.LogMsg(msg, testLogFileName, True)
+            # to test PatternDelta
+            rampupCount += count
+            msg = "total key1 {0} dummy1 total key2 {1:.2f} dummy2\n".format( rampupCount, rampupCount/2 )
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
         elif count % 3 > 0:
             JAGlobalLib.LogMsg('TestMsg Count\n', testLogFileName, True)
