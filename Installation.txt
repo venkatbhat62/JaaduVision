@@ -187,5 +187,31 @@ Installing pushgateway on web server
 
 Installing or customizing existing apache on web server
 
+Installing Loki and customing port
 
+=================== Loki install ==================
+https://github.com/grafana/loki/releases
+https://grafana.com/docs/loki/latest/installation/local/
+
+curl -O -L "https://github.com/grafana/loki/releases/download/v2.3.0/loki-linux-amd64.zip"
+unzip "loki-linux-amd64.zip"
+chmod a+x "loki-linux-amd64"
+wget https://raw.githubusercontent.com/grafana/loki/master/cmd/loki/loki-local-config.yaml
+
+To run loki
+./loki-linux-amd64 -config.file=loki-local-config.yaml
+
+To post data to loki
+  curl -H "Content-Type: application/json" -X POST  -v "http://localhost:3100/api/prom/push"
+ --data-raw   '{"streams": [{ "labels": "{foo=\"bar\"}", "entries": [{ "ts": "2021-09-11T08:28:06.801064-04:00"
+, "line": "fizzbuzz" }] }]}'
+
+To get the previously posted data
+  curl -v http://localhost:3100/loki/api/v1/label/foo/values
+
+Change loki listen port from 3100 to 9081 or whatever port you desire in loki-local-config.yaml
+Copy loki-linux-amd64 and loki-local-config.yaml to /var/www/JaaduAudit/cgi-bin and
+Add below crontab entry so that loki runs all the time.
+
+*/6 * * * * cd /var/www/JaaduAudit/cgi-bin;nohup ./loki-linux-amd64 -config.file=loki-local-config.yaml &
 
