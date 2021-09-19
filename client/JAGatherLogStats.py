@@ -1045,6 +1045,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         index = 0
 
                         patternMatched = False
+                        patternLogMatched = False
                         ### values is indexed from 0 to patternIndexForPatternSum / patternIndexForPatternAverage / patternIndexForPatternDelta
                         ### logStats[key] is indexed with twice the value
                         while index < len(values):
@@ -1053,7 +1054,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 index += 1
                                 continue
 
-                            if index == patternIndexForPatternLog :
+                            if index == patternIndexForPatternLog and patternLogMatched == False:
                                 searchPattern = r'{0}'.format(values[index])
                                 ### search for matching PatternLog regardless of whether stats type pattern is found or not.
                                 if re.search(searchPattern, tempLine) != None:
@@ -1063,6 +1064,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         logLines[key].append(tempLine)
                                     ### increment the logLinesCount
                                     logLinesCount[key] += 1
+                                    patternLogMatched = True
+
 
                             elif patternMatched != True:
                                 logStatsKeyValueIndexEven = index * 2
