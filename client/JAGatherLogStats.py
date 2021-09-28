@@ -645,9 +645,9 @@ def JAPostDataToWebServer():
             requests.packages.urllib3.disable_warnings()
 
     numPostings = 0
-
     # use temporary buffer for each posting
     tempLogStatsToPost = logStatsToPost.copy()
+
     postData = False
 
     # sampling interval elapsed
@@ -658,7 +658,7 @@ def JAPostDataToWebServer():
     #   'ApacheICDR': [ 2, True, 0, False, 0, False, 0, False]}
     #                    pass      fail     count     stats
     for key, values in logStats.items():
-
+    
         tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
         
         floatDataPostIntervalInSec = float(dataPostIntervalInSec)
@@ -782,12 +782,7 @@ def JAPostDataToWebServer():
                        ' Number of stats posted: ' + str(numPostings) + '\n', statsLogFileName, True)
 
     numPostings = 0
-
-    # use temporary buffer for each posting
-    tempLogLinesToPost = logLinesToPost.copy()
-
-    tempLogLinesToPost[key] = 'timeStamp=' + timeStamp
-
+    
     ### now post log lines collected
     # key - service name
     # list - log lines associated with that service name
@@ -795,6 +790,11 @@ def JAPostDataToWebServer():
         ### if no value to post, skip it
         if len(lines) == 0:
             continue
+
+        # use temporary buffer for each posting
+        tempLogLinesToPost = logLinesToPost.copy()
+
+        tempLogLinesToPost[key] = 'timeStamp=' + timeStamp
 
         ### values has log files in list
         for line in lines:
@@ -810,26 +810,26 @@ def JAPostDataToWebServer():
         ### empty the list
         logLines[key] = []
 
-    if debugLevel > 1:
-        print('DEBUG-2 JAPostDataToWebServer() logLinesToPost: {0}'.format(tempLogLinesToPost))
+        if debugLevel > 1:
+            print('DEBUG-2 JAPostDataToWebServer() logLinesToPost: {0}'.format(tempLogLinesToPost))
 
-    data = json.dumps(tempLogLinesToPost)
+        data = json.dumps(tempLogLinesToPost)
 
-    if useRequests == True:
-        # post interval elapsed, post the data to web server
-        returnResult = requests.post(
-            webServerURL, data, verify=verifyCertificate, headers=headers)
-        
-        print('INFO JAPostDataToWebServer() Result of posting log lines to web server ' +
-                webServerURL + ' :\n' + returnResult.text)
-        numPostings += 1
-    else:
-        result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
-                                "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        returnStatus = result.stdout.decode('utf-8').split('\n')
-        print('INFO JAPostDataToWebServer() result of posting log lines to web server:{0}\n{1}'.format(
-            webServerURL, returnStatus))
-        numPostings += 1
+        if useRequests == True:
+            # post interval elapsed, post the data to web server
+            returnResult = requests.post(
+                webServerURL, data, verify=verifyCertificate, headers=headers)
+            
+            print('INFO JAPostDataToWebServer() Result of posting log lines to web server ' +
+                    webServerURL + ' :\n' + returnResult.text)
+            numPostings += 1
+        else:
+            result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
+                                    "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            returnStatus = result.stdout.decode('utf-8').split('\n')
+            print('INFO JAPostDataToWebServer() result of posting log lines to web server:{0}\n{1}'.format(
+                webServerURL, returnStatus))
+            numPostings += 1
 
     JAGlobalLib.LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp +
                        ' Number of log lines posted: ' + str(numPostings) + '\n', statsLogFileName, True)

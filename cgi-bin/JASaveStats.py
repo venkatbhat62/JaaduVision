@@ -257,6 +257,7 @@ try:
                     lineCount += 1
 
             else:
+                ### timeStamp=2021-09-28T21:06:42.526907,TestStats_pass=0.05,TestStats_fail=0.02,TestStats_count=0.02,TestStats_key1_sum=0.40,TestStats_key2_sum=0.20,TestStats_key1_delta=-0.05,TestStats_key2_delta=-0.03
                 ### convert data 
                 ### from p1=v1,p2=v2,... 
                 ### to 
@@ -267,7 +268,7 @@ try:
                 items = valuePairs.split(',')
                 statsToPost = ''
 
-                ### remove timeStamp=value from the list. Prometheous scraper uses scaping time for reference.
+                ### remove timeStamp=value from the list. Prometheous scraper uses scraping time for reference.
                 ###    this sample from source can't be used for time series graphs
                 items.pop(0)
 
