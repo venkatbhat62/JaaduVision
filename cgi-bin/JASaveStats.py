@@ -190,12 +190,14 @@ try:
     skipKeyList = ['debugLevel','fileName','environment','siteName','platformName','componentName','hostName']
 
     statsType = None
+    statsToPost = ''
+    postData = False
+
     for key, value in postedData.items():
         if key not in skipKeyList:
             if debugLevel > 2:
                 print('DEBUG-3 JASaveStats.py processing key: {0}, value: {1}'.format(key, value))
                 
-
             ### SKIP LogStats, OSStats, loki  
             if value == 'LogStats' or value == 'OSStats' or value == 'loki':
                 statsType = value
@@ -266,8 +268,7 @@ try:
                 ### replace =, remove space, and make one metric per line to post to PushGatewayURL
                 valuePairs = str(value)
                 items = valuePairs.split(',')
-                statsToPost = ''
-
+                
                 ### remove timeStamp=value from the list. Prometheous scraper uses scraping time for reference.
                 ###    this sample from source can't be used for time series graphs
                 items.pop(0)
@@ -276,16 +277,19 @@ try:
                     statsToPost += (item + '\n')
                     if debugLevel > 2: 
                         print('DEBUG-3 item : {0}\n'.format(item ) )
-
-                statsToPost = statsToPost.replace('=', ' ')
-                returnResult = requests.post( pushGatewayURL, data=statsToPost, headers=headersForPushGateway)
-
-                if debugLevel > 0:
-                    print('DEBUG-1 JASaveStats.py data: {0} posted to prometheus push gateway with result:{1}\n\n'.format(statsToPost,returnResult))
+                postData = True
 
         else:
             if debugLevel > 3:
                 print('DEBUG-4 JASaveStats.py skipping key:{0} this data not added to stats key\n'.format(key) )
+
+    if postData == True :
+        statsToPost = statsToPost.replace('=', ' ')
+        returnResult = requests.post( pushGatewayURL, data=statsToPost, headers=headersForPushGateway)
+
+        if debugLevel > 0:
+            print('DEBUG-1 JASaveStats.py data: {0} posted to prometheus push gateway with result:{1}\n\n'.format(statsToPost,returnResult))
+
     if fileName != None:
         fpo.close()
 
