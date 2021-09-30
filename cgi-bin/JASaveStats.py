@@ -184,7 +184,8 @@ try:
     if fileName != None:
         ### save data locally if fileName is specified
         fpo = open( fileName, 'a')
-        print('DEBUG-3 JASaveStats.py fileName: {0}, postToLoki {1}'.format(fileName, postToLoki))
+        if debugLevel > 0:
+            print('DEBUG-3 JASaveStats.py fileName: {0}, postToLoki {1}'.format(fileName, postToLoki))
 
     ### while writing values to file and posting to pushgateway, skip below keys
     skipKeyList = ['debugLevel','fileName','environment','siteName','platformName','componentName','hostName']
