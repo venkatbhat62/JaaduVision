@@ -475,6 +475,16 @@ def JAGetProcessStats( processNames, fields ):
                 ###   gather stats 
                 if re.match( processName, tempCommand) != None :
 
+                    processNameParts = processName.split('/')
+                    if processNameParts[-1] != None :
+                        shortProcessName = processNameParts[-1]
+                    else:
+                        shortProcessName = processName
+                    ### replace ., - with _
+                    shortProcessName = re.sub(r'[\.\-]', '_', shortProcessName)
+                    ### remove space from process name
+                    shortProcessName = re.sub('\s+','',shortProcessName)
+
                     ### collect data if the field name is enabled for collection
                     for field in fieldNames:
                         if field == 'CPU':
@@ -490,16 +500,6 @@ def JAGetProcessStats( processNames, fields ):
                             print( errorMsg )
                             JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
                             continue
-
-                        processNameParts = processName.split('/')
-                        if processNameParts[-1] != None :
-                            shortProcessName = processNameParts[-1]
-                        else:
-                            shortProcessName = processName
-                        ### replace . with _
-                        shortProcessName = re.sub('\.', '_', shortProcessName)
-                        ### remove space from process name
-                        shortProcessName = re.sub('\s+','',shortProcessName)
 
                         myStats = myStats + '{0}{1}_{2}={3}'.format(comma,shortProcessName,field, fieldValue ) 
                         comma = ','
@@ -537,7 +537,7 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
     tempFileSystemNames = fileSystemNames.split(',')
 
     if OSType == 'Windows':
-        print("ERROR JAGetProcessStats() not supported on Windows yet")
+        print("ERROR JAGetFileSystemUsage() not supported on Windows yet")
         return None
     else:
       for fs in tempFileSystemNames:
@@ -546,7 +546,7 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
             ###  file system of all host types, even though each host does not have all file systems.
             ### this is NOT an error condition
             if debugLevel > 0:
-                print("INFO File System {0} not present, can't gather stats for it".format(fs) )
+                print("WARN JAGetFileSystemUsage.py() File System {0} not present, can't gather stats for it".format(fs) )
             continue
 
         result = subprocess.run( ['df', '-h', fs], stdout=subprocess.PIPE, stderr=subprocess.PIPE)

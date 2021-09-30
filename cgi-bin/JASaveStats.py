@@ -193,6 +193,8 @@ try:
     statsToPost = ''
     postData = False
 
+    metricsVariablesToBePosted = {}
+
     for key, value in postedData.items():
         if key not in skipKeyList:
             if debugLevel > 2:
@@ -274,17 +276,29 @@ try:
                 items.pop(0)
 
                 for item in items:
-                    statsToPost += (item + '\n')
-                    if debugLevel > 2: 
-                        print('DEBUG-3 item : {0}\n'.format(item ) )
-                postData = True
-
+                    ### expect the item in the form paramName=value
+                    ### separate paramName and store it in metricsVariablesToBePosted hash
+                    variableNameAndValues = re.split('=', item)
+                    if len(variableNameAndValues) > 1:
+                        # if current name is already present, SKIP current name=value pair
+                        if variableNameAndValues[0] in metricsVariablesToBePosted.keys() :
+                            ## param name already present, SKIP this pair
+                            print("WARN JASaveStats.py metrics variable name:{0} already present, SKIPing this item:{1}".format(variableNameAndValues[0], item))
+                        else:
+                            ### new name and value
+                            metricsVariablesToBePosted[variableNameAndValues[0]] = True
+                            statsToPost += '{0} {1}\n'.format( variableNameAndValues[0], variableNameAndValues[1])
+                            if debugLevel > 2: 
+                                print('DEBUG-3 JASaveStats.py item :{0}, itemToPost:{1} {2}\n'.format(item,variableNameAndValues[0], variableNameAndValues[1] ) )
+                            postData = True
+                    else:
+                        print('WARN JASaveStats.py item:{0} is NOT in paramName=value format, DID NOT post this to prometheus'.format(item))
+                
         else:
             if debugLevel > 3:
                 print('DEBUG-4 JASaveStats.py skipping key:{0} this data not added to stats key\n'.format(key) )
 
     if postData == True :
-        statsToPost = statsToPost.replace('=', ' ')
         returnResult = requests.post( pushGatewayURL, data=statsToPost, headers=headersForPushGateway)
 
         if debugLevel > 0:
