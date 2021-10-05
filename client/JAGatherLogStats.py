@@ -44,8 +44,6 @@ import signal
 JAVersion = "01.00.02"
 
 ### number of patterns that can be searched in log line per Service
-###   Priority, PatternPass, PatternFail, PatternCount, PatternSum, PatternAverage, PatternLog
-###     0          1           2              3             4               5            6
 patternIndexForPriority = 0
 patternIndexForPatternPass = 1
 patternIndexForPatternFail = 2
@@ -53,10 +51,12 @@ patternIndexForPatternCount = 3
 patternIndexForPatternSum = 4
 patternIndexForPatternAverage = 5
 patternIndexForPatternDelta = 6
-patternIndexForPatternLog = 7
+## below pattern comes into play when pattern searched is Pattern Sum/Average/Delta
+patternIndexForVariablePrefix = 7
+patternIndexForPatternLog = 8
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
-maxPatternIndex = 8
+maxPatternIndex = 9
 
 try:
     from subprocess import CompletedProcess
@@ -459,6 +459,7 @@ try:
         # PatternCount: string containing regular expression
         # PatternSum: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
         # PatternAverage: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
+        # PatternVariablePrefix: text variable text
         for key, value in JAStats['LogFile'].items():
             
             tempPatternList = [ None] * (maxPatternIndex)
@@ -507,6 +508,10 @@ try:
                 tempPatternList[patternIndexForPatternLog] = str(value.get('PatternLog')).strip()
                 tempPatternPresent[patternIndexForPatternLog] = True
 
+            if value.get('PatternVariablePrefix') != None:
+                tempPatternList[patternIndexForVariablePrefix] = str(value.get('PatternVariablePrefix')).strip()
+                tempPatternPresent[patternIndexForVariablePrefix] = True
+
             if logFileName != None:     
                 JAStatsSpec[logFileName][key] = list(tempPatternList)
                     
@@ -534,6 +539,9 @@ try:
             ### for delta, data is posted if sample count is non=zero, no pattern present flag used
             logStats[key][patternIndexForPatternDelta*2+1] = []
             
+            ### nothing to post to web for this index, this index is used locally to find variable prefix only
+            logStats[key][patternIndexForVariablePrefix*2] = None
+
             ### initialize logLines[key] list to empty list
             logLines[key] = []
 
@@ -1044,13 +1052,27 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         ### proceed with search if current CPU usage is lower than max CPU usage allowed
                         index = 0
 
+                        ### if variable prefix is defined for current service, 
+                        ###   see whether the variable prefix pattern is present in current line
+                        variablePrefix = None
+                        if values[patternIndexForVariablePrefix] != None:
+                            variablePrefixSearchPattern = r'{0}'.format( values[patternIndexForVariablePrefix])
+                            myResults = re.search( variablePrefixSearchPattern, tempLine)
+                            if myResults == None:
+                                ### since variable prefix is not matching, SKIP processing this line any further
+                                # since variable prefix will be prefixed to variables, if that is not present,
+                                #  no need to match any other patterns for this service 
+                                continue
+                            else:
+                                variablePrefix = myResults.group(1)
+                    
                         patternMatched = False
                         patternLogMatched = False
                         ### values is indexed from 0 to patternIndexForPatternSum / patternIndexForPatternAverage / patternIndexForPatternDelta
                         ### logStats[key] is indexed with twice the value
                         while index < len(values):
 
-                            if index == patternIndexForPriority or values[index] == None:
+                            if index == patternIndexForPriority or index == patternIndexForVariablePrefix or values[index] == None:
                                 index += 1
                                 continue
 
@@ -1065,7 +1087,6 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                     ### increment the logLinesCount
                                     logLinesCount[key] += 1
                                     patternLogMatched = True
-
 
                             elif patternMatched != True:
                                 logStatsKeyValueIndexEven = index * 2
@@ -1091,15 +1112,28 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         if debugLevel > 3:
                                             print("DEBUG-4 JAProcessLogFile() processing line with PatternDelta, PatternSum or PatternAverage, search result:{0}\n Previous values:{1}".format(myResults, tempStats))
                                         tempKey = ''
+                                        appendCurrentValueToList = False
                                         for tempResult in tempResults:
                                                 
                                             if numStats % 2 == 0:
-                                                ### key portion of key/value pair
-                                                if len(tempStats) <= numStats :
-                                                    ### if current name has space, replace it with '_'
-                                                    tempResult = re.sub('\s','_',tempResult)
+                                                ### if current name has space, replace it with '_'
+                                                tempResult = re.sub('\s','_',tempResult)
+
+                                                ### if variable prefix is present, prefix that to current key
+                                                if variablePrefix != None :
+                                                    tempResult = '{0}_{1}'.format( variablePrefix, tempResult)
+
+                                                ### if current key is NOT present in list, append it
+                                                # if len(tempStats) <= numStats :
+                                                try:
+                                                    if tempStats.index( tempResult) >= 0 :
+                                                        appendCurrentValueToList = False                                                        
+                                                except ValueError:
+                                                    ### value is NOT present in tempStats list
+                                                    appendCurrentValueToList = True
                                                     ### current tempResult is not yet in the list, append it
                                                     tempStats.append(tempResult)
+
                                                 ### save the key name, this is used to make a combined key later <serviceName>_<key>
                                                 tempKey = tempResult
                                             else:
@@ -1115,8 +1149,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                     
                                                     ### store current sample value as is as previous sample
                                                     previousSampleValues[serviceNameSubKey] = tempResultToStore
-
-                                                if len(tempStats) <= numStats:
+                                                
+                                                if appendCurrentValueToList == True:
                                                     ### current tempResult is not yet in the list, append it
                                                     tempStats.append(float(tempResult))
                                                 else:
@@ -1134,7 +1168,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         ### get out of the loop
                                         patternMatched = True
                                 elif re.search(searchPattern, tempLine) != None:
-                                    ### matching pattern found, increemnt the count 
+                                    ### matching pattern found, increment the count 
                                     logStats[key][logStatsKeyValueIndexEven] += 1
 
                                     if debugLevel > 3:

@@ -174,11 +174,20 @@ LogFile:
       # value is summed over the sampling interval, average value is computed by dividing number of samples in that sampling interval
       # line is of the form: 2021-09-18T14:57:07.088995 tps key1 54 dummy1 key2 27.00 dummy2
       #                                                     kkkk  vv       kkkk vvvvv
-      PatternAverage: tps (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy  
+      # PatternAverage: tps (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy  
       # PatternDelta: leading text (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy
       # prev sample value is subracted from current sample to find the change or delta value.
       # these delta values are summed over the sampling interval and divided by sampling intervall to get tps
       # line is of the form: 2021-09-18T14:57:07.089993 total key1 9 dummy1 total key2 4.50 dummy2
       #                                                       kkkk v              kkkk vvvv
-      PatternDelta: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy    
+      PatternDelta: tps (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy
+
+    TestStatsWithVarPrefix:
+      LogFileName: client/JATest.log*
+      ### extract the regular expression value that matches to the variable prefix definition
+      ###   prefix that to the variable to make unique value
+      ###   serviceName_<variablePrefix>_<patterDelta>_delta
+      PatternVariablePrefix: Stats MicroService(\d) total
+      # 2021-10-05T01:09:03.249334 Stats MicroService1 total key1 9 dummy1 total key2 4.50 dummy2
+      PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
       Priority: 1
