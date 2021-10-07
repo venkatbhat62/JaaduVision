@@ -300,7 +300,7 @@ try:
                 print('DEBUG-4 JASaveStats.py skipping key:{0} this data not added to stats key\n'.format(key) )
 
     if postData == True :
-        returnResult = requests.post( pushGatewayURL, data=statsToPost, headers=headersForPushGateway)
+        returnResult = requests.post( pushGatewayURL + appendToURL, data=statsToPost, headers=headersForPushGateway)
 
         if debugLevel > 0:
             print('DEBUG-1 JASaveStats.py data: {0} posted to prometheus push gateway with result:{1}\n\n'.format(statsToPost,returnResult))
