@@ -539,8 +539,9 @@ try:
             ### for delta, data is posted if sample count is non=zero, no pattern present flag used
             logStats[key][patternIndexForPatternDelta*2+1] = []
             
-            ### nothing to post to web for this index, this index is used locally to find variable prefix only
+            ### set to None, it will be set to proper value later before posting to web server
             logStats[key][patternIndexForVariablePrefix*2] = None
+            logStats[key][patternIndexForVariablePrefix*2+1] = tempPatternPresent[patternIndexForVariablePrefix]
 
             ### initialize logLines[key] list to empty list
             logLines[key] = []
@@ -683,6 +684,13 @@ def JAPostDataToWebServer():
             tempLogStatsToPost[key] += ",{0}_count={1:.2f}".format(key, float(values[patternIndexForPatternCount*2])/ floatDataPostIntervalInSec)
             logStats[key][patternIndexForPatternCount*2] = 0
             postData = True
+        if values[patternIndexForVariablePrefix*2+1] == True:
+            if values[patternIndexForVariablePrefix*2] != None:
+                ### post the variable index value
+                tempLogStatsToPost[key] += ",{0}_variablePrefix={1}".format(key, values[patternIndexForVariablePrefix*2] )
+                logStats[key][patternIndexForVariablePrefix*2] = None
+                postData = True
+
         if values[patternIndexForPatternSum*2] > 0 :
             postData = True
             ### sample count is non-zero, stats has value to post
@@ -1065,6 +1073,10 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 continue
                             else:
                                 variablePrefix = myResults.group(1)
+                                ## save the prefix value so that it gets posted as metrics.
+                                ## this value can be used to graph variable via template method
+                                logStats[key][ patternIndexForVariablePrefix * 2] = variablePrefix
+
                     
                         patternMatched = False
                         patternLogMatched = False
