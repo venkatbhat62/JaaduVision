@@ -1075,7 +1075,12 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 variablePrefix = myResults.group(1)
                                 ## save the prefix value so that it gets posted as metrics.
                                 ## this value can be used to graph variable via template method
-                                logStats[key][ patternIndexForVariablePrefix * 2] = variablePrefix
+                                if variablePrefix.isdigit() == True:
+                                    ## if value is digits, print with leading zeros
+                                    ## this is to deal with any variability in print formats up to 3 digits
+                                    variablePrefix = logStats[key][ patternIndexForVariablePrefix * 2] = '{0:03d}'.format(int(variablePrefix))
+                                else:
+                                    logStats[key][ patternIndexForVariablePrefix * 2] = variablePrefix
 
                     
                         patternMatched = False
