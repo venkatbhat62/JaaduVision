@@ -33,6 +33,13 @@
 #                at the end of sampling period, tps is calcuated by dividing the sum with sampling period. 
 #                When the this script starts, first sample value is stored as previous value, any change from the value seen
 #                  in previous run to current run is not computed to keep the tool simple.
+#
+#     PatternVariablePrefix: extract the regular expression value that matches to the variable prefix definition
+#           prefix that to the variable to make unique value
+#          serviceName_<variablePrefix>_<patterDelta>_delta
+#                                          ^^
+#     PatternVariablePrefixGroup: While matching the variable prefix pattern, if the group to be used is not the first one,
+#                          use this to specify group number (see example below for more info)
 # 
 #     NOTE - for all patterns above, once a search matches, no further search done to match other patterns. 
 #           search for PatternLog is done so that log line collection can still be done after pattern match.
@@ -78,6 +85,8 @@ Environment:
     HostName: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T)
    Test:
      HostName: (...)(t)(...)([0-9][0-9])
+     ### save logs on web server (local cache, in addition to sending to loki)
+     saveLogsOnWebServer: True
    UAT:
      HostName: (...)(u)(...)([0-9][0-9])
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
@@ -107,6 +116,8 @@ Environment:
      ###    lines will be counted and reported as "..... XXX more lines...."
      ### this is to reduce the data sent to central web server, posted to loki, cached by loki and stored under grafana
      MaxLogLines: 10
+     ### Do not save logs on web server (local cache, in addition to sending to loki)
+     saveLogsOnWebServer: False
      ### while posting data to web server, defaults to False
      DisableWarnings: True
      ### do not verify web server certificate, defaults to True
@@ -157,7 +168,7 @@ LogFile:
       Priority: 1
 
     TestStats:
-      LogFileName: client/JATest.log*
+      LogFileName: JATest.log*
       ### tps = number of instances divided by sampling interval
       PatternPass: TestMsg Pass
       ### tps = number of instances divided by sampling interval
@@ -183,11 +194,23 @@ LogFile:
       PatternDelta: tps (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy
 
     TestStatsWithVarPrefix:
-      LogFileName: client/JATest.log*
+      LogFileName: JATest.log*
       ### extract the regular expression value that matches to the variable prefix definition
       ###   prefix that to the variable to make unique value
       ###   serviceName_<variablePrefix>_<patterDelta>_delta
       PatternVariablePrefix: Stats MicroService(\d) total
       # 2021-10-05T01:09:03.249334 Stats MicroService1 total key1 9 dummy1 total key2 4.50 dummy2
+      PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
+      Priority: 1
+    TestStatsWithVarPrefixGroup:
+      LogFileName: JATest.log*
+      ### extract the regular expression value that matches to the variable prefix definition
+      ###   prefix that to the variable to make unique value
+      ###   serviceName_<variablePrefix>_<patterDelta>_delta
+      PatternVariablePrefix: Stats MicroService(\d)(\d) total
+      ###                                           ^^
+      ###  use 2nd group value as variable prefix for the *_avrage metrics variable
+      PatternVariablePrefixGroup: 2
+      # 2021-10-05T01:09:03.249334 Stats MicroService25 total key1 9 dummy1 total key2 4.50 dummy2
       PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
       Priority: 1

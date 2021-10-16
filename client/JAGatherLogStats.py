@@ -51,12 +51,13 @@ patternIndexForPatternCount = 3
 patternIndexForPatternSum = 4
 patternIndexForPatternAverage = 5
 patternIndexForPatternDelta = 6
-## below pattern comes into play when pattern searched is Pattern Sum/Average/Delta
+## below patterns comes into play when pattern searched is Pattern Sum/Average/Delta
 patternIndexForVariablePrefix = 7
-patternIndexForPatternLog = 8
+patternIndexForVariablePrefixGroup = 8
+patternIndexForPatternLog = 9
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
-maxPatternIndex = 9
+maxPatternIndex = 10
 
 try:
     from subprocess import CompletedProcess
@@ -117,6 +118,7 @@ disableWarnings = None
 verifyCertificate = None
 cacheLogFileName = None
 processSingleLogFileName = None
+saveLogsOnWebServer = False
 
 ### max log lines per service, per sampling interval
 ###  when log lines exceed this count, from 11th line till last line withing the sampling interval,
@@ -125,6 +127,9 @@ maxLogLines = None
 # list contains the max cpu usage levels for all events, priority 1,2,3 events
 # index 0 - for all events, index 1 for priority 1, index 3 for priority 3
 maxCPUUsageForEvents = [0, 0, 0, 0]
+# logEventPriorityLevel will be set to this value by default (no skipping)
+maxCPUUsageLevels = logEventPriorityLevel = 4
+
 
 # current average CPU usage - average over last 10 samples at dataPostIntervalInSec interval
 averageCPUUsage = 0
@@ -262,7 +267,7 @@ def JAGatherEnvironmentSpecs(key, values):
 
     # declare global variables
     global dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageForEvents, maxProcessingTimeForAllEvents
-    global webServerURL, disableWarnings, verifyCertificate, debugLevel, maxLogLines
+    global webServerURL, disableWarnings, verifyCertificate, debugLevel, maxLogLines, saveLogsOnWebServer
 
     for myKey, myValue in values.items():
         if debugLevel > 1:
@@ -312,6 +317,10 @@ def JAGatherEnvironmentSpecs(key, values):
             if maxLogLines == 0:
                 if myValue != None:
                     maxLogLines = int(myValue)
+
+        elif myKey == 'SaveLogsOnWebServer':            
+            if myValue != None:
+                saveLogsOnWebServer = myValue
 
         elif myKey == 'WebServerURL':
             if webServerURL == None:
@@ -512,6 +521,10 @@ try:
                 tempPatternList[patternIndexForVariablePrefix] = str(value.get('PatternVariablePrefix')).strip()
                 tempPatternPresent[patternIndexForVariablePrefix] = True
 
+            if value.get('PatternVariablePrefixGroup') != None:
+                tempPatternList[patternIndexForVariablePrefixGroup] = str(value.get('PatternVariablePrefixGroup')).strip()
+                tempPatternPresent[patternIndexForVariablePrefixGroup] = True
+
             if logFileName != None:     
                 JAStatsSpec[logFileName][key] = list(tempPatternList)
                     
@@ -542,6 +555,9 @@ try:
             ### set to None, it will be set to proper value later before posting to web server
             logStats[key][patternIndexForVariablePrefix*2] = None
             logStats[key][patternIndexForVariablePrefix*2+1] = tempPatternPresent[patternIndexForVariablePrefix]
+            ### set to None, it will be set to proper value later before posting to web server
+            logStats[key][patternIndexForVariablePrefixGroup*2] = None
+            logStats[key][patternIndexForVariablePrefixGroup*2+1] = tempPatternPresent[patternIndexForVariablePrefixGroup]
 
             ### initialize logLines[key] list to empty list
             logLines[key] = []
@@ -595,6 +611,7 @@ logStatsToPost['platformName'] = platformName
 logStatsToPost['siteName'] = siteName
 logStatsToPost['environment'] = environment
 
+
 # data to be posted to the web server
 # pass fileName containing thisHostName and current dateTime in YYYYMMDD form
 logLinesToPost['fileName'] = thisHostName + \
@@ -606,6 +623,7 @@ logLinesToPost['componentName'] = componentName
 logLinesToPost['platformName'] = platformName
 logLinesToPost['siteName'] = siteName
 logLinesToPost['environment'] = environment
+logLinesToPost['saveLogsOnWebServer'] = saveLogsOnWebServer
 
 headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
 
@@ -625,7 +643,7 @@ Return values:
 
 def JAPostDataToWebServer():
     global logStats, debugLevel
-    global webServerURL, verifyCertificate, logStatsToPost, logLinesToPost
+    global webServerURL, verifyCertificate, logStatsToPost, logLinesToPost, logEventPriorityLevel
     timeStamp = JAGlobalLib.UTCDateTime()
     if debugLevel > 1:
         print('DEBUG-2 JAPostDataToWebServer() ' +
@@ -684,13 +702,7 @@ def JAPostDataToWebServer():
             tempLogStatsToPost[key] += ",{0}_count={1:.2f}".format(key, float(values[patternIndexForPatternCount*2])/ floatDataPostIntervalInSec)
             logStats[key][patternIndexForPatternCount*2] = 0
             postData = True
-        if values[patternIndexForVariablePrefix*2+1] == True:
-            if values[patternIndexForVariablePrefix*2] != None:
-                ### post the variable index value
-                tempLogStatsToPost[key] += ",{0}_variablePrefix={1}".format(key, values[patternIndexForVariablePrefix*2] )
-                logStats[key][patternIndexForVariablePrefix*2] = None
-                postData = True
-
+            
         if values[patternIndexForPatternSum*2] > 0 :
             postData = True
             ### sample count is non-zero, stats has value to post
@@ -770,6 +782,8 @@ def JAPostDataToWebServer():
             logStats[key][patternIndexForPatternAverage*2] = 0
             logStats[key][patternIndexForPatternAverage*2+1] = []
 
+    tempLogStatsToPost['logEventPriorityLevel'] = "logEventPriorityLevel={0}".format(logEventPriorityLevel)
+    
     if postData == True :
         data = json.dumps(tempLogStatsToPost)
         if useRequests == True:
@@ -929,7 +943,7 @@ def JAReadFileInfo():
 
 
 def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, gatherLogStatsEnabled, debugLevel):
-    global averageCPUUsage, thisHostName
+    global averageCPUUsage, thisHostName, logEventPriorityLevel
     logFileNames = JAGlobalLib.JAFindModifiedFiles(
         logFileName, thisHostName, startTimeInSec, debugLevel)
 
@@ -1056,7 +1070,16 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         print('DEBUG-4 JAProcessLogFile() searching for patterns:{0}|{1}|{2}|{3}|{4}|{5}\n'.format(
                             values[patternIndexForPatternPass], values[patternIndexForPatternFail], values[patternIndexForPatternCount], 
                             values[patternIndexForPatternSum], values[patternIndexForPatternAverage],values[patternIndexForPatternDelta]))
-                    if averageCPUUsage < maxCPUUsageForEvents[eventPriority]:
+                    
+                    if averageCPUUsage > maxCPUUsageForEvents[eventPriority]:
+                        if logEventPriorityLevel == maxCPUUsageLevels:
+                            ### first time log file processing skipped, store current event priorityy
+                            logEventPriorityLevel = eventPriority
+                        elif logEventPriorityLevel > eventPriority :
+                            ## if previous event priority skipped is higher than current priority,
+                            ##   save new priority
+                            logEventPriorityLevel = eventPriority
+                    else:
                         ### proceed with search if current CPU usage is lower than max CPU usage allowed
                         index = 0
 
@@ -1072,17 +1095,18 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 #  no need to match any other patterns for this service 
                                 continue
                             else:
-                                variablePrefix = myResults.group(1)
-                                ## save the prefix value so that it gets posted as metrics.
-                                ## this value can be used to graph variable via template method
-                                if variablePrefix.isdigit() == True:
-                                    ## if value is digits, print with leading zeros
-                                    ## this is to deal with any variability in print formats up to 3 digits
-                                    variablePrefix = logStats[key][ patternIndexForVariablePrefix * 2] = '{0:03d}'.format(int(variablePrefix))
+                                if values[patternIndexForVariablePrefixGroup] != None:
+                                    ### use the group value; based on pattern match, as variable prefix.
+                                    ### Log line: 2021-10-05T01:09:03.249334 Stats MicroService25 total key1 9 dummy1 total key2 4.50 dummy2
+                                    ###                                                        ^^ <-- variablePrefixGroupValues (two groups)
+                                    ### PatternVariablePrefix: Stats MicroService(\d)(\d) total
+                                    ###                                                ^ <-- variable prefix, group 2
+                                    ###  use 2nd group value as variable prefix for the *_avrage metrics variable
+                                    ###  PatternVariablePrefixGroup: 2
+                                    variablePrefix = myResults.group(int(values[patternIndexForVariablePrefixGroup]))
                                 else:
-                                    logStats[key][ patternIndexForVariablePrefix * 2] = variablePrefix
+                                    variablePrefix = myResults.group(1)
 
-                    
                         patternMatched = False
                         patternLogMatched = False
                         ### values is indexed from 0 to patternIndexForPatternSum / patternIndexForPatternAverage / patternIndexForPatternDelta
@@ -1269,9 +1293,13 @@ while loopStartTimeInSec <= statsEndTimeInSec:
     # take current time, it will be used to find files modified since this time for next round
     logFileProcessingStartTime = time.time()
 
+    ### for each loop, reset the value
+    logEventPriorityLevel = maxCPUUsageLevels
+
     averageCPUUsage = JAGlobalLib.JAGetAverageCPUUsage()
     if averageCPUUsage > maxCPUUsageForEvents[0]:
         JAGatherLogStatsEnabled = False
+        logEventPriorityLevel = 0
 
     # gather log stats for all logs
     for logFileName in sorted(JAStatsSpec.keys()):
