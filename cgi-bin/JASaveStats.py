@@ -77,6 +77,13 @@ with open('JAGlobalVars.yml','r') as file:
         # Dir to store stats not specified, DO NOT save stats locally
         JADirStats = None
 
+    ### global setting for all hosts, whether to save stats on web server
+    JASaveStatsOnWebServer = JAGlobalVars['JASaveStats']['SaveStatsOnWebServer']
+    if JASaveStatsOnWebServer == 'True' or JASaveStatsOnWebServer == True:
+        JASaveStatsOnWebServer = 'yes'
+    else:
+        JASaveStatsOnWebServer = 'no'
+
     ### URL to send the data to prometheus push gateway
     JAPushGatewayURL = JAGlobalVars['JASaveStats']['PushGatewayURL']
 
@@ -117,6 +124,19 @@ else:
 if JAPushGatewayURL == None or JALokiGatewayURL == None:
     JASaveStatsError('config error - need valid JAPushGatewayURL and JALokiGatewayURL')
 
+if postedData['saveLogsOnWebServer'] != None:
+    saveLogsOnWebServer = postedData['saveLogsOnWebServer']
+
+### for stats, use web server level setting to save the stats on web server
+### for logs, use the value posted from client to save the logs on web server
+saveOnWebServer = 0
+if postToLoki == True:
+    if  saveLogsOnWebServer == 'yes':
+        saveOnWebServer = 1
+else:
+    if JASaveStatsOnWebServer == 'yes':
+        saveOnWebServer = 1
+    
 ## make initial part of pushgateway URL 
 pushGatewayURL = JAPushGatewayURL + "/metrics/job/" + jobName + "/instance/" + hostName
 prefixParams = ''
@@ -182,13 +202,14 @@ if JADisableWarnings == True:
 ### open the file in append mode and save data
 try:
     if fileName != None:
-        ### save data locally if fileName is specified
-        fpo = open( fileName, 'a')
-        if debugLevel > 0:
-            print('DEBUG-3 JASaveStats.py fileName: {0}, postToLoki {1}'.format(fileName, postToLoki))
+        if saveOnWebServer == 1:
+            ### save data locally if fileName is specified
+            fpo = open( fileName, 'a')
+            if debugLevel > 0:
+                print('DEBUG-3 JASaveStats.py fileName: {0}, postToLoki {1}'.format(fileName, postToLoki))
 
     ### while writing values to file and posting to pushgateway, skip below keys
-    skipKeyList = ['debugLevel','fileName','environment','siteName','platformName','componentName','hostName']
+    skipKeyList = ['debugLevel','fileName','environment','siteName','platformName','componentName','hostName','saveLogsOnWebServer']
 
     statsType = None
     statsToPost = ''
@@ -207,8 +228,9 @@ try:
                 continue
             
             if fileName != None:
-                ### save this data with prefixParams that identifies statsType, environment, site, platform, component, host 
-                fpo.write( '{0},{1},{2}\n'.format(prefixParams, key, value ) )
+                if saveOnWebServer == 1:   
+                    ### save this data with prefixParams that identifies statsType, environment, site, platform, component, host 
+                    fpo.write( '{0},{1},{2}\n'.format(prefixParams, key, value ) )
 
                 if debugLevel > 2:
                     print('DEBUG-3 JASaveStats.py wrote data: {0},{1},{2} to file'.format(prefixParams,key, value))
@@ -306,7 +328,8 @@ try:
             print('DEBUG-1 JASaveStats.py data: {0} posted to prometheus push gateway with result:{1}\n\n'.format(statsToPost,returnResult))
 
     if fileName != None:
-        fpo.close()
+        if saveOnWebServer == 1: 
+            fpo.close()
 
 except OSError as err:
     JASaveStatsError('ASaveStats.py Can not open file:|' + fileName + '|' + "OS error: {0}".format(err) )

@@ -82,17 +82,25 @@ GatherLogStatsLogFile: JAGatherLogStats.log
 GatherLogStatsCacheFile: JAGatherLogStats.cache
 Environment:
    Dev:
-    HostName: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T)
+     HostName: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T)
+     ### save logs on web server (local cache, in addition to sending to loki)
+     SaveLogsOnWebServer: False
    Test:
      HostName: (...)(t)(...)([0-9][0-9])
      ### save logs on web server (local cache, in addition to sending to loki)
-     saveLogsOnWebServer: True
+     SaveLogsOnWebServer: True
    UAT:
      HostName: (...)(u)(...)([0-9][0-9])
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
    Prod:
      HostName: (...)(p)(...)([0-9][0-9])
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+     
+  ## Keep definition for 'All' environment at the end.
+  ##  this is to ensure, Dev, Test, UAT, Prod etc environment specific values are seen/read first and 
+  ##  assigned to variables. If a variable is not yet defined under Dev, Test.. like environment,
+  ##  and that variable is defined under 'All', value under 'All' will be picked up
+  ##  if variable is already defined under environment before, value under 'All' will be ignored.
    All:
      # max time allowed for log file processing during each sampling interval
      #  below 30 second value is half of 60 seconds specified for sampling interval
@@ -117,7 +125,7 @@ Environment:
      ### this is to reduce the data sent to central web server, posted to loki, cached by loki and stored under grafana
      MaxLogLines: 10
      ### Do not save logs on web server (local cache, in addition to sending to loki)
-     saveLogsOnWebServer: False
+     SaveLogsOnWebServer: False
      ### while posting data to web server, defaults to False
      DisableWarnings: True
      ### do not verify web server certificate, defaults to True
@@ -168,7 +176,7 @@ LogFile:
       Priority: 1
 
     TestStats:
-      LogFileName: JATest.log*
+      LogFileName: client/JATest.log*
       ### tps = number of instances divided by sampling interval
       PatternPass: TestMsg Pass
       ### tps = number of instances divided by sampling interval
@@ -194,7 +202,7 @@ LogFile:
       PatternDelta: tps (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy
 
     TestStatsWithVarPrefix:
-      LogFileName: JATest.log*
+      LogFileName: client/JATest.log*
       ### extract the regular expression value that matches to the variable prefix definition
       ###   prefix that to the variable to make unique value
       ###   serviceName_<variablePrefix>_<patterDelta>_delta
@@ -203,7 +211,7 @@ LogFile:
       PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
       Priority: 1
     TestStatsWithVarPrefixGroup:
-      LogFileName: JATest.log*
+      LogFileName: client/JATest.log*
       ### extract the regular expression value that matches to the variable prefix definition
       ###   prefix that to the variable to make unique value
       ###   serviceName_<variablePrefix>_<patterDelta>_delta

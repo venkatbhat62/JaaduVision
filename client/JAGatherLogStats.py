@@ -103,7 +103,8 @@ except ImportError:
         # ^ This monkey patch allows it work on Python 2 or 3 the same way
 
 
-# global default parameters
+# global default parameters, need to keep these as None so that they will have value other than None 
+#  when environment speicfic value is seen
 configFile = None
 webServerURL = None
 maxProcessingTimeForAllEvents = 0
@@ -118,7 +119,7 @@ disableWarnings = None
 verifyCertificate = None
 cacheLogFileName = None
 processSingleLogFileName = None
-saveLogsOnWebServer = False
+saveLogsOnWebServer = None
 
 ### max log lines per service, per sampling interval
 ###  when log lines exceed this count, from 11th line till last line withing the sampling interval,
@@ -318,9 +319,16 @@ def JAGatherEnvironmentSpecs(key, values):
                 if myValue != None:
                     maxLogLines = int(myValue)
 
-        elif myKey == 'SaveLogsOnWebServer':            
-            if myValue != None:
-                saveLogsOnWebServer = myValue
+        elif myKey == 'SaveLogsOnWebServer':
+            if saveLogsOnWebServer == None:           
+                ## if this is not assigned yet, assign
+                ## if host specific assignment is already done, while processing "All" environment related spec,
+                ##   retain the values specified in environment specific section
+                if myValue != None:
+                    if myValue == 'False' or myValue == False:
+                        saveLogsOnWebServer = False
+                    if myValue == 'True' or myValue == True:
+                        saveLogsOnWebServer = True
 
         elif myKey == 'WebServerURL':
             if webServerURL == None:
@@ -623,7 +631,11 @@ logLinesToPost['componentName'] = componentName
 logLinesToPost['platformName'] = platformName
 logLinesToPost['siteName'] = siteName
 logLinesToPost['environment'] = environment
-logLinesToPost['saveLogsOnWebServer'] = saveLogsOnWebServer
+
+### if log lines are to be saved on web server, send that parameter as part of posting
+### this allows saving controlld by client itself
+if saveLogsOnWebServer == True:
+    logLinesToPost['saveLogsOnWebServer'] = "yes"
 
 headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
 

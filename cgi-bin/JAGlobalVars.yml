@@ -15,11 +15,18 @@ JAUpload:
     # default datamask file if none passed
     DefaultDatamaskFileName: JADataMaskSpec.yaml 
 JASaveStats:
+    ### log events to log file
     LogFileName: JASaveStats.log
+    ### save stats on local web server for all hosts, set this to False to disable saving.
+    SaveStatsOnWebServer: True
+    ### directory where stats are to be stored on web server
     Dir: /var/www/JaaduAudit/Stats
     ## URL where pushgateway is present, to post the stats
     PushGatewayURL: http://localhost:9091
+    ### URL where loki is present, to post log lines
     LokiGatewayURL: http://localhost:9081
-# 
+#
+# used while posting data to pushgateway, loki
 JADisableWarnings: True
+## do not verify certificate of pushgateway or loki server
 JAVerifyCertificate: False
