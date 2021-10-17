@@ -41,10 +41,6 @@
 #     PatternVariablePrefixGroup: While matching the variable prefix pattern, if the group to be used is not the first one,
 #                          use this to specify group number (see example below for more info)
 # 
-#     NOTE - for all patterns above, once a search matches, no further search done to match other patterns. 
-#           search for PatternLog is done so that log line collection can still be done after pattern match.
-#           In order to optimize the processing time, it is recommended to put frequently occuring patterns
-#            at the beginning of a log file. Less frequently occuring patterns at the end of the list.
 #
 #     PatternLog: send this log line to web server with jobName=loki so that log line is posted to loki gateway
 #                 all log lines of a log file are combined and sent to web server
@@ -52,6 +48,16 @@
 #                 label name is set to hostname from where log is collected
 #                 Unlike all other pattern search, after matching PatternLog, search will continue so that
 #                   pattern occurrence will be counted for a log line that is collected
+#
+#     NOTE - for all patterns above for a given service, 
+#               once a search matches, no further search done to match other patterns
+#               search for PatternLog continues so that log line collection can still be done after pattern match
+#                        within the same service defintion.
+#            Across all services, 
+#                If log pattern match or stats pattern match for any given service, search stops
+#           If search for pattern stats and log are same need to put that under same service name
+#           In order to optimize the processing time, it is recommended to put frequently occuring patterns
+#            at the beginning of a log file. Less frequently occuring patterns at the end of the list.
 #
 # NOTE - make no space after pattern strings
 #  Escape regular expression special characters in pattern spec like \/

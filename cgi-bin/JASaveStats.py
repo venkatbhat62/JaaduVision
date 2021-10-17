@@ -39,7 +39,7 @@ import datetime
 import yaml
 import requests
 import JAGlobalLib
-
+from collections import defaultdict
 
 def JASaveStatsExit(reason):
     if re.match('^ERROR ', reason):
@@ -92,6 +92,7 @@ with open('JAGlobalVars.yml','r') as file:
 
 contentLength = int(os.environ["CONTENT_LENGTH"])
 reqBody = sys.stdin.read(contentLength)
+postedData = defaultdict(dict)
 postedData = json.loads(reqBody)
 print('Content-Type: text/html; charset=utf-8\n')
 
@@ -124,9 +125,11 @@ else:
 if JAPushGatewayURL == None or JALokiGatewayURL == None:
     JASaveStatsError('config error - need valid JAPushGatewayURL and JALokiGatewayURL')
 
-if postedData.has_key('saveLogOnWebServer') == True:
+if 'saveLogOnWebServer' in postedData:
     saveLogsOnWebServer = postedData['saveLogsOnWebServer']
-
+else:
+    saveLogsOnWebServer = 'no'
+    
 ### for stats, use web server level setting to save the stats on web server
 ### for logs, use the value posted from client to save the logs on web server
 saveOnWebServer = 0

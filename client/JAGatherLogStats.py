@@ -794,7 +794,7 @@ def JAPostDataToWebServer():
             logStats[key][patternIndexForPatternAverage*2] = 0
             logStats[key][patternIndexForPatternAverage*2+1] = []
 
-    tempLogStatsToPost['logEventPriorityLevel'] = "logEventPriorityLevel={0}".format(logEventPriorityLevel)
+    tempLogStatsToPost['logEventPriorityLevel'] = 'timeStamp={0},logEventPriorityLevel={1}'.format(timeStamp, logEventPriorityLevel)
     
     if postData == True :
         data = json.dumps(tempLogStatsToPost)
@@ -1077,6 +1077,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                 # search for pass, fail, count, stats patterns of each service associated with this log file
                 for key, values in JAStatsSpec[logFileName].items():
                     eventPriority = int(values[patternIndexForPriority])
+
+                    patternMatched = patternLogMatched = False
                     
                     if debugLevel > 3:
                         print('DEBUG-4 JAProcessLogFile() searching for patterns:{0}|{1}|{2}|{3}|{4}|{5}\n'.format(
@@ -1119,8 +1121,6 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 else:
                                     variablePrefix = myResults.group(1)
 
-                        patternMatched = False
-                        patternLogMatched = False
                         ### values is indexed from 0 to patternIndexForPatternSum / patternIndexForPatternAverage / patternIndexForPatternDelta
                         ### logStats[key] is indexed with twice the value
                         while index < len(values):
@@ -1166,6 +1166,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             print("DEBUG-4 JAProcessLogFile() processing line with PatternDelta, PatternSum or PatternAverage, search result:{0}\n Previous values:{1}".format(myResults, tempStats))
                                         tempKey = ''
                                         appendCurrentValueToList = False
+                                        indexToCurrentKeyInTempStats = 0
                                         for tempResult in tempResults:
                                                 
                                             if numStats % 2 == 0:
@@ -1179,8 +1180,13 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                 ### if current key is NOT present in list, append it
                                                 # if len(tempStats) <= numStats :
                                                 try:
-                                                    if tempStats.index( tempResult) >= 0 :
-                                                        appendCurrentValueToList = False                                                        
+                                                    tempIndexToCurrentKeyInTempStats = tempStats.index( tempResult)
+                                                    if tempIndexToCurrentKeyInTempStats >= 0 :
+                                                        appendCurrentValueToList = False
+                                                        ### in order to store key/value pair associated with variable prefefix
+                                                        ###    need to find the index at which that variablePrefix_key is present
+                                                        ##     in the list and use that to aggregate the value
+                                                        indexToCurrentKeyInTempStats = tempIndexToCurrentKeyInTempStats                                                        
                                                 except ValueError:
                                                     ### value is NOT present in tempStats list
                                                     appendCurrentValueToList = True
@@ -1208,7 +1214,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                     tempStats.append(float(tempResult))
                                                 else:
                                                     ### add to existing value
-                                                    tempStats[numStats] += float(tempResult)
+                                                    tempStats[indexToCurrentKeyInTempStats+1] += float(tempResult)
 
                                             numStats += 1
                                         ### increment sample count
@@ -1230,9 +1236,16 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                     ### get out of the loop
                                     patternMatched = True
                             
-                            ### increment index so that search continues with next pattern
-                            index += 1
-
+                            ## if both log pattern and stats pattern matched, get out of the while loop
+                            if patternMatched == True and patternLogMatched == True:
+                                break
+                            else:
+                                ### increment index so that search continues with next pattern
+                                index += 1         
+                    ## if log pattern or stats pattern matched, get out of the for loop
+                    ## once a given line matched to a log or stats pattern, search for matching pattern stops
+                    if patternMatched == True or patternLogMatched == True:
+                        break
 
 
     return True
