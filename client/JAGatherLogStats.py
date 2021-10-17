@@ -553,7 +553,7 @@ try:
             ### for sum, data is posted if sample count is non=zero, no pattern present flag used
             logStats[key][patternIndexForPatternSum*2+1] = []
             ### data to be posted may have multiple values, initialize it to be a list
-            logStats[key][patternIndexForPatternAverage*2] = 0
+            logStats[key][patternIndexForPatternAverage*2] = []
             ### for average, data is posted if sample count is non=zero, no pattern present flag used
             logStats[key][patternIndexForPatternAverage*2+1] = []
             logStats[key][patternIndexForPatternDelta*2] = 0
@@ -769,29 +769,36 @@ def JAPostDataToWebServer():
             logStats[key][patternIndexForPatternDelta*2] = 0
             logStats[key][patternIndexForPatternDelta*2+1] = []
 
-        elif values[patternIndexForPatternAverage*2] > 0 :
+        ### for average type of metrics, need to use sample count of individual key so that for metrics with prefixGroup, 
+        ###    average computation uses corresponding sample count
+        ### sampleCountList is of type [2,2,2,2,5,5,5,5] where 
+        ###      first 2 keys/values, the sample count is 2
+        ###      next 2 keys/values, the sample count is 5
+        ### relative position of these sample count map to same position in values[patternIndexForPatternAverage*2+1]
+        sampleCountList = list( values[patternIndexForPatternAverage*2])               
+        if len(sampleCountList) > 0 :
             postData = True
             ### sample count is non-zero, stats has value to post
             tempResults = list(values[patternIndexForPatternAverage*2+1])
 
             if debugLevel > 3:
-                print("DEBUG-4 JAPostDataToWebServer() PatternAverage:{0}".format(tempResults))
+                print("DEBUG-4 JAPostDataToWebServer() PatternAverage:{0}, sampleCountList:{1}".format(tempResults, sampleCountList))
 
             ### tempResults is in the form: [ name1, value1, name, value2,....]
-            ### divide the valueX with sample count to get average value
+            ### divide the valueX with sample count in sampleCountList to get average value
             index = 0
             paramName = ''
             while index < len(tempResults):
                 if index % 2 > 0:
                     ### current index has value
-                    tempResultAverage = float(tempResults[index]) / float(values[patternIndexForPatternAverage*2])
+                    tempResultAverage = float(tempResults[index]) / float(sampleCountList[index])
                     tempLogStatsToPost[key] += ",{0}_{1}_average={2:.2f}".format( key, paramName, tempResultAverage)
                 else:
                     ### current index has param name
                     paramName = tempResults[index]
                 index += 1
-            ### reset count and param list
-            logStats[key][patternIndexForPatternAverage*2] = 0
+            ### empty both lists
+            logStats[key][patternIndexForPatternAverage*2] = []
             logStats[key][patternIndexForPatternAverage*2+1] = []
 
     tempLogStatsToPost['logEventPriorityLevel'] = 'timeStamp={0},logEventPriorityLevel={1}'.format(timeStamp, logEventPriorityLevel)
@@ -1159,6 +1166,10 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         ### make a copy of current list values
                                         tempStats = list(logStats[key][logStatsKeyValueIndexOdd])
 
+                                        ### make a copy of sampleCountList values for average type metrics
+                                        if index == patternIndexForPatternAverage :
+                                            sampleCountList = list(logStats[key][logStatsKeyValueIndexEven])
+
                                         ### myResults is of the form = [ (key1, value1, key2, value2....)]
                                         tempResults = myResults.pop(0)
 
@@ -1192,6 +1203,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                     appendCurrentValueToList = True
                                                     ### current tempResult is not yet in the list, append it
                                                     tempStats.append(tempResult)
+                                                    if index == patternIndexForPatternAverage :
+                                                        sampleCountList.append(1)
 
                                                 ### save the key name, this is used to make a combined key later <serviceName>_<key>
                                                 tempKey = tempResult
@@ -1212,15 +1225,31 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                 if appendCurrentValueToList == True:
                                                     ### current tempResult is not yet in the list, append it
                                                     tempStats.append(float(tempResult))
+                                                    ### if working average type metrics, set sample count in the list corresponding to 
+                                                    ###     current key in key/value list
+                                                    if index == patternIndexForPatternAverage :
+                                                        sampleCountList.append(1)
+
                                                 else:
                                                     ### add to existing value
                                                     tempStats[indexToCurrentKeyInTempStats+1] += float(tempResult)
 
+                                                    ### if working average type metrics, increment sample count in the list corresponding to 
+                                                    ###     current key in key/value list
+                                                    if index == patternIndexForPatternAverage :
+                                                        sampleCountList[indexToCurrentKeyInTempStats+1] += 1
                                             numStats += 1
-                                        ### increment sample count
-                                        logStats[key][logStatsKeyValueIndexEven] += 1
+
+                                        ### for average type, sample count is incremented based for ecach prefix variable key values   
+                                        if index == patternIndexForPatternAverage :
+                                            logStats[key][logStatsKeyValueIndexEven] = list(sampleCountList)
+                                        else:
+                                            ### increment sample count
+                                            logStats[key][logStatsKeyValueIndexEven] += 1
+
                                         ### store tempStats as list
                                         logStats[key][logStatsKeyValueIndexOdd] = list(tempStats)
+
                                         if debugLevel > 3:
                                             print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, numSamples:{2}, stats: {3}'.format(
                                                 key, values[index], logStats[key][logStatsKeyValueIndexEven], logStats[key][logStatsKeyValueIndexOdd] ))
