@@ -124,7 +124,7 @@ else:
 if JAPushGatewayURL == None or JALokiGatewayURL == None:
     JASaveStatsError('config error - need valid JAPushGatewayURL and JALokiGatewayURL')
 
-if postedData['saveLogsOnWebServer'] != None:
+if postedData.has_key('saveLogOnWebServer') == True:
     saveLogsOnWebServer = postedData['saveLogsOnWebServer']
 
 ### for stats, use web server level setting to save the stats on web server

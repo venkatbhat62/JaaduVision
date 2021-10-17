@@ -1125,7 +1125,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         ### logStats[key] is indexed with twice the value
                         while index < len(values):
 
-                            if index == patternIndexForPriority or index == patternIndexForVariablePrefix or values[index] == None:
+                            if index == patternIndexForPriority or index == patternIndexForVariablePrefix or index == patternIndexForVariablePrefixGroup or values[index] == None:
                                 index += 1
                                 continue
 

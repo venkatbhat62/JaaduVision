@@ -84,7 +84,7 @@ Environment:
    Dev:
      HostName: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T)
      ### save logs on web server (local cache, in addition to sending to loki)
-     SaveLogsOnWebServer: False
+     SaveLogsOnWebServer: True
    Test:
      HostName: (...)(t)(...)([0-9][0-9])
      ### save logs on web server (local cache, in addition to sending to loki)
