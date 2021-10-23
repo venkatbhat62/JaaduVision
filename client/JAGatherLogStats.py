@@ -59,6 +59,13 @@ patternIndexForPatternLog = 9
 ## it is used to initialize list later.
 maxPatternIndex = 10
 
+### index used while processing Execute command spec
+indexForCommand = 0
+indexForIntervalInSec = 1
+indexForLastExecutionTime = 2
+indexForPriority = 3
+maxCommandIndex = 4
+
 try:
     from subprocess import CompletedProcess
 except ImportError:
@@ -231,6 +238,9 @@ if configFile == None:
 
 # stats spec with service name as key
 JAStatsSpec = defaultdict(dict)
+
+## execute command specification
+JAExecuteCommandSpec = defaultdict(dict)
 
 # get current hostname
 thisHostName = platform.node()
@@ -570,7 +580,29 @@ try:
             ### initialize logLines[key] list to empty list
             logLines[key] = []
 
-                             
+        ### process execute command section
+        ### Execute:
+        ###    Health:
+        ###    #execute below command to gather application stats, output to log file
+        ###    Command: ps -ef |grep JATest.py |grep -v grep |wc -l > Health.log
+        ###    IntervalInSec: 60
+        ###    Priority: 2
+        for key, value in JAStats['Execute'].items():
+
+            if value.get('Command') != None:
+                ## store the command as list so that it can be passed to run function later
+                tempCommand = str(value.get('Command')).strip()
+                JAExecuteCommandSpec[key][indexForCommand] = tempCommand.split()
+
+            if value.get('IntervalInSec') != None:
+                JAExecuteCommandSpec[key][indexForIntervalInSec] = int(value.get('IntervalInSec'))
+                JAExecuteCommandSpec[key][indexForLastExecutionTime] = None            
+
+            if value.get('Priority') != None:
+                JAExecuteCommandSpec[key][indexForPriority] = str(value.get('Priority')).strip()
+            else:
+                JAExecuteCommandSpec[key][indexForPriority] = 3
+
 except OSError as err:
     JAStatsExit('ERROR - Can not open configFile:|' +
                 configFile + '|' + "OS error: {0}".format(err) + '\n')
@@ -960,6 +992,42 @@ def JAReadFileInfo():
         print(errorMsg)
         JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
 
+"""
+Execute command if elapsed time is greater than IntervalInSec specified for that command
+  and current CPU usage is lower than max allowed for command's priority
+
+"""
+def JAProcessCommands( logFileProcessingStartTime, debugLevel):
+    global averageCPUUsage, thisHostName, logEventPriorityLevel, maxProcessingTimeForAllEvents
+    
+    for key in JAExecuteCommandSpec.keys():
+        # if elapsed time is greater than max time for all events, SKIP processing log file for events
+        elapsedTimeInSec = time.time() - logFileProcessingStartTime
+        if elapsedTimeInSec > maxProcessingTimeForAllEvents:
+            gatherLogStatsEnabled =  False
+        else:
+            gatherLogStatsEnabled = True
+
+        values = JAExecuteCommandSpec[key]
+        if gatherLogStatsEnabled == True:
+            eventPriority = int(values[indexForPriority])
+
+            if averageCPUUsage > maxCPUUsageForEvents[eventPriority]:
+                if logEventPriorityLevel == maxCPUUsageLevels:
+                    ### first time log file processing skipped, store current event priority
+                    logEventPriorityLevel = eventPriority
+                elif logEventPriorityLevel > eventPriority :
+                    ## if previous event priority skipped is higher than current priority,
+                    ##   save new priority
+                    logEventPriorityLevel = eventPriority
+            else:
+                ### proceed with command execution if current CPU usage is lower than max CPU usage allowed
+
+                result = subprocess.run( values[indexForCommand],
+                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                returnStatus = result.stdout.decode('utf-8').split('\n')
+                print('INFO JAProcessCommands() result of executing the command:{0}\n{1}'.format(
+                    values[indexForCommand], returnStatus))
 
 def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, gatherLogStatsEnabled, debugLevel):
     global averageCPUUsage, thisHostName, logEventPriorityLevel
@@ -1324,6 +1392,9 @@ JAGatherLogStatsEnabled = True
 # take current time, it will be used to find files modified since this time for next round
 logFileProcessingStartTime = time.time()
 
+#### execute commands so that any log file created by these are also available to open
+JAProcessCommands( logFileProcessingStartTime, debugLevel)
+
 # open all log files, position the file pointer to the end of the file
 # this is to avoid counting transactions outside one minute window and showing higher tps than actual
 for logFileName in sorted(JAStatsSpec.keys()):
@@ -1354,6 +1425,10 @@ while loopStartTimeInSec <= statsEndTimeInSec:
     if averageCPUUsage > maxCPUUsageForEvents[0]:
         JAGatherLogStatsEnabled = False
         logEventPriorityLevel = 0
+
+    #### execute commands so that any log file created by these are also available to open
+    if JAGatherLogStatsEnabled == True:
+        JAProcessCommands( logFileProcessingStartTime, debugLevel)
 
     # gather log stats for all logs
     for logFileName in sorted(JAStatsSpec.keys()):

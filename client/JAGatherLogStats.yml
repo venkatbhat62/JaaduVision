@@ -83,6 +83,13 @@
 #      +     1 or more. Same as {1,}
 #      ?     0 or 1. Same as {,1}
 #  For more info on regular expression, refer https://docs.python.org/3/library/re.html
+#
+#  below section is to execute command on target host, collect stats, log that to log file
+#    so that log file processing section can gather application stats and post to web server
+#  Execute
+#    <CommandSectionName> unique name to specify command information
+#    <IntervalInSec> - how often to execute this command
+#                     like 60 for every min, 600 for every 10 min
 ---
 GatherLogStatsLogFile: JAGatherLogStats.log
 GatherLogStatsCacheFile: JAGatherLogStats.cache
@@ -140,6 +147,17 @@ Environment:
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
      ### debug level 0, no debug, 1 to 4, 4 being max details
      DebugLevel: 1
+
+Execute:
+    Health:
+      ### execute below command to gather application stats, output to log file
+      Command: tasklist | select-string JATest.py > Health.log
+      IntervalInSec: 60
+      Priority: 2
+    Uptime:
+      Command: echo "systeminfo | select-string 'Boot Time'" >> Health.log ; systeminfo | select-string "Boot Time" >> Health.log 
+      IntervalInSec: 600
+      Priority: 3
 
 LogFile:
     SyslogError:
