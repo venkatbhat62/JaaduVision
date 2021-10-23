@@ -412,9 +412,10 @@ else:
     result =  subprocess.run(['find', '-name', tempFileNameToDelete, '-mtime', '+7'],stdout=subprocess.PIPE,stderr=subprocess.PIPE) 
     logFilesToDelete = result.stdout.decode('utf-8').split('\n')
 
-for deleteFileName in logFilesToDelete:
-    if deleteFileName != '':
-         os.remove( deleteFileName)
+if logFilesToDelete != None:
+    for deleteFileName in logFilesToDelete:
+        if deleteFileName != '':
+            os.remove( deleteFileName)
 
 
 returnResult = ''
