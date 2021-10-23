@@ -245,13 +245,15 @@ def JAGatherEnvironmentSpecs( key, values ):
 if sys.version_info >= (3,3):
     import importlib
     try:
-        importlib.util.find_spec("yaml")
+        from importlib import util
+        util.find_spec("yaml")
         yamlModulePresent = True
     except ImportError:
         yamlModulePresent = False
 
     try:
-        if importlib.util.find_spec("psutil") != None:
+        from importlib import util
+        if util.find_spec("psutil") != None:
             psutilModulePresent = True
         else:
             psutilModulePresent = False
