@@ -123,7 +123,7 @@ if args.l:
     JAOSStatsLogFileName = args.l
 
 if debugLevel > 0 :
-    print('DEBUG-1 Parameters passed configFile:{0}, webServerURL:{1}, dataPostIntervalInSec:{2}, debugLevel:{3}, componentName:{4}, plaformName:{5}, siteName: {6}, environment: {7}\n'.format(configFile, webServerURL, dataPostIntervalInSec, dataCollectDurationInSec, debugLevel, componentName, platformName, siteName, environment))
+    print('DEBUG-1 Parameters passed configFile:{0}, webServerURL:{1}, dataPostIntervalInSec:{2}, debugLevel:{3}, componentName:{4}, plaformName:{5}, siteName: {6}, environment: {7}\n'.format(configFile, webServerURL, dataPostIntervalInSec, debugLevel, componentName, platformName, siteName, environment))
 
 def JASignalHandler(sig, frame):
     JAOSStatsExit("Control-C pressed")
@@ -269,9 +269,12 @@ try:
 
         ### use limited yaml reader when yaml is not available
         if yamlModulePresent == True:
-            import yaml
-            JAOSStats = yaml.load(file, Loader=yaml.FullLoader)
-            file.close()
+            try:
+                import yaml
+                JAOSStats = yaml.load(file, Loader=yaml.FullLoader)
+                file.close()
+            except:
+                JAOSStats = JAGlobalLib.JAYamlLoad( configFile )
         else:
             JAOSStats = JAGlobalLib.JAYamlLoad( configFile )
         if debugLevel > 1 :
