@@ -406,9 +406,12 @@ try:
 
         # use limited yaml reader when yaml is not available
         if yamlModulePresent == True:
-            import yaml
-            JAStats = yaml.load(file, Loader=yaml.FullLoader)
-            file.close()
+            try:
+                import yaml
+                JAStats = yaml.load(file, Loader=yaml.FullLoader)
+                file.close()
+            except:
+                JAStats = JAGlobalLib.JAYamlLoad(configFile)
         else:
             JAStats = JAGlobalLib.JAYamlLoad(configFile)
 
