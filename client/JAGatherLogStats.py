@@ -765,8 +765,12 @@ def JAPostDataToWebServer():
             while index < len(tempResults):
                 if index % 2 > 0:
                     ### current index has value
-                    ### divide the valueX with sampling interval to get tps value
-                    tempResultSum = float(tempResults[index]) / floatDataPostIntervalInSec
+                    if re.search('[a-zA-Z]', tempResults[index]) != None:
+                        ### not a numeric value, store it as is
+                        tempResultSum = tempResults[index]
+                    else:
+                        ### divide the valueX with sampling interval to get tps value
+                        tempResultSum = float(tempResults[index]) / floatDataPostIntervalInSec
                     tempLogStatsToPost[key] += ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultSum)
                 else:
                     ### current index has param name
@@ -792,8 +796,12 @@ def JAPostDataToWebServer():
             while index < len(tempResults):
                 if index % 2 > 0:
                     ### current index has value
-                    ### divide the valueX with sampling interval to get tps value
-                    tempResultDelta = float(tempResults[index]) / floatDataPostIntervalInSec
+                    if re.search('[a-zA-Z]', tempResults[index]) != None:
+                        ### not a numeric value, store it as is
+                        tempResultDelta = tempResults[index]
+                    else:
+                        ### divide the valueX with sampling interval to get tps value
+                        tempResultDelta = float(tempResults[index]) / floatDataPostIntervalInSec
                     tempLogStatsToPost[key] += ",{0}_{1}_delta={2:.2f}".format( key, paramName, tempResultDelta)
 
                 else:
@@ -826,7 +834,12 @@ def JAPostDataToWebServer():
             while index < len(tempResults):
                 if index % 2 > 0:
                     ### current index has value
-                    tempResultAverage = float(tempResults[index]) / float(sampleCountList[index])
+                    if re.search('[a-zA-Z]', tempResults[index]) != None:
+                        ### not a numeric value, store it as is
+                        tempResultAverage = tempResults[index]
+                    else:
+                        ### numeric value, compute average
+                        tempResultAverage = float(tempResults[index]) / float(sampleCountList[index])
                     tempLogStatsToPost[key] += ",{0}_{1}_average={2:.2f}".format( key, paramName, tempResultAverage)
                 else:
                     ### current index has param name
