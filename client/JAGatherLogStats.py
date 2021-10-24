@@ -768,10 +768,11 @@ def JAPostDataToWebServer():
                     if tempResults[index] == '' or re.search('[a-zA-Z]', tempResults[index]) != None:
                         ### not a numeric value, store it as is
                         tempResultSum = tempResults[index]
+                        tempLogStatsToPost[key] += ",{0}_{1}_sum={2}".format( key, paramName, tempResultSum)
                     else:
                         ### divide the valueX with sampling interval to get tps value
                         tempResultSum = float(tempResults[index]) / floatDataPostIntervalInSec
-                    tempLogStatsToPost[key] += ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultSum)
+                        tempLogStatsToPost[key] += ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultSum)
                 else:
                     ### current index has param name
                     paramName = tempResults[index]
@@ -799,10 +800,11 @@ def JAPostDataToWebServer():
                     if tempResults[index] == '' or re.search('[a-zA-Z]', tempResults[index]) != None:
                         ### not a numeric value, store it as is
                         tempResultDelta = tempResults[index]
+                        tempLogStatsToPost[key] += ",{0}_{1}_delta={2}".format( key, paramName, tempResultDelta)
                     else:
                         ### divide the valueX with sampling interval to get tps value
                         tempResultDelta = float(tempResults[index]) / floatDataPostIntervalInSec
-                    tempLogStatsToPost[key] += ",{0}_{1}_delta={2:.2f}".format( key, paramName, tempResultDelta)
+                        tempLogStatsToPost[key] += ",{0}_{1}_delta={2:.2f}".format( key, paramName, tempResultDelta)
 
                 else:
                     ### current index has param name
@@ -837,10 +839,11 @@ def JAPostDataToWebServer():
                     if tempResults[index] == '' or re.search('[a-zA-Z]', tempResults[index]) != None:
                         ### not a numeric value, store it as is
                         tempResultAverage = tempResults[index]
+                        tempLogStatsToPost[key] += ",{0}_{1}_average={2}".format( key, paramName, tempResultAverage)
                     else:
                         ### numeric value, compute average
                         tempResultAverage = float(tempResults[index]) / float(sampleCountList[index])
-                    tempLogStatsToPost[key] += ",{0}_{1}_average={2:.2f}".format( key, paramName, tempResultAverage)
+                        tempLogStatsToPost[key] += ",{0}_{1}_average={2:.2f}".format( key, paramName, tempResultAverage)
                 else:
                     ### current index has param name
                     paramName = tempResults[index]
