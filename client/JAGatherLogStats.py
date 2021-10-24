@@ -767,14 +767,12 @@ def JAPostDataToWebServer():
                 if debugLevel > 3:
                     print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                 if index % 2 > 0:
-                    ### current index has value
-                    if (tempResult == '') or (re.search(r'[a-zA-Z]', tempResult) != None):
-                        ### not a numeric value, store it as is
-                        tempLogStatsToPost[key] += ",{0}_{1}_sum={2}".format( key, paramName, tempResult)
-                    else:
+                    try:
                         ### divide the valueX with sampling interval to get tps value
                         tempResultSum = float(tempResult) / floatDataPostIntervalInSec
-                        tempLogStatsToPost[key] += ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultSum)
+                        tempLogStatsToPost[key] += ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultSum)                        
+                    except:
+                        tempLogStatsToPost[key] += ",{0}_{1}_sum={2}".format( key, paramName, tempResult)
                 else:
                     ### current index has param name
                     paramName = tempResult
@@ -802,13 +800,13 @@ def JAPostDataToWebServer():
                     print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                 if index % 2 > 0:
                     ### current index has value
-                    if tempResult == '' or re.search(r'[a-zA-Z]', tempResult) != None:
-                        ### not a numeric value, store it as is
-                        tempLogStatsToPost[key] += ",{0}_{1}_delta={2}".format( key, paramName, tempResult)
-                    else:
+                    try:
                         ### divide the valueX with sampling interval to get tps value
                         tempResultDelta = float(tempResult) / floatDataPostIntervalInSec
                         tempLogStatsToPost[key] += ",{0}_{1}_delta={2:.2f}".format( key, paramName, tempResultDelta)
+                    except:
+                        ### not a numeric value, store it as is
+                        tempLogStatsToPost[key] += ",{0}_{1}_delta={2}".format( key, paramName, tempResult)
 
                 else:
                     ### current index has param name
@@ -843,13 +841,14 @@ def JAPostDataToWebServer():
                     print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                 if index % 2 > 0:
                     ### current index has value
-                    if tempResult == '' or re.search(r'[a-zA-Z]', tempResult) != None:
-                        ### not a numeric value, store it as is
-                        tempLogStatsToPost[key] += ",{0}_{1}_average={2}".format( key, paramName, tempResult)
-                    else:
+                    try:
                         ### numeric value, compute average
                         tempResultAverage = float(tempResult) / float(sampleCountList[index])
                         tempLogStatsToPost[key] += ",{0}_{1}_average={2:.2f}".format( key, paramName, tempResultAverage)
+                    except:
+                        ### not a numeric value, store it as is
+                        tempLogStatsToPost[key] += ",{0}_{1}_average={2}".format( key, paramName, tempResult)
+
                 else:
                     ### current index has param name
                     paramName = tempResult
@@ -1318,12 +1317,11 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                 tempKey = tempResult
                                             else:
                                                 ### find out the nature of the value, number or string
-                                                if tempResult == '' or re.search(r'[a-zA-Z]', tempResult) != None:
-                                                    ### vlaue is string type
-                                                    tempResultIsNumber = False
-                                                else:
-                                                    ## value is number type
+                                                try:
+                                                    float(tempResult)
                                                     tempResultIsNumber = True
+                                                except:
+                                                    tempResultIsNumber = False
 
                                                 ## value portion of key/ value pair
                                                 ## if index is patternIndexForPatternDelta, tempResult is cumulative value, need to subtract previous sample
