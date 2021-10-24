@@ -1005,13 +1005,25 @@ def JAProcessCommands( logFileProcessingStartTime, debugLevel):
     
     for key in JAExecuteCommandSpec.keys():
         # if elapsed time is greater than max time for all events, SKIP processing log file for events
-        elapsedTimeInSec = time.time() - logFileProcessingStartTime
+        tempCurrentTime = time.time()
+        values = JAExecuteCommandSpec[key]
+
+        ### if IntervalInSec is not yet elapsed, SKIP executing the command
+        ### added 5 seconds to cater for possible variation in execution of tasks
+        if values[indexForLastExecutionTime] != None :
+            elapsedTimeInSec = tempCurrentTime - values[indexForLastExecutionTime]+5
+            if elapsedTimeInSec < values[indexForIntervalInSec] :
+                if debugLevel > 0 :
+                    print( "DEBUG-1 JAProcessCommands() intervalInSec not passed yet, SKIPed executing command:|{0}|".format(values[indexForCommand]))    
+                continue
+
+        elapsedTimeInSec = tempCurrentTime - logFileProcessingStartTime
         if elapsedTimeInSec > maxProcessingTimeForAllEvents:
             gatherLogStatsEnabled =  False
         else:
             gatherLogStatsEnabled = True
 
-        values = JAExecuteCommandSpec[key]
+        
         if gatherLogStatsEnabled == True:
             eventPriority = int(values[indexForPriority])
 
@@ -1024,6 +1036,9 @@ def JAProcessCommands( logFileProcessingStartTime, debugLevel):
                     ##   save new priority
                     logEventPriorityLevel = eventPriority
             else:
+                ### store current time so that it elapsed time can be computed next round
+                values[indexForLastExecutionTime] = tempCurrentTime
+
                 ### proceed with command execution if current CPU usage is lower than max CPU usage allowed
 
                 result = subprocess.run( values[indexForCommand],
