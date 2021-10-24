@@ -765,7 +765,7 @@ def JAPostDataToWebServer():
             while index < len(tempResults):
                 if index % 2 > 0:
                     ### current index has value
-                    if re.search('[a-zA-Z]', tempResults[index]) != None:
+                    if tempResults[index] == '' or re.search('[a-zA-Z]', tempResults[index]) != None:
                         ### not a numeric value, store it as is
                         tempResultSum = tempResults[index]
                     else:
@@ -796,7 +796,7 @@ def JAPostDataToWebServer():
             while index < len(tempResults):
                 if index % 2 > 0:
                     ### current index has value
-                    if re.search('[a-zA-Z]', tempResults[index]) != None:
+                    if tempResults[index] == '' or re.search('[a-zA-Z]', tempResults[index]) != None:
                         ### not a numeric value, store it as is
                         tempResultDelta = tempResults[index]
                     else:
@@ -834,7 +834,7 @@ def JAPostDataToWebServer():
             while index < len(tempResults):
                 if index % 2 > 0:
                     ### current index has value
-                    if re.search('[a-zA-Z]', tempResults[index]) != None:
+                    if tempResults[index] == '' or re.search('[a-zA-Z]', tempResults[index]) != None:
                         ### not a numeric value, store it as is
                         tempResultAverage = tempResults[index]
                     else:
