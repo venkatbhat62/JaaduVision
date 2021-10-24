@@ -1260,7 +1260,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         tempResults = myResults.pop(0)
 
                                         if debugLevel > 3:
-                                            print("DEBUG-4 JAProcessLogFile() processing line with PatternDelta, PatternSum or PatternAverage, search result:{0}\n Previous values:{1}".format(myResults, tempStats))
+                                            print("DEBUG-4 JAProcessLogFile() processing line with PatternDelta, PatternSum or PatternAverage, search result:{0}\n Previous values:{1}".format(tempResults, tempStats))
                                         tempKey = ''
                                         appendCurrentValueToList = False
                                         indexToCurrentKeyInTempStats = 0
@@ -1295,7 +1295,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                 ### save the key name, this is used to make a combined key later <serviceName>_<key>
                                                 tempKey = tempResult
                                             else:
-                                                ### find out the natur of the value, number or string
+                                                ### find out the nature of the value, number or string
                                                 if re.search('[a-zA-Z]', tempResult) == True:
                                                     ### vlaue is string type
                                                     tempResultIsNumber = False
@@ -1338,7 +1338,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                         ### add to existing value
                                                         tempStats[indexToCurrentKeyInTempStats+1] += float(tempResult)
                                                     ### if string type, leave it as is
-                                                    
+
                                                     ### if working average type metrics, increment sample count in the list corresponding to 
                                                     ###     current key in key/value list
                                                     if index == patternIndexForPatternAverage :
