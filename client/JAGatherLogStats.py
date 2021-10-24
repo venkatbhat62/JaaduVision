@@ -764,6 +764,8 @@ def JAPostDataToWebServer():
             paramName = ''
             while index < len(tempResults):
                 if index % 2 > 0:
+                    if debugLevel > 3:
+                        print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResults[index]))
                     ### current index has value
                     if tempResults[index] == '' or re.search('[a-zA-Z]', tempResults[index]) != None:
                         ### not a numeric value, store it as is
@@ -796,6 +798,8 @@ def JAPostDataToWebServer():
             paramName = ''
             while index < len(tempResults):
                 if index % 2 > 0:
+                    if debugLevel > 3:
+                        print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResults[index]))
                     ### current index has value
                     if tempResults[index] == '' or re.search('[a-zA-Z]', tempResults[index]) != None:
                         ### not a numeric value, store it as is
@@ -835,6 +839,8 @@ def JAPostDataToWebServer():
             paramName = ''
             while index < len(tempResults):
                 if index % 2 > 0:
+                    if debugLevel > 3:
+                        print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResults[index]))
                     ### current index has value
                     if tempResults[index] == '' or re.search('[a-zA-Z]', tempResults[index]) != None:
                         ### not a numeric value, store it as is
