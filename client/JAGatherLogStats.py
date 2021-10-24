@@ -1296,7 +1296,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                 tempKey = tempResult
                                             else:
                                                 ### find out the nature of the value, number or string
-                                                if re.search('[a-zA-Z]', tempResult) == True:
+                                                if tempResult == '' or re.search('[a-zA-Z]', tempResult) == True:
                                                     ### vlaue is string type
                                                     tempResultIsNumber = False
                                                 else:
