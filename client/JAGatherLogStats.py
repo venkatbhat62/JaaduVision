@@ -763,21 +763,21 @@ def JAPostDataToWebServer():
             index = 0
             paramName = ''
             while index < len(tempResults):
+                tempResult = tempResults[index]
                 if index % 2 > 0:
                     if debugLevel > 3:
-                        print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResults[index]))
+                        print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                     ### current index has value
-                    if tempResults[index] == '' or re.search('[a-zA-Z]', tempResults[index]) != None:
+                    if tempResult == '' or re.search('[a-zA-Z]', tempResult) != None:
                         ### not a numeric value, store it as is
-                        tempResultSum = tempResults[index]
-                        tempLogStatsToPost[key] += ",{0}_{1}_sum={2}".format( key, paramName, tempResultSum)
+                        tempLogStatsToPost[key] += ",{0}_{1}_sum={2}".format( key, paramName, tempResult)
                     else:
                         ### divide the valueX with sampling interval to get tps value
-                        tempResultSum = float(tempResults[index]) / floatDataPostIntervalInSec
+                        tempResultSum = float(tempResult) / floatDataPostIntervalInSec
                         tempLogStatsToPost[key] += ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultSum)
                 else:
                     ### current index has param name
-                    paramName = tempResults[index]
+                    paramName = tempResult
                 index += 1
             ### reset count and param list
             logStats[key][patternIndexForPatternSum*2] = 0
@@ -797,22 +797,22 @@ def JAPostDataToWebServer():
             index = 0
             paramName = ''
             while index < len(tempResults):
+                tempResult = tempResults[index]
                 if index % 2 > 0:
                     if debugLevel > 3:
-                        print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResults[index]))
+                        print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                     ### current index has value
-                    if tempResults[index] == '' or re.search('[a-zA-Z]', tempResults[index]) != None:
+                    if tempResult == '' or re.search('[a-zA-Z]', tempResult) != None:
                         ### not a numeric value, store it as is
-                        tempResultDelta = tempResults[index]
-                        tempLogStatsToPost[key] += ",{0}_{1}_delta={2}".format( key, paramName, tempResultDelta)
+                        tempLogStatsToPost[key] += ",{0}_{1}_delta={2}".format( key, paramName, tempResult)
                     else:
                         ### divide the valueX with sampling interval to get tps value
-                        tempResultDelta = float(tempResults[index]) / floatDataPostIntervalInSec
+                        tempResultDelta = float(tempResult) / floatDataPostIntervalInSec
                         tempLogStatsToPost[key] += ",{0}_{1}_delta={2:.2f}".format( key, paramName, tempResultDelta)
 
                 else:
                     ### current index has param name
-                    paramName = tempResults[index]
+                    paramName = tempResult
                 index += 1
             ### reset count and param list
             logStats[key][patternIndexForPatternDelta*2] = 0
@@ -838,21 +838,21 @@ def JAPostDataToWebServer():
             index = 0
             paramName = ''
             while index < len(tempResults):
+                tempResult = tempResults[index]
                 if index % 2 > 0:
                     if debugLevel > 3:
-                        print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResults[index]))
+                        print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                     ### current index has value
-                    if tempResults[index] == '' or re.search('[a-zA-Z]', tempResults[index]) != None:
+                    if tempResult == '' or re.search('[a-zA-Z]', tempResult) != None:
                         ### not a numeric value, store it as is
-                        tempResultAverage = tempResults[index]
-                        tempLogStatsToPost[key] += ",{0}_{1}_average={2}".format( key, paramName, tempResultAverage)
+                        tempLogStatsToPost[key] += ",{0}_{1}_average={2}".format( key, paramName, tempResult)
                     else:
                         ### numeric value, compute average
-                        tempResultAverage = float(tempResults[index]) / float(sampleCountList[index])
+                        tempResultAverage = float(tempResult) / float(sampleCountList[index])
                         tempLogStatsToPost[key] += ",{0}_{1}_average={2:.2f}".format( key, paramName, tempResultAverage)
                 else:
                     ### current index has param name
-                    paramName = tempResults[index]
+                    paramName = tempResult
                 index += 1
             ### empty both lists
             logStats[key][patternIndexForPatternAverage*2] = []
