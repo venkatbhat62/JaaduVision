@@ -768,7 +768,7 @@ def JAPostDataToWebServer():
                     print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                 if index % 2 > 0:
                     ### current index has value
-                    if tempResult == '' or re.search('[a-zA-Z]', tempResult) != None:
+                    if (tempResult == '') or (re.search(r'[a-zA-Z]', tempResult) != None):
                         ### not a numeric value, store it as is
                         tempLogStatsToPost[key] += ",{0}_{1}_sum={2}".format( key, paramName, tempResult)
                     else:
@@ -802,7 +802,7 @@ def JAPostDataToWebServer():
                     print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                 if index % 2 > 0:
                     ### current index has value
-                    if tempResult == '' or re.search('[a-zA-Z]', tempResult) != None:
+                    if tempResult == '' or re.search(r'[a-zA-Z]', tempResult) != None:
                         ### not a numeric value, store it as is
                         tempLogStatsToPost[key] += ",{0}_{1}_delta={2}".format( key, paramName, tempResult)
                     else:
@@ -843,7 +843,7 @@ def JAPostDataToWebServer():
                     print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                 if index % 2 > 0:
                     ### current index has value
-                    if tempResult == '' or re.search('[a-zA-Z]', tempResult) != None:
+                    if tempResult == '' or re.search(r'[a-zA-Z]', tempResult) != None:
                         ### not a numeric value, store it as is
                         tempLogStatsToPost[key] += ",{0}_{1}_average={2}".format( key, paramName, tempResult)
                     else:
@@ -1318,7 +1318,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                 tempKey = tempResult
                                             else:
                                                 ### find out the nature of the value, number or string
-                                                if tempResult == '' or re.search('[a-zA-Z]', tempResult) != None:
+                                                if tempResult == '' or re.search(r'[a-zA-Z]', tempResult) != None:
                                                     ### vlaue is string type
                                                     tempResultIsNumber = False
                                                 else:
