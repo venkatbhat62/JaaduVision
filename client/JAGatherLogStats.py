@@ -378,9 +378,9 @@ yamlModulePresent = False
 
 if sys.version_info >= (3, 3):
     import importlib
-    import importlib.util
-    try:
-        if importlib.util.find_spec("yaml") != None:
+    from importlib import util
+    try: 
+        if util.find_spec("yaml") != None:
             yamlModulePresent = True
         else:
             yamlModulePresent = False
@@ -388,7 +388,7 @@ if sys.version_info >= (3, 3):
         yamlModulePresent = False
 
     try:
-        if importlib.util.find_spec("psutil") != None:
+        if util.find_spec("psutil") != None:
             psutilModulePresent = True
         else:
             psutilModulePresent = False
