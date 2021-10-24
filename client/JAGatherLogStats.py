@@ -764,9 +764,9 @@ def JAPostDataToWebServer():
             paramName = ''
             while index < len(tempResults):
                 tempResult = tempResults[index]
+                if debugLevel > 3:
+                    print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                 if index % 2 > 0:
-                    if debugLevel > 3:
-                        print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                     ### current index has value
                     if tempResult == '' or re.search('[a-zA-Z]', tempResult) != None:
                         ### not a numeric value, store it as is
@@ -798,9 +798,9 @@ def JAPostDataToWebServer():
             paramName = ''
             while index < len(tempResults):
                 tempResult = tempResults[index]
+                if debugLevel > 3:
+                    print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                 if index % 2 > 0:
-                    if debugLevel > 3:
-                        print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                     ### current index has value
                     if tempResult == '' or re.search('[a-zA-Z]', tempResult) != None:
                         ### not a numeric value, store it as is
@@ -839,9 +839,9 @@ def JAPostDataToWebServer():
             paramName = ''
             while index < len(tempResults):
                 tempResult = tempResults[index]
+                if debugLevel > 3:
+                    print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                 if index % 2 > 0:
-                    if debugLevel > 3:
-                        print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                     ### current index has value
                     if tempResult == '' or re.search('[a-zA-Z]', tempResult) != None:
                         ### not a numeric value, store it as is
