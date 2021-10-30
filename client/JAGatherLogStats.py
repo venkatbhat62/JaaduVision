@@ -888,56 +888,57 @@ def JAPostDataToWebServer():
 
     numPostings = 0
     
-    ### now post log lines collected
-    # key - service name
-    # list - log lines associated with that service name
-    for key, lines in logLines.items():
-        ### if no value to post, skip it
-        if len(lines) == 0:
-            continue
+    if maxLogLines > 0:
+        ### logs collection is enabled, post the logs collected
+        # key - service name
+        # list - log lines associated with that service name
+        for key, lines in logLines.items():
+            ### if no value to post, skip it
+            if len(lines) == 0:
+                continue
 
-        # use temporary buffer for each posting
-        tempLogLinesToPost = logLinesToPost.copy()
+            # use temporary buffer for each posting
+            tempLogLinesToPost = logLinesToPost.copy()
 
-        tempLogLinesToPost[key] = 'timeStamp=' + timeStamp
+            tempLogLinesToPost[key] = 'timeStamp=' + timeStamp
 
-        ### values has log files in list
-        for line in lines:
-            # line = line.rstrip('\n')
-            tempLogLinesToPost[key] += line
+            ### values has log files in list
+            for line in lines:
+                # line = line.rstrip('\n')
+                tempLogLinesToPost[key] += line
 
-        if int(logLinesCount[key]) > maxLogLines:
-            ### show total number of lines seen
-            ###  lines exceeding maxLogLines are not collected in logLines[]
-            tempLogLinesToPost[key] += ',' + "..... {0} total lines in this sampling interval .....".format( logLinesCount[key] )
-        logLinesCount[key] = 0
+            if int(logLinesCount[key]) > maxLogLines:
+                ### show total number of lines seen
+                ###  lines exceeding maxLogLines are not collected in logLines[]
+                tempLogLinesToPost[key] += ',' + "..... {0} total lines in this sampling interval .....".format( logLinesCount[key] )
+            logLinesCount[key] = 0
 
-        ### empty the list
-        logLines[key] = []
+            ### empty the list
+            logLines[key] = []
 
-        if debugLevel > 1:
-            print('DEBUG-2 JAPostDataToWebServer() logLinesToPost: {0}'.format(tempLogLinesToPost))
+            if debugLevel > 1:
+                print('DEBUG-2 JAPostDataToWebServer() logLinesToPost: {0}'.format(tempLogLinesToPost))
 
-        data = json.dumps(tempLogLinesToPost)
+            data = json.dumps(tempLogLinesToPost)
 
-        if useRequests == True:
-            # post interval elapsed, post the data to web server
-            returnResult = requests.post(
-                webServerURL, data, verify=verifyCertificate, headers=headers)
-            
-            print('INFO JAPostDataToWebServer() Result of posting log lines to web server ' +
-                    webServerURL + ' :\n' + returnResult.text)
-            numPostings += 1
-        else:
-            result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
-                                    "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            returnStatus = result.stdout.decode('utf-8').split('\n')
-            print('INFO JAPostDataToWebServer() result of posting log lines to web server:{0}\n{1}'.format(
-                webServerURL, returnStatus))
-            numPostings += 1
+            if useRequests == True:
+                # post interval elapsed, post the data to web server
+                returnResult = requests.post(
+                    webServerURL, data, verify=verifyCertificate, headers=headers)
+                
+                print('INFO JAPostDataToWebServer() Result of posting log lines to web server ' +
+                        webServerURL + ' :\n' + returnResult.text)
+                numPostings += 1
+            else:
+                result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
+                                        "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                returnStatus = result.stdout.decode('utf-8').split('\n')
+                print('INFO JAPostDataToWebServer() result of posting log lines to web server:{0}\n{1}'.format(
+                    webServerURL, returnStatus))
+                numPostings += 1
 
-    JAGlobalLib.LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp +
-                       ' Number of log lines posted: ' + str(numPostings) + '\n', statsLogFileName, True)
+        JAGlobalLib.LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp +
+                        ' Number of log lines posted: ' + str(numPostings) + '\n', statsLogFileName, True)
     return True
 
 
@@ -1243,7 +1244,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 index += 1
                                 continue
 
-                            if index == patternIndexForPatternLog and patternLogMatched == False:
+                            if index == patternIndexForPatternLog and patternLogMatched == False and maxLogLines > 0 :
+                                ### maxLogLines non-zero, logs collection is enabled for this host
                                 searchPattern = r'{0}'.format(values[index])
                                 ### search for matching PatternLog regardless of whether stats type pattern is found or not.
                                 if re.search(searchPattern, tempLine) != None:
