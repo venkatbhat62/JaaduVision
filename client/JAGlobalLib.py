@@ -380,7 +380,7 @@ def JAReadCPUUsageHistory( logFileName=None, debugLevel=0):
         errorMsg = 'ERROR - JAReadCPUUsageStats() Can not open file: {0} to read CPU usage info, error:{1}\n'.format( JACPUUsageFileName, err)
         print(errorMsg)
         if logFileName != None:
-            JAGlobalLib.LogMsg( errorMsg, logFileName, True)
+            LogMsg( errorMsg, logFileName, True)
         return [0], 0
 
 def JAGetAverageCPUUsage( ):
