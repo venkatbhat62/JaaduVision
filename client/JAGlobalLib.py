@@ -375,7 +375,8 @@ def JAReadCPUUsageHistory( logFileName=None, debugLevel=0):
                     CPUUsage.append( float( tempLine.strip() ) )
                 file.close()
                 return CPUUsage, average 
-
+            else:
+                return [0], 0
     except OSError as err:
         errorMsg = 'ERROR - JAReadCPUUsageStats() Can not open file: {0} to read CPU usage info, error:{1}\n'.format( JACPUUsageFileName, err)
         print(errorMsg)
