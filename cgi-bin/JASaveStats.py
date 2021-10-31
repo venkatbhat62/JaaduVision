@@ -320,7 +320,7 @@ try:
                         if variableName in metricsVariablesToBePosted.keys() :
                             ## param name already present, SKIP this pair
                             print("WARN JASaveStats.py metrics variable name:{0} already present, SKIPing this item:{1}".format(variableName, item))
-                            next
+                            continue
                         else:                        
                             ### new name and value
                             metricsVariablesToBePosted[variableName] = True

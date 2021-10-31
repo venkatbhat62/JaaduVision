@@ -93,9 +93,9 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
             msg = "Stats MicroService27 total key1 {0} dummy1 total key2 {1:.2f} dummy2\n".format( rampupCount+30, (rampupCount+30)/2 )
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
-            msg = "Stats client1 total key1 {0} dummy1 total key2 {1:.2f} dummy2\n".format( rampupCount+30, (rampupCount+30)/2 )
+            msg = "Stats client1 total key1 {0} dummy1 total key2 {1:.2f} key3 {2:.2f} dummy3\n".format( rampupCount+30, 100, (rampupCount+30)/2 )
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
-            msg = "Stats client2 total key1 {0} dummy1 total key2 {1:.2f} dummy2\n".format( rampupCount+30, (rampupCount+30)/2 )
+            msg = "Stats client2 total key1 {0} dummy1 total key2 {1:.2f} key3 {2:.2f} dummy3\n".format( rampupCount+30, 200, (rampupCount+30)/2 )
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
 
         elif count % 3 > 0:

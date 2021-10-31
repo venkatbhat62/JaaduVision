@@ -57,9 +57,10 @@ patternIndexForVariablePrefixGroup = 8
 patternIndexForPatternLog = 9
 patternIndexForLabel = 10
 patternIndexForLabelGroup = 11
+patternIndexForSkipGroups = 12
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
-maxPatternIndex = 12
+maxPatternIndex = 13
 
 ### index used while processing Execute command spec
 indexForCommand = 0
@@ -556,6 +557,12 @@ try:
                 tempPatternList[patternIndexForLabelGroup] = str(value.get('PatternLabelGroup')).strip()
                 tempPatternPresent[patternIndexForLabelGroup] = True
 
+            if value.get('PatternSkipGroups') != None:
+                ## the value is in CSV format, with one or more values
+                tempCSVString = str(value.get('PatternSkipGroups')).strip()
+                tempPatternList[patternIndexForSkipGroups] = list(tempCSVString.split(","))
+                tempPatternPresent[patternIndexForSkipGroups] = True
+
             if logFileName != None:     
                 JAStatsSpec[logFileName][key] = list(tempPatternList)
                     
@@ -596,6 +603,9 @@ try:
             ### set to None, it will be set to proper value later before posting to web server
             logStats[key][patternIndexForLabelGroup*2] = None
             logStats[key][patternIndexForLabelGroup*2+1] = tempPatternPresent[patternIndexForLabelGroup]
+
+            logStats[key][patternIndexForSkipGroups*2] = None
+            logStats[key][patternIndexForSkipGroups*2+1] = tempPatternPresent[patternIndexForSkipGroups]
 
             ### initialize logLines[key] list to empty list
             logLines[key] = []
@@ -1280,7 +1290,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         ### logStats[key] is indexed with twice the value
                         while index < len(values):
 
-                            if index == patternIndexForPriority or index == patternIndexForVariablePrefix or index == patternIndexForVariablePrefixGroup or index == patternIndexForLabel or index == patternIndexForLabelGroup or values[index] == None:
+                            if index == patternIndexForSkipGroups or index == patternIndexForPriority or index == patternIndexForVariablePrefix or index == patternIndexForVariablePrefixGroup or index == patternIndexForLabel or index == patternIndexForLabelGroup or values[index] == None:
                                 index += 1
                                 continue
 
@@ -1327,9 +1337,16 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         tempKey = ''
                                         appendCurrentValueToList = False
                                         indexToCurrentKeyInTempStats = 0
+                                        groupNumber = 0
                                         for tempResult in tempResults:
-                                                
+                                            groupNumber += 1
+                                            if values[patternIndexForSkipGroups] != None:
+                                                ### if current group number is in skipGroup list, skip it
+                                                if ( str(groupNumber) in values[patternIndexForSkipGroups]):
+                                                    continue
+                                            
                                             if numStats % 2 == 0:
+
                                                 ### if current name has space, replace it with '_'
                                                 tempResult = re.sub('\s','_',tempResult)
 
