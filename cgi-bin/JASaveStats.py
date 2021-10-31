@@ -33,6 +33,11 @@ Return Result
     Skipped storing data locally on server if JADirStats is not specified or empty or set to "None"
     Added capability to save log lines to the same stats file and post the log lines to loki URL
 
+2021-10-31 havembha@gmail.com
+    Searched the variable name for the pattern :<label>:, 
+    if present, extracted label, removed it from variable name, and posted those values separately with label
+    this is to allow aggregation / filtering using label values in dashboard menu 
+
 """
 import os,sys,json,re
 import datetime
@@ -209,7 +214,7 @@ try:
             ### save data locally if fileName is specified
             fpo = open( fileName, 'a')
             if debugLevel > 0:
-                print('DEBUG-3 JASaveStats.py fileName: {0}, postToLoki {1}'.format(fileName, postToLoki))
+                print('DEBUG-1 JASaveStats.py fileName: {0}, postToLoki {1}'.format(fileName, postToLoki))
 
     ### while writing values to file and posting to pushgateway, skip below keys
     skipKeyList = ['debugLevel','fileName','environment','siteName','platformName','componentName','hostName','saveLogsOnWebServer']
@@ -221,22 +226,23 @@ try:
     metricsVariablesToBePosted = {}
 
     for key, value in postedData.items():
+
         if key not in skipKeyList:
-            if debugLevel > 2:
-                print('DEBUG-3 JASaveStats.py processing key: {0}, value: {1}'.format(key, value))
+            if debugLevel > 1:
+                print('DEBUG-2 JASaveStats.py processing key: {0}, value: {1}\n'.format(key, value))
                 
             ### SKIP LogStats, OSStats, loki  
             if value == 'LogStats' or value == 'OSStats' or value == 'loki':
                 statsType = value
                 continue
-            
+
             if fileName != None:
                 if saveOnWebServer == 1:   
                     ### save this data with prefixParams that identifies statsType, environment, site, platform, component, host 
                     fpo.write( '{0},{1},{2}\n'.format(prefixParams, key, value ) )
 
-                if debugLevel > 2:
-                    print('DEBUG-3 JASaveStats.py wrote data: {0},{1},{2} to file'.format(prefixParams,key, value))
+                    if debugLevel > 1:
+                        print('DEBUG-2 JASaveStats.py wrote data: {0},{1},{2} to file\n'.format(prefixParams,key, value))
 
             if postToLoki == True:
                 ### need to post log lines to loki
@@ -249,7 +255,6 @@ try:
                   platform - platformName 
                 """
                 
-
                 tempLines = value.split('\n')
                 lineCount = 1
                 for line in tempLines:
@@ -271,15 +276,15 @@ try:
                         ]
                         }
                     payload = json.dumps(payload)
-                    if debugLevel > 1:
-                        print("DEBUG-1 JASaveStats.py payload:|{0}|, lokiGatewayURL:|{1}|".format(payload, lokiGatewayURL))
+                    if debugLevel > 2:
+                        print("DEBUG-3 JASaveStats.py payload:|{0}|, lokiGatewayURL:|{1}|\n".format(payload, lokiGatewayURL))
 
                     try:
                         returnResult = requests.post( lokiGatewayURL, data=payload, headers=headersForLokiGateway)
                         returnResult.raise_for_status()
                         
-                        if debugLevel > 0:
-                            print('DEBUG-1 JASaveStats.py log line: {0} posted to loki with result:{1}\n'.format(line,returnResult.text))
+                        if debugLevel > 1:
+                            print('DEBUG-2 JASaveStats.py log line: {0} posted to loki with result:{1}\n'.format(line,returnResult.text))
                     except requests.exceptions.HTTPError as err:
                         print("ERROR JASaveStats.py " + err.response.text)
                         raise SystemExit(err)
@@ -301,28 +306,67 @@ try:
                 ###    this sample from source can't be used for time series graphs
                 items.pop(0)
 
+                ### if stats are to be posted for label, use separate variable to track it
+                statsToPostForLabel = defaultdict(dict)
+
                 for item in items:
+                    labelPrefix = ''
                     ### expect the item in the form paramName=value
                     ### separate paramName and store it in metricsVariablesToBePosted hash
                     variableNameAndValues = re.split('=', item)
+                    variableName = variableNameAndValues[0]
                     if len(variableNameAndValues) > 1:
                         # if current name is already present, SKIP current name=value pair
-                        if variableNameAndValues[0] in metricsVariablesToBePosted.keys() :
+                        if variableName in metricsVariablesToBePosted.keys() :
                             ## param name already present, SKIP this pair
-                            print("WARN JASaveStats.py metrics variable name:{0} already present, SKIPing this item:{1}".format(variableNameAndValues[0], item))
-                        else:
+                            print("WARN JASaveStats.py metrics variable name:{0} already present, SKIPing this item:{1}".format(variableName, item))
+                            next
+                        else:                        
                             ### new name and value
-                            metricsVariablesToBePosted[variableNameAndValues[0]] = True
-                            statsToPost += '{0} {1}\n'.format( variableNameAndValues[0], variableNameAndValues[1])
-                            if debugLevel > 2: 
-                                print('DEBUG-3 JASaveStats.py item :{0}, itemToPost:{1} {2}\n'.format(item,variableNameAndValues[0], variableNameAndValues[1] ) )
-                            postData = True
+                            metricsVariablesToBePosted[variableName] = True
+
+                            ### this format needs to match the format used in JAGatherLogStats.py function JAProcessLogFile()
+                            myResults = re.search(r'_:(\w+):', variableName)
+                            if myResults != None:
+                                ### if data posted has embeded label in the form <name>_:<label>:<name>_*,
+                                ###    extract <label> from that variable name, 
+                                ###    replace :<label>: for all the variable associated with current key
+                                ###    post the data with this label to prometheus gateway separately.
+                                ### timeStamp=2021-10-31T15:24:22.480140,TestStatsWithLabel_:client1:key1_average=32.50,TestStatsWithLabel_:client1:key2_average=16.25,TestStatsWithLabel_:client2:key1_average=32.50,TestStatsWithLabel_:client2:key2_average=16.25
+                                ###                                                         ^^^^^^^^^
+                                labelPrefix = myResults.group(1)
+                                if debugLevel > 2 :
+                                    print ("DEBUG-3 JASaveStats.py label:|{0}|, variableName BEFORE removing the label:{1}\n".format(labelPrefix, variableName))
+                                if labelPrefix != None:
+                                    ### this format needs to match the format used in JAGatherLogStats.py function JAProcessLogFile()
+                                    replaceString = '_:{0}:'.format(labelPrefix)
+                                    variableName = re.sub(replaceString,'_',variableName)
+                                if debugLevel > 2 :
+                                    print ("DEBUG-3 JASaveStats.py, label:|{0}|, variableName AFTER removing the label:|{1}|\n".format(labelPrefix, variableName))
+                                
+                                if labelPrefix in statsToPostForLabel[labelPrefix]:
+                                    statsToPostForLabel[labelPrefix] += '{0} {1}\n'.format( variableName, variableNameAndValues[1])                                
+                                else:
+                                    statsToPostForLabel[labelPrefix] = '{0} {1}\n'.format( variableName, variableNameAndValues[1])
+
+                            else:
+                                statsToPost += '{0} {1}\n'.format( variableName, variableNameAndValues[1])
+                                if debugLevel > 2: 
+                                    print('DEBUG-3 JASaveStats.py item :{0}, itemToPost:{1} {2}\n'.format(item,variableName, variableNameAndValues[1] ) )
+                                postData = True
                     else:
-                        print('WARN JASaveStats.py item:{0} is NOT in paramName=value format, DID NOT post this to prometheus'.format(item))
+                        print('WARN JASaveStats.py item:{0} is NOT in paramName=value format, DID NOT post this to prometheus\n'.format(item))
                 
+                for label, labelValue in statsToPostForLabel.items():
+                    returnResult = requests.post( pushGatewayURL + appendToURL + "/client/" + label, data=labelValue, headers=headersForPushGateway)
+
+                    if debugLevel > 0:
+                        print('DEBUG-1 JASaveStats.py label:|{0}| and data:|{1}| posted to prometheus push gateway with result:{2}\n\n'.format(label, labelValue,returnResult))
+
+
         else:
-            if debugLevel > 3:
-                print('DEBUG-4 JASaveStats.py skipping key:{0} this data not added to stats key\n'.format(key) )
+            if debugLevel > 2:
+                print('DEBUG-3 JASaveStats.py skipping key:{0} this data not added to stats key\n'.format(key) )
 
     if postData == True :
         returnResult = requests.post( pushGatewayURL + appendToURL, data=statsToPost, headers=headersForPushGateway)
