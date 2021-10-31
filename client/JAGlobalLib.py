@@ -350,7 +350,7 @@ def JAWriteCPUUsageHistory( CPUUsage, logFileName=None, debugLevel=0):
         errorMsg = 'ERROR - JAWriteCPUUsageStats() Can not open file: {0} to save CPU usage info, error:{1}\n'.format( JACPUUsageFileName, err)
         print(errorMsg)
         if logFileName != None:
-            JAGlobalLib.LogMsg( errorMsg, logFileName, True)
+            LogMsg( errorMsg, logFileName, True)
         return False
 
 def JAReadCPUUsageHistory( logFileName=None, debugLevel=0):
