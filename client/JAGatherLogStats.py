@@ -55,9 +55,11 @@ patternIndexForPatternDelta = 6
 patternIndexForVariablePrefix = 7
 patternIndexForVariablePrefixGroup = 8
 patternIndexForPatternLog = 9
+patternIndexForLabel = 10
+patternIndexForLabelGroup = 11
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
-maxPatternIndex = 10
+maxPatternIndex = 12
 
 ### index used while processing Execute command spec
 indexForCommand = 0
@@ -546,6 +548,14 @@ try:
                 tempPatternList[patternIndexForVariablePrefixGroup] = str(value.get('PatternVariablePrefixGroup')).strip()
                 tempPatternPresent[patternIndexForVariablePrefixGroup] = True
 
+            if value.get('PatternLabel') != None:
+                tempPatternList[patternIndexForLabel] = str(value.get('PatternLabel')).strip()
+                tempPatternPresent[patternIndexForLabel] = True
+
+            if value.get('PatternLabelGroup') != None:
+                tempPatternList[patternIndexForLabelGroup] = str(value.get('PatternLabelGroup')).strip()
+                tempPatternPresent[patternIndexForLabelGroup] = True
+
             if logFileName != None:     
                 JAStatsSpec[logFileName][key] = list(tempPatternList)
                     
@@ -579,6 +589,13 @@ try:
             ### set to None, it will be set to proper value later before posting to web server
             logStats[key][patternIndexForVariablePrefixGroup*2] = None
             logStats[key][patternIndexForVariablePrefixGroup*2+1] = tempPatternPresent[patternIndexForVariablePrefixGroup]
+
+            ### set to None, it will be set to proper value later before posting to web server
+            logStats[key][patternIndexForLabel*2] = None
+            logStats[key][patternIndexForLabel*2+1] = tempPatternPresent[patternIndexForLabel]
+            ### set to None, it will be set to proper value later before posting to web server
+            logStats[key][patternIndexForLabelGroup*2] = None
+            logStats[key][patternIndexForLabelGroup*2+1] = tempPatternPresent[patternIndexForLabelGroup]
 
             ### initialize logLines[key] list to empty list
             logLines[key] = []
@@ -734,7 +751,6 @@ def JAPostDataToWebServer():
     for key, values in logStats.items():
     
         tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
-        
         floatDataPostIntervalInSec = float(dataPostIntervalInSec)
 
         if values[patternIndexForPatternPass*2+1] == True:
@@ -1236,11 +1252,35 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 else:
                                     variablePrefix = myResults.group(1)
 
+                        ### if patternLabel is defined for current service, 
+                        ###   see whether the label  pattern is present in current line
+                        labelPrefix = None
+                        if values[patternIndexForLabel] != None:
+                            patternLabelSearchPattern = r'{0}'.format( values[patternIndexForLabel])
+                            myResults = re.search( patternLabelSearchPattern, tempLine)
+                            if myResults == None:
+                                ### since pattern label is not matching, SKIP processing this line any further
+                                # since label will be posted with the data, if that label is not present,
+                                #  no need to match any other patterns for this service 
+                                continue
+                            else:
+                                if values[patternIndexForLabelGroup] != None:
+                                    ### use the group value; based on pattern match, as label.
+                                    ### Log line: 2021-10-30T13:32:49.825709 Stats client1 total key1 34 dummy1 total key2 17.00 dummy2
+                                    ###                                            ^^^^^^^ <-- labelGroup (signle group)
+                                    ### PatternLabel: Stats (\w+) total
+                                    ###                      ^^^ <-- label, group 1
+                                    ###  use 1st group value as label this metrics
+                                    ###  PatternLabelGroup: 1
+                                    labelPrefix = myResults.group(int(values[patternIndexForLabelGroup]))
+                                else:
+                                    labelPrefix = myResults.group(1)
+
                         ### values is indexed from 0 to patternIndexForPatternSum / patternIndexForPatternAverage / patternIndexForPatternDelta
                         ### logStats[key] is indexed with twice the value
                         while index < len(values):
 
-                            if index == patternIndexForPriority or index == patternIndexForVariablePrefix or index == patternIndexForVariablePrefixGroup or values[index] == None:
+                            if index == patternIndexForPriority or index == patternIndexForVariablePrefix or index == patternIndexForVariablePrefixGroup or index == patternIndexForLabel or index == patternIndexForLabelGroup or values[index] == None:
                                 index += 1
                                 continue
 
@@ -1296,6 +1336,12 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                 ### if variable prefix is present, prefix that to current key
                                                 if variablePrefix != None :
                                                     tempResult = '{0}_{1}'.format( variablePrefix, tempResult)
+
+                                                ### if label is present, prefix that to updated current key
+                                                ### this format of :<label>: needs to match the pattern searched
+                                                ###  in JASaveStats.py
+                                                if labelPrefix != None:
+                                                    tempResult = ':{0}:{1}'.format( labelPrefix, tempResult)
 
                                                 ### if current key is NOT present in list, append it
                                                 # if len(tempStats) <= numStats :
