@@ -344,7 +344,7 @@ try:
                                 if debugLevel > 2 :
                                     print ("DEBUG-3 JASaveStats.py, label:|{0}|, variableName AFTER removing the label:|{1}|\n".format(labelPrefix, variableName))
                                 
-                                if labelPrefix in statsToPostForLabel[labelPrefix]:
+                                if labelPrefix in statsToPostForLabel:
                                     statsToPostForLabel[labelPrefix] += '{0} {1}\n'.format( variableName, variableNameAndValues[1])                                
                                 else:
                                     statsToPostForLabel[labelPrefix] = '{0} {1}\n'.format( variableName, variableNameAndValues[1])
