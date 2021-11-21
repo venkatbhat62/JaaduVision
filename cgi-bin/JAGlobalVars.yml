@@ -25,7 +25,17 @@ JASaveStats:
     PushGatewayURL: http://localhost:9091
     ### URL where loki is present, to post log lines
     LokiGatewayURL: http://localhost:9081
-#
+    ### URL to send data to influxdb, when client opts for it, default is prometheus pushgateway
+    InfluxdbURL: http://localhost:8086
+    ## default bucket if client does not pass it. different clients can use different bucket with diff retention policies
+    InfluxdbBucket: test
+    ## token - get this from influxdb configuration
+    InfluxdbToken: BPld2pkV05ORU4htsHxIQl1JDvdYwYhZLLxeBAedsS47jLgpIHzF7_ig-rjQIreh5KbBHvDQStnA7eplWCMmCw==
+    ## organication - get this from influxdb configuration
+    InfluxdbOrg: org
+    ##
+
+    #
 # used while posting data to pushgateway, loki
 JADisableWarnings: True
 ## do not verify certificate of pushgateway or loki server

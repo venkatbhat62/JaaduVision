@@ -38,6 +38,13 @@ Return Result
     if present, extracted label, removed it from variable name, and posted those values separately with label
     this is to allow aggregation / filtering using label values in dashboard menu 
 
+2021-11-21 havembha@gmail.com
+    Added option to insert data to influxdb with the time stamp sent from client.
+    This enables historic data to be sent to influxdb with original timestamp at which the sample was taken.
+    Whenever guranteed tracking is needed, use this influxdb option
+    parameter sent from client - DBType - values - influxdb or prometheus (default - prometheus)
+    InfluxdbURL parameter defined in JAGlobalVars.yml is used to send the data to.
+
 """
 import os,sys,json,re
 import datetime
@@ -45,6 +52,8 @@ import yaml
 import requests
 import JAGlobalLib
 from collections import defaultdict
+
+from influxdb_client import InfluxDBClient, WriteOptions
 
 def JASaveStatsExit(reason):
     if re.match('^ERROR ', reason):
@@ -94,6 +103,20 @@ with open('JAGlobalVars.yml','r') as file:
 
     ### URL to send the log lines to Loki gateway
     JALokiGatewayURL = JAGlobalVars['JASaveStats']['LokiGatewayURL']
+
+    ### URL to send the data to influxdb
+    if JAGlobalVars['JASaveStats']['InfluxdbURL'] != None:
+        JAInfluxdbURL = JAGlobalVars['JASaveStats']['InfluxdbURL']
+
+        ## influlxdb - org, bucket, token
+        JAInfluxdbOrg = JAGlobalVars['JASaveStats']['InfluxdbOrg']
+        JAInfluxdbToken = JAGlobalVars['JASaveStats']['InfluxdbToken']
+        ## default bucket if client does not pass one
+        JAInfluxdbBucket = JAGlobalVars['JASaveStats']['InfluxdbBucket']
+    else:
+        JAInfluxdbURL = ''
+        
+    file.close()
 
 contentLength = int(os.environ["CONTENT_LENGTH"])
 reqBody = sys.stdin.read(contentLength)
@@ -162,50 +185,90 @@ if postedData['debugLevel'] == None:
 else:
     debugLevel = int(postedData['debugLevel'])
 
+try:
+    if postedData['DBType'] != None:
+        JADBType = postedData['DBType']
+except:
+    ## default DBType
+    JADBType = 'Prometheus'
+
+prefixParams = ''
+comma = ''
+
 if postedData['environment'] != None:
     appendToURL = "/environment/" + postedData['environment'] 
     prefixParams = "environment=" + postedData['environment']
+    comma = ','
 else:
-    prefixParams = "environment="
+    ### DO NOT pass empty tag to Influxdb, pass it for Prometheus
+    if JADBType == 'Promethesus':
+        prefixParams = "environment="
+        comma = ','
 
 if postedData['platformName'] != None:
     appendToURL = appendToURL + "/platform/" + postedData['platformName']
-    prefixParams = prefixParams + ",platform=" + postedData['platformName']
+    prefixParams = prefixParams + comma + "platform=" + postedData['platformName']
     labelParams += 'platform=\"' + postedData['platformName'] + '\"'
     comma = ','
 else:
-    prefixParams = prefixParams + ",platform="
+    ### DO NOT pass empty tag to Influxdb, pass it for Prometheus
+    if JADBType == 'Promethesus':
+        prefixParams = prefixParams + ",platform="
 
 if postedData['siteName'] != None:
     appendToURL = appendToURL + "/site/" + postedData['siteName'] 
-    prefixParams = prefixParams + ",site=" + postedData['siteName']
+    prefixParams = prefixParams + comma + "site=" + postedData['siteName']
     siteName = postedData['siteName']
     labelParams += comma + ' site=\"' + postedData['siteName'] + '\"'
     comma = ','
 else:
-    prefixParams = prefixParams + ",site="
+    ### DO NOT pass empty tag to Influxdb, pass it for Prometheus
+    if JADBType == 'Promethesus':
+        prefixParams = prefixParams + ",site="
 
 if postedData['componentName'] != None:
     appendToURL = appendToURL + "/component/" + postedData['componentName']
-    prefixParams = prefixParams + ",component=" + postedData['componentName']
+    prefixParams = prefixParams + comma + "component=" + postedData['componentName']
     labelParams += comma + ' component=\"' + postedData['componentName'] + '\"'
     comma = ','
 else:
-    prefixParams = prefixParams + ",component=" 
+    ### DO NOT pass empty tag to Influxdb, pass it for Prometheus
+    if JADBType == 'Promethesus':
+        prefixParams = prefixParams + ",component=" 
 
 if hostName != None:
-    prefixParams = prefixParams + ",host=" + hostName
+    prefixParams = prefixParams + comma + "host=" + hostName
     labelParams += comma + ' instance=\"' + hostName + '\"'
 
 if debugLevel > 1:
-    JAGlobalLib.LogMsg('DEBUG-2 Stats Dir:' + JADirStats + ', fileName: ' + fileName + ', pushGatewayURL: ' + pushGatewayURL + ', appendToURL: ' + appendToURL + ', prefixParams: ' + prefixParams + '\n', JALogFileName, True)
-
+    if JADBType   == 'Prometheus' :
+        JAGlobalLib.LogMsg('DEBUG-2 Stats Dir:' + JADirStats + ', fileName: ' + fileName + ', pushGatewayURL: ' + pushGatewayURL + ', appendToURL: ' + appendToURL + ', prefixParams: ' + prefixParams + '\n', JALogFileName, True)
+    elif JADBType == 'Influxdb' :
+        JAGlobalLib.LogMsg('DEBUG-2 Stats Dir:' + JADirStats + ', fileName: ' + fileName + ', influxdbURL: ' + JAInfluxdbURL + ', prefixParams: ' + prefixParams + ', labelParams:' + labelParams + '\n', JALogFileName, True)
 ### Now post the data to web server
 headersForPushGateway= {'Content-type': 'application/x-www-form-urlencoded', 'Accept': '*/*'}
 headersForLokiGateway = {'Content-Type': 'application/json'}
 
 if JADisableWarnings == True:
     requests.packages.urllib3.disable_warnings()
+
+if JADBType == 'Influxdb' :
+    ### prepare write client object to write to influxdb later
+    infludbClient = InfluxDBClient(url=JAInfluxdbURL, token=JAInfluxdbToken, org=JAInfluxdbOrg)
+
+    influxdbWriteClient = infludbClient.write_api(write_options=WriteOptions(batch_size=500,
+                                      flush_interval=10_000,
+                                      jitter_interval=2_000,
+                                      retry_interval=5_000,
+                                      max_retries=5,
+                                      max_retry_delay=30_000,
+                                      exponential_base=2)) 
+    ## for influxdb, use data array to post
+    influxdbDataArrayToPost = []
+    influxdbRowData = ''
+    ### prepare measurement, tag values that will be common for all the data points being inserted to influxdb
+    ### jobName is measurement, tags are labelParams
+    influxdbRowDataPrefix = "{0},{1}".format(jobName + labelParams)
 
 ### open the file in append mode and save data
 try:
@@ -217,7 +280,7 @@ try:
                 print('DEBUG-1 JASaveStats.py fileName: {0}, postToLoki {1}'.format(fileName, postToLoki))
 
     ### while writing values to file and posting to pushgateway, skip below keys
-    skipKeyList = ['debugLevel','fileName','environment','siteName','platformName','componentName','hostName','saveLogsOnWebServer']
+    skipKeyList = ['jobName','debugLevel','fileName','environment','siteName','platformName','componentName','hostName','saveLogsOnWebServer']
 
     statsType = None
     statsToPost = ''
