@@ -104,17 +104,17 @@ with open('JAGlobalVars.yml','r') as file:
     ### URL to send the log lines to Loki gateway
     JALokiGatewayURL = JAGlobalVars['JASaveStats']['LokiGatewayURL']
 
-    ### URL to send the data to influxdb
-    if JAGlobalVars['JASaveStats']['InfluxdbURL'] != None:
+    try:
+        ### URL to send the data to influxdb
         JAInfluxdbURL = JAGlobalVars['JASaveStats']['InfluxdbURL']
-
-        ## influlxdb - org, bucket, token
-        JAInfluxdbOrg = JAGlobalVars['JASaveStats']['InfluxdbOrg']
-        JAInfluxdbToken = JAGlobalVars['JASaveStats']['InfluxdbToken']
-        ## default bucket if client does not pass one
-        JAInfluxdbBucket = JAGlobalVars['JASaveStats']['InfluxdbBucket']
-    else:
-        JAInfluxdbURL = ''
+        if JAGlobalVars['JASaveStats']['InfluxdbURL'] != None:
+            ## influlxdb - org, bucket, token
+            JAInfluxdbOrg = JAGlobalVars['JASaveStats']['InfluxdbOrg']
+            JAInfluxdbToken = JAGlobalVars['JASaveStats']['InfluxdbToken']
+            ## default bucket if client does not pass one
+            JAInfluxdbBucket = JAGlobalVars['JASaveStats']['InfluxdbBucket']
+    except:
+        JAInfluxdbURL = JAInfluxdbOrg = JAInfluxdbToken = JAInfluxdbBucket = ''
         
     file.close()
 
@@ -186,11 +186,30 @@ else:
     debugLevel = int(postedData['debugLevel'])
 
 try:
-    if postedData['DBType'] != None:
-        JADBType = postedData['DBType']
+    if postedData['DBType'] == 'Influxdb':
+        JADBTypeInfludb = True
+    else:
+        JADBTypeInfludb = False
 except:
-    ## default DBType
-    JADBType = 'Prometheus'
+    ## default DBType is Prometheus
+    JADBTypeInfludb = False
+
+if JADBTypeInfludb == True:
+    ### ensure influxdb related values are passed from client or available in server side config file
+    try:
+       if postedData['InfluxdbBucket'] != None :
+            JAInfluxdbBucket = postedData['InfluxdbBucket']
+    except:
+        if debugLevel > 0 :
+            print("INFO JASaveStats.py InfluxdbBucket not passed, using the default value:{0}".format(JAInfluxdbBucket))
+   
+    try:
+       if postedData['InfluxdbOrg'] != None :
+            JAInfluxdbOrg = postedData['InfluxdbOrg']
+    except:
+        if debugLevel > 0 :
+            print("INFO JASaveStats.py InfluxdbOrg not passed, using the default value:{0}".format(JAInfluxdbOrg))
+
 
 prefixParams = ''
 comma = ''
@@ -201,7 +220,7 @@ if postedData['environment'] != None:
     comma = ','
 else:
     ### DO NOT pass empty tag to Influxdb, pass it for Prometheus
-    if JADBType == 'Promethesus':
+    if JADBTypeInfludb == False:
         prefixParams = "environment="
         comma = ','
 
@@ -212,7 +231,7 @@ if postedData['platformName'] != None:
     comma = ','
 else:
     ### DO NOT pass empty tag to Influxdb, pass it for Prometheus
-    if JADBType == 'Promethesus':
+    if JADBTypeInfludb == False:
         prefixParams = prefixParams + ",platform="
 
 if postedData['siteName'] != None:
@@ -223,7 +242,7 @@ if postedData['siteName'] != None:
     comma = ','
 else:
     ### DO NOT pass empty tag to Influxdb, pass it for Prometheus
-    if JADBType == 'Promethesus':
+    if JADBTypeInfludb == False:
         prefixParams = prefixParams + ",site="
 
 if postedData['componentName'] != None:
@@ -233,7 +252,7 @@ if postedData['componentName'] != None:
     comma = ','
 else:
     ### DO NOT pass empty tag to Influxdb, pass it for Prometheus
-    if JADBType == 'Promethesus':
+    if JADBTypeInfludb == False:
         prefixParams = prefixParams + ",component=" 
 
 if hostName != None:
@@ -241,9 +260,9 @@ if hostName != None:
     labelParams += comma + ' instance=\"' + hostName + '\"'
 
 if debugLevel > 1:
-    if JADBType   == 'Prometheus' :
+    if JADBTypeInfludb == False:
         JAGlobalLib.LogMsg('DEBUG-2 Stats Dir:' + JADirStats + ', fileName: ' + fileName + ', pushGatewayURL: ' + pushGatewayURL + ', appendToURL: ' + appendToURL + ', prefixParams: ' + prefixParams + '\n', JALogFileName, True)
-    elif JADBType == 'Influxdb' :
+    else:
         JAGlobalLib.LogMsg('DEBUG-2 Stats Dir:' + JADirStats + ', fileName: ' + fileName + ', influxdbURL: ' + JAInfluxdbURL + ', prefixParams: ' + prefixParams + ', labelParams:' + labelParams + '\n', JALogFileName, True)
 ### Now post the data to web server
 headersForPushGateway= {'Content-type': 'application/x-www-form-urlencoded', 'Accept': '*/*'}
@@ -252,9 +271,9 @@ headersForLokiGateway = {'Content-Type': 'application/json'}
 if JADisableWarnings == True:
     requests.packages.urllib3.disable_warnings()
 
-if JADBType == 'Influxdb' :
+if JADBTypeInfludb == True :
     ### prepare write client object to write to influxdb later
-    infludbClient = InfluxDBClient(url=JAInfluxdbURL, token=JAInfluxdbToken, org=JAInfluxdbOrg)
+    infludbClient = InfluxDBClient(url=JAInfluxdbURL, token=JAInfluxdbToken, org=JAInfluxdbOrg, bucket=JAInfluxdbBucket)
 
     influxdbWriteClient = infludbClient.write_api(write_options=WriteOptions(batch_size=500,
                                       flush_interval=10_000,
@@ -265,10 +284,6 @@ if JADBType == 'Influxdb' :
                                       exponential_base=2)) 
     ## for influxdb, use data array to post
     influxdbDataArrayToPost = []
-    influxdbRowData = ''
-    ### prepare measurement, tag values that will be common for all the data points being inserted to influxdb
-    ### jobName is measurement, tags are labelParams
-    influxdbRowDataPrefix = "{0},{1}".format(jobName + labelParams)
 
 ### open the file in append mode and save data
 try:
@@ -280,7 +295,7 @@ try:
                 print('DEBUG-1 JASaveStats.py fileName: {0}, postToLoki {1}'.format(fileName, postToLoki))
 
     ### while writing values to file and posting to pushgateway, skip below keys
-    skipKeyList = ['jobName','debugLevel','fileName','environment','siteName','platformName','componentName','hostName','saveLogsOnWebServer']
+    skipKeyList = ['DBType','InfluxdbBucket','InfluxdbOrg','jobName','debugLevel','fileName','environment','siteName','platformName','componentName','hostName','saveLogsOnWebServer']
 
     statsType = None
     statsToPost = ''
@@ -353,7 +368,7 @@ try:
                         raise SystemExit(err)
 
                     lineCount += 1
-
+            
             else:
                 ### timeStamp=2021-09-28T21:06:42.526907,TestStats_pass=0.05,TestStats_fail=0.02,TestStats_count=0.02,TestStats_key1_sum=0.40,TestStats_key2_sum=0.20,TestStats_key1_delta=-0.05,TestStats_key2_delta=-0.03
                 ### convert data 
@@ -367,64 +382,79 @@ try:
                 
                 ### remove timeStamp=value from the list. Prometheous scraper uses scraping time for reference.
                 ###    this sample from source can't be used for time series graphs
-                items.pop(0)
+                sampleDateTimeString = items.pop(0)
+
+                if JADBTypeInfludb == True :
+                    ### while inserting to influxdb, use the timestamp posted by client in pico second 
+                    sampleTimeFloat = datetime.strptime( sampleDateTimeString, "%Y-%m-%dT%H:%M:%S.%f")
+                    sampleTime = "{0:.0f}".format(sampleTimeFloat.timestamp()*1000000000)
 
                 ### if stats are to be posted for label, use separate variable to track it
                 statsToPostForLabel = defaultdict(dict)
 
                 for item in items:
-                    labelPrefix = ''
-                    ### expect the item in the form paramName=value
-                    ### separate paramName and store it in metricsVariablesToBePosted hash
-                    variableNameAndValues = re.split('=', item)
-                    variableName = variableNameAndValues[0]
-                    if len(variableNameAndValues) > 1:
-                        # if current name is already present, SKIP current name=value pair
-                        if variableName in metricsVariablesToBePosted.keys() :
-                            ## param name already present, SKIP this pair
-                            print("WARN JASaveStats.py metrics variable name:{0} already present, SKIPing this item:{1}".format(variableName, item))
-                            continue
-                        else:                        
-                            ### new name and value
-                            metricsVariablesToBePosted[variableName] = True
 
-                            ### this format needs to match the format used in JAGatherLogStats.py function JAProcessLogFile()
-                            myResults = re.search(r'_:(\w+):', variableName)
-                            if myResults != None:
-                                ### if data posted has embeded label in the form <name>_:<label>:<name>_*,
-                                ###    extract <label> from that variable name, 
-                                ###    replace :<label>: for all the variable associated with current key
-                                ###    post the data with this label to prometheus gateway separately.
-                                ### timeStamp=2021-10-31T15:24:22.480140,TestStatsWithLabel_:client1:key1_average=32.50,TestStatsWithLabel_:client1:key2_average=16.25,TestStatsWithLabel_:client2:key1_average=32.50,TestStatsWithLabel_:client2:key2_average=16.25
-                                ###                                                         ^^^^^^^^^
-                                labelPrefix = myResults.group(1)
-                                if debugLevel > 2 :
-                                    print ("DEBUG-3 JASaveStats.py label:|{0}|, variableName BEFORE removing the label:{1}\n".format(labelPrefix, variableName))
-                                if labelPrefix != None:
-                                    ### this format needs to match the format used in JAGatherLogStats.py function JAProcessLogFile()
-                                    replaceString = '_:{0}:'.format(labelPrefix)
-                                    variableName = re.sub(replaceString,'_',variableName)
-                                if debugLevel > 2 :
-                                    print ("DEBUG-3 JASaveStats.py, label:|{0}|, variableName AFTER removing the label:|{1}|\n".format(labelPrefix, variableName))
-                                
-                                if labelPrefix in statsToPostForLabel:
-                                    statsToPostForLabel[labelPrefix] += '{0} {1}\n'.format( variableName, variableNameAndValues[1])                                
-                                else:
-                                    statsToPostForLabel[labelPrefix] = '{0} {1}\n'.format( variableName, variableNameAndValues[1])
-
-                            else:
-                                statsToPost += '{0} {1}\n'.format( variableName, variableNameAndValues[1])
-                                if debugLevel > 2: 
-                                    print('DEBUG-3 JASaveStats.py item :{0}, itemToPost:{1} {2}\n'.format(item,variableName, variableNameAndValues[1] ) )
-                                postData = True
+                    if JADBTypeInfludb == True :
+                        ### for influxdb, each row of data is of type
+                        ###  measurement, tag1=value1,tag2=value2,... variable=value timeStamp
+                        ### jobName is measurement, labelParams are tags, item is variable
+                        influxdbRowData = "{0},{1},{2} {3}".format(jobName, labelParams, item, sampleTime)
+                        influxdbDataArrayToPost.append(influxdbRowData)
                     else:
-                        print('WARN JASaveStats.py item:{0} is NOT in paramName=value format, DID NOT post this to prometheus\n'.format(item))
-                
-                for label, labelValue in statsToPostForLabel.items():
-                    returnResult = requests.post( pushGatewayURL + appendToURL + "/client/" + label, data=labelValue, headers=headersForPushGateway)
 
-                    if debugLevel > 0:
-                        print('DEBUG-1 JASaveStats.py label:|{0}| and data:|{1}| posted to prometheus push gateway with result:{2}\n\n'.format(label, labelValue,returnResult))
+                        labelPrefix = ''
+                        ### expect the item in the form paramName=value
+                        ### separate paramName and store it in metricsVariablesToBePosted hash
+                        variableNameAndValues = re.split('=', item)
+                        variableName = variableNameAndValues[0]
+                        if len(variableNameAndValues) > 1:
+                            # if current name is already present, SKIP current name=value pair
+                            if variableName in metricsVariablesToBePosted.keys() :
+                                ## param name already present, SKIP this pair
+                                print("WARN JASaveStats.py metrics variable name:{0} already present, SKIPing this item:{1}".format(variableName, item))
+                                continue
+                            else:                        
+                                ### new name and value
+                                metricsVariablesToBePosted[variableName] = True
+
+                                ### this format needs to match the format used in JAGatherLogStats.py function JAProcessLogFile()
+                                myResults = re.search(r'_:(\w+):', variableName)
+                                if myResults != None:
+                                    ### if data posted has embeded label in the form <name>_:<label>:<name>_*,
+                                    ###    extract <label> from that variable name, 
+                                    ###    replace :<label>: for all the variable associated with current key
+                                    ###    post the data with this label to prometheus gateway separately.
+                                    ### timeStamp=2021-10-31T15:24:22.480140,TestStatsWithLabel_:client1:key1_average=32.50,TestStatsWithLabel_:client1:key2_average=16.25,TestStatsWithLabel_:client2:key1_average=32.50,TestStatsWithLabel_:client2:key2_average=16.25
+                                    ###                                                         ^^^^^^^^^
+                                    labelPrefix = myResults.group(1)
+                                    if debugLevel > 2 :
+                                        print ("DEBUG-3 JASaveStats.py label:|{0}|, variableName BEFORE removing the label:{1}\n".format(labelPrefix, variableName))
+                                    if labelPrefix != None:
+                                        ### this format needs to match the format used in JAGatherLogStats.py function JAProcessLogFile()
+                                        replaceString = '_:{0}:'.format(labelPrefix)
+                                        variableName = re.sub(replaceString,'_',variableName)
+                                    if debugLevel > 2 :
+                                        print ("DEBUG-3 JASaveStats.py, label:|{0}|, variableName AFTER removing the label:|{1}|\n".format(labelPrefix, variableName))
+                                    
+                                    if labelPrefix in statsToPostForLabel:
+                                        statsToPostForLabel[labelPrefix] += '{0} {1}\n'.format( variableName, variableNameAndValues[1])                                
+                                    else:
+                                        statsToPostForLabel[labelPrefix] = '{0} {1}\n'.format( variableName, variableNameAndValues[1])
+
+                                else:
+                                    statsToPost += '{0} {1}\n'.format( variableName, variableNameAndValues[1])
+                                    if debugLevel > 2: 
+                                        print('DEBUG-3 JASaveStats.py item :{0}, itemToPost:{1} {2}\n'.format(item,variableName, variableNameAndValues[1] ) )
+                                    postData = True
+                        else:
+                            print('WARN JASaveStats.py item:{0} is NOT in paramName=value format, DID NOT post this to prometheus\n'.format(item))
+                
+                if JADBTypeInfludb == False:
+                    for label, labelValue in statsToPostForLabel.items():
+                        returnResult = requests.post( pushGatewayURL + appendToURL + "/client/" + label, data=labelValue, headers=headersForPushGateway)
+
+                        if debugLevel > 0:
+                            print('DEBUG-1 JASaveStats.py label:|{0}| and data:|{1}| posted to prometheus push gateway with result:{2}\n\n'.format(label, labelValue,returnResult))
 
 
         else:
@@ -432,10 +462,17 @@ try:
                 print('DEBUG-3 JASaveStats.py skipping key:{0} this data not added to stats key\n'.format(key) )
 
     if postData == True :
-        returnResult = requests.post( pushGatewayURL + appendToURL, data=statsToPost, headers=headersForPushGateway)
-
-        if debugLevel > 0:
-            print('DEBUG-1 JASaveStats.py data: {0} posted to prometheus push gateway with result:{1}\n\n'.format(statsToPost,returnResult))
+        if JADBTypeInfludb == True :
+            try:
+                influxdbWriteClient.write(JAInfluxdbBucket, JAInfluxdbOrg, influxdbDataArrayToPost)
+            except:
+                returnResult = "ERROR inserting record to influxdb"
+                if debugLevel > 0:
+                    print('DEBUG-1 JASaveStats.py data: {0} posted to influxdb gateway with result:{1}\n\n'.format(influxdbDataArrayToPost,returnResult))
+        else:
+            returnResult = requests.post( pushGatewayURL + appendToURL, data=statsToPost, headers=headersForPushGateway)
+            if debugLevel > 0:
+                print('DEBUG-1 JASaveStats.py data: {0} posted to prometheus push gateway with result:{1}\n\n'.format(statsToPost,returnResult))
 
     if fileName != None:
         if saveOnWebServer == 1: 

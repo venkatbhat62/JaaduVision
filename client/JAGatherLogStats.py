@@ -26,6 +26,19 @@ Note - did not add python interpreter location at the top intentionally so that
     one can execute this using python or python3 depending on python version on target host
 
 Author: havembha@gmail.com, 2021-07-18
+
+2021-11-21  havembha@gmail.com
+   Added support for Influxdb. 
+      Read DBType, InfluxdbBucket, InfluxdbOrg values from config file if present and sent to web server
+TBD havembha@gmail.com
+   For DBType Influxdb, added retry logic
+   If web server is not available, current stats are written to local history file
+     next time, when program runs, it will try to send the stats from history file to web server
+   If the program exits due to expiry of  dataCollectDurationInSec, when the program starts next time,
+     it will try to send history stats to web server
+   This retry operation will be done while the program is going to sleep between the scrap intervals so that
+     current log file scraping continues in normal mode
+     
 """
 import json
 import platform
@@ -41,7 +54,7 @@ import signal
 
 
 # Major 01, minor 00, buildId 01
-JAVersion = "01.00.02"
+JAVersion = "01.10.00"
 
 ### number of patterns that can be searched in log line per Service
 patternIndexForPriority = 0
@@ -130,6 +143,9 @@ verifyCertificate = None
 cacheLogFileName = None
 processSingleLogFileName = None
 saveLogsOnWebServer = None
+DBType = None
+influxdbBucket = None
+influxdbOrg = None
 
 ### max log lines per service, per sampling interval
 ###  when log lines exceed this count, from 11th line till last line withing the sampling interval,
@@ -342,6 +358,21 @@ def JAGatherEnvironmentSpecs(key, values):
                         saveLogsOnWebServer = False
                     if myValue == 'True' or myValue == True:
                         saveLogsOnWebServer = True
+
+        elif myKey == 'DBType':
+            if DBType == None:
+                if myValue != None:
+                    DBType = myValue
+
+        elif myKey == 'InfluxdbBucket':
+            if influxdbBucket == None:
+                if myValue != None:
+                    influxdbBucket = myValue
+
+        elif myKey == 'InfluxdbOrg':
+            if influxdbOrg == None:
+                if myValue != None:
+                    influxdbOrg = myValue
 
         elif myKey == 'WebServerURL':
             if webServerURL == None:
@@ -681,6 +712,14 @@ logStatsToPost['platformName'] = platformName
 logStatsToPost['siteName'] = siteName
 logStatsToPost['environment'] = environment
 
+if DBType != None:
+    ### if influxdb is used, pass DBType, InfluxdbBucket and InfluxdbOrg values to web server
+    ### by default, Prometheus is used, thus, these params not needed.
+    logStatsToPost['DBType'] = DBType
+    if influxdbBucket != None:
+        logStatsToPost['InfluxdbBucket'] = influxdbBucket
+    if influxdbOrg != None:
+        logStatsToPost['InfluxdbOrg'] = influxdbOrg
 
 # data to be posted to the web server
 # pass fileName containing thisHostName and current dateTime in YYYYMMDD form

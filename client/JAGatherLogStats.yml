@@ -166,6 +166,13 @@ Environment:
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
      ### debug level 0, no debug, 1 to 4, 4 being max details
      DebugLevel: 1
+     ### optional - valid values are Influxdb, Prometheus, default is Prometheus
+     DBType: Influxdb
+     ### influxdb - optional - specify different bucket for different application or platform that needs different retency period
+     ###                     default value is as specified in JAGlobalVars.yml on web server
+     InfluxdbBucket: test
+     ### influxdb - optional - default value as specified in JAGlobalVars.yml on web server
+     InfluxdbOrg: org
 
 Execute:
     Health:
