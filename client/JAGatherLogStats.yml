@@ -187,11 +187,45 @@ Execute:
 #      Priority: 3
 
 LogFile:
+    SyslogError:
+      LogFileName: /var/log/syslog
+      #LogFileName: /var/log/{HOSTNAME}syslog
+      PatternCount: Error
+      Priority: 3
+
+    SyslogSession:
+      LogFileName: /var/log/syslog
+      PatternCount: Started Session
+      Priority: 3
+
+    AuthlogInvalidUser:
+      LogFileName: /var/log/auth.log
+      PatternCount: Invalid user
+      Priority: 3
+
+    ApacheGrafana:
+      LogFileName: /var/log/apache2/access.log*
+      PatternPass: /grafana(.*)HTTP/\d.\d" [2..|3..]
+      PatternFail: /grafana(.*)HTTP/\d.\d" [4..|5..]
+      Priority: 2
+  
+    ApachePrometheus:
+      LogFileName: /var/log/apache2/access.log*
+      PatternPass: /prometheus(.*)HTTP/\d.\d" [2..|3..]
+      PatternFail: /prometheus(.*)HTTP/\d.\d" [4..|5..]
+      Priority: 2
+
+    ApacheSaveStats:
+      LogFileName: /var/log/apache2/access.log*
+      PatternPass: /JASaveStats.py(.*)HTTP/\d.\d" [2..|3..]
+      PatternFail: /JASaveStats.py(.*)HTTP/\d.\d" [4..|5..]
+      Priority: 1
+
     ApacheError:
       LogFileName: /var/log/apache2/error.log* 
       PatternCount: \[cgi:error\] 
       Priority: 1
-      
+
     TestStats:
       LogFileName: client/JATest.log*
       ### tps = number of instances divided by sampling interval
@@ -201,10 +235,6 @@ LogFile:
       PatternLog: TestMsg Fail
       ### tps = number of instances divided by sampling interval
       PatternCount: TestMsg Count
-      # PatternSum: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
-      # value is summed over the sampling interval, tps is computed by diving sampling interval
-      # line is of the form: 2021-09-18T14:57:07.088995 leading text key1 54 dummy1 key2 27.00 dummy2
-      #                                                              kkkk vv        kkkk vvvvv
       # PatternSum: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
       # value is summed over the sampling interval, tps is computed by diving sampling interval
       # line is of the form: 2021-09-18T14:57:07.088995 leading text key1 54 dummy1 key2 27.00 dummy2
@@ -230,4 +260,32 @@ LogFile:
       PatternVariablePrefix: Stats MicroService(\d) total
       # 2021-10-05T01:09:03.249334 Stats MicroService1 total key1 9 dummy1 total key2 4.50 dummy2
       PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
+      Priority: 1
+    TestStatsWithVarPrefixGroup:
+      LogFileName: client/JATest.log*
+      ### extract the regular expression value that matches to the variable prefix definition
+      ###   prefix that to the variable to make unique value
+      ###   serviceName_<variablePrefix>_<patterDelta>_delta
+      PatternVariablePrefix: Stats MicroService(\d)(\d) total
+      ###                                           ^^
+      ###  use 2nd group value as variable prefix for the *_avrage metrics variable
+      PatternVariablePrefixGroup: 2
+      # 2021-10-05T01:09:03.249334 Stats MicroService25 total key1 9 dummy1 total key2 4.50 dummy2
+      PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
+      Priority: 1
+    TestStatsWithLabel:
+      LogFileName: client/JATest.log*
+      # 2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
+      # 2021-10-31T19:11:12.096877 Stats client2 total key1 34 dummy1 total key2 200.00 key3 200.00 dummy3
+      ### extract the regular expression value that matches to label definition
+      PatternLabel: Stats (\w+) total
+      ###                  ^^^ <-- extract this and post the data for this service name with that label
+      ### using separate label name for these stats allows aggregation of stats per label name in dashboard
+      ###  use 1st group value as variable prefix for the *_avrage metrics variable
+      PatternLabelGroup: 1
+      #2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
+      #                                               1     2               3    4      5    6     
+      #                                                                    ^^^^^^^^ <-- SKIP posting this data
+      PatternSkipGroups: 3,4
+      PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) (\w+) (\d+.\d+) dummy3
       Priority: 1
