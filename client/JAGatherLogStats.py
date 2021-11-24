@@ -298,6 +298,7 @@ def JAGatherEnvironmentSpecs(key, values):
     # declare global variables
     global dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageForEvents, maxProcessingTimeForAllEvents
     global webServerURL, disableWarnings, verifyCertificate, debugLevel, maxLogLines, saveLogsOnWebServer
+    global DBType, influxdbBucket, influxdbOrg
 
     for myKey, myValue in values.items():
         if debugLevel > 1:

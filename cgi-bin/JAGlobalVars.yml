@@ -34,7 +34,7 @@ JASaveStats:
     ## default bucket if client does not pass it. different clients can use different bucket with diff retention policies
     InfluxdbBucket: test
     ## organization - get this from influxdb configuration
-    InfluxdbOrg: org
+    InfluxdbOrg: havembha
     ##
 
     #

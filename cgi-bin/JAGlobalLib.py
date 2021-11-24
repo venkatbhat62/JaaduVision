@@ -292,4 +292,3 @@ def JAGetOSType():
         Returns values like Linux, Windows
     """
     return platform.system()
-
