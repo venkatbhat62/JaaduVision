@@ -28,8 +28,9 @@ Note - did not add python interpreter location at the top intentionally so that
 Author: havembha@gmail.com, 2021-07-18
 
 2021-11-21  havembha@gmail.com
-   Added support for Influxdb. 
-      Read DBType, InfluxdbBucket, InfluxdbOrg values from config file if present and sent to web server
+   Added support for Influxdb via spec at top level applicable to all service definitions or for each service definitions.
+      DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
+   Values are sent to web server for each service definitions
 TBD havembha@gmail.com
    For DBType Influxdb, added retry logic
    If web server is not available, current stats are written to local history file
@@ -71,9 +72,10 @@ patternIndexForPatternLog = 9
 patternIndexForLabel = 10
 patternIndexForLabelGroup = 11
 patternIndexForSkipGroups = 12
+patternIndexForDBDetails = 13
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
-maxPatternIndex = 13
+maxPatternIndex = 14
 
 ### index used while processing Execute command spec
 indexForCommand = 0
@@ -143,9 +145,11 @@ verifyCertificate = None
 cacheLogFileName = None
 processSingleLogFileName = None
 saveLogsOnWebServer = None
-DBType = None
-influxdbBucket = None
-influxdbOrg = None
+
+### keys DBType, influxdbBucket, influxdbOrg
+###    default DBType is Prometheus
+DBDetails = {}
+DBDetails['DBType'] = "Prometheus"
 
 ### max log lines per service, per sampling interval
 ###  when log lines exceed this count, from 11th line till last line withing the sampling interval,
@@ -275,6 +279,7 @@ OSType, OSName, OSVersion = JAGlobalLib.JAGetOSInfo(
 # based on current hostName, this variable will be set to Dev, Test, Uat, Prod etc
 myEnvironment = None
 
+
 """
 JAGatherEnvironmentSpecs( key, values )
 This function parses the environment variables defined for a given environment like Dev, Test, UAT
@@ -298,7 +303,7 @@ def JAGatherEnvironmentSpecs(key, values):
     # declare global variables
     global dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageForEvents, maxProcessingTimeForAllEvents
     global webServerURL, disableWarnings, verifyCertificate, debugLevel, maxLogLines, saveLogsOnWebServer
-    global DBType, influxdbBucket, influxdbOrg
+    global DBDetails
 
     for myKey, myValue in values.items():
         if debugLevel > 1:
@@ -360,20 +365,17 @@ def JAGatherEnvironmentSpecs(key, values):
                     if myValue == 'True' or myValue == True:
                         saveLogsOnWebServer = True
 
-        elif myKey == 'DBType':
-            if DBType == None:
-                if myValue != None:
-                    DBType = myValue
-
-        elif myKey == 'InfluxdbBucket':
-            if influxdbBucket == None:
-                if myValue != None:
-                    influxdbBucket = myValue
-
-        elif myKey == 'InfluxdbOrg':
-            if influxdbOrg == None:
-                if myValue != None:
-                    influxdbOrg = myValue
+        elif myKey == 'DBDetails':
+            if myValue != None:
+                tempDBDetailsArray = myValue.split(',')
+                if len(tempDBDetailsArray) == 0 :
+                    print("ERROR JAGatherEnvironmentSpecs() invalid format in DBDetails spec:|{1}|, expected format:DBType=influxdb,influxdbBucket=bucket,influxdbOrg=org".format(keyValuePair, myValue))
+                for keyValuePair in tempDBDetailsArray:
+                    fieldArray = keyValuePair.split('=')
+                    if len(fieldArray) > 0:
+                        DBDetails[fieldArray[0]] = fieldArray[1]
+                    else:
+                        print("ERROR JAGatherEnvironmentSpecs() invalid format in DB spec:|{0}|, DBDetails:|{1}|".format(keyValuePair, myValue))
 
         elif myKey == 'WebServerURL':
             if webServerURL == None:
@@ -595,6 +597,27 @@ try:
                 tempPatternList[patternIndexForSkipGroups] = list(tempCSVString.split(","))
                 tempPatternPresent[patternIndexForSkipGroups] = True
 
+            ### if DBDetails available per service definition, store that.
+            if value.get('DBDetails') != None:
+                tempValue = str(value.get('DBDetails')).strip()
+                tempDBDetailsArray = tempValue.split(',')
+                if len(tempDBDetailsArray) == 0 :
+                    print("ERROR invalid format in DBDetails spec:|{1}|, expected format:DBType=influxdb,influxdbBucket=bucket,influxdbOrg=org".format(keyValuePair, tempValue))
+                    continue
+                for keyValuePair in tempDBDetailsArray:
+                    fieldArray = keyValuePair.split('=')
+                    if len(fieldArray) > 0:
+                        tempPatternList[patternIndexForDBDetails][fieldArray[0]] = fieldArray[1]
+                    else:
+                        print("ERROR invalid format in DB spec:|{0}|, DBDetails:|{1}|".format(keyValuePair, tempValue))
+                        continue
+                tempPatternPresent[patternIndexForDBDetails] = True
+
+            elif DBDetails['DBType'] != None:
+                ### if DBDetails available at environment level, store that.
+                tempPatternList[patternIndexForDBDetails ] = DBDetails
+                tempPatternPresent[patternIndexForDBDetails] = True
+
             if logFileName != None:     
                 JAStatsSpec[logFileName][key] = list(tempPatternList)
                     
@@ -638,6 +661,10 @@ try:
 
             logStats[key][patternIndexForSkipGroups*2] = None
             logStats[key][patternIndexForSkipGroups*2+1] = tempPatternPresent[patternIndexForSkipGroups]
+
+            ### store DBDetails spec in logStats[key] so that it can be referred in JAPostAllDataToWebServer()
+            logStats[key][patternIndexForDBDetails*2] = tempPatternList[patternIndexForDBDetails ]
+            logStats[key][patternIndexForDBDetails*2+1] = tempPatternPresent[patternIndexForDBDetails]
 
             ### initialize logLines[key] list to empty list
             logLines[key] = []
@@ -713,15 +740,6 @@ logStatsToPost['platformName'] = platformName
 logStatsToPost['siteName'] = siteName
 logStatsToPost['environment'] = environment
 
-if DBType != None:
-    ### if influxdb is used, pass DBType, InfluxdbBucket and InfluxdbOrg values to web server
-    ### by default, Prometheus is used, thus, these params not needed.
-    logStatsToPost['DBType'] = DBType
-    if influxdbBucket != None:
-        logStatsToPost['InfluxdbBucket'] = influxdbBucket
-    if influxdbOrg != None:
-        logStatsToPost['InfluxdbOrg'] = influxdbOrg
-
 # data to be posted to the web server
 # pass fileName containing thisHostName and current dateTime in YYYYMMDD form
 logLinesToPost['fileName'] = thisHostName + \
@@ -741,10 +759,38 @@ if saveLogsOnWebServer == True:
 
 headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
 
+def JAPostDataToWebServer(tempLogStatsToPost, useRequests):
+    """
+    Post data to web server
+    """
+    global webServerURL, verifyCertificate, debugLevel, headers
+    if useRequests == True:
+        import requests
+
+        if disableWarnings == True:
+            requests.packages.urllib3.disable_warnings()
+
+    data = json.dumps(tempLogStatsToPost)
+    if useRequests == True:
+        # post interval elapsed, post the data to web server
+        returnResult = requests.post(
+            webServerURL, data, verify=verifyCertificate, headers=headers)
+        if debugLevel > 1:
+            print(
+                'DEBUG-2 JAPost() logStatsToPost: {0}'.format(tempLogStatsToPost))
+        print('INFO JAPost() Result of posting data to web server ' +
+                webServerURL + ' :\n' + returnResult.text)
+    else:
+        result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
+                                "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        returnStatus = result.stdout.decode('utf-8').split('\n')
+        print('INFO JAPost() result of posting data to web server:{0}\n{1}'.format(
+            webServerURL, returnStatus))
+
 
 """
-def JAPostDataToWebServer()
-This function posts data to web server
+def JAPostAllDataToWebServer()
+This function posts all data to web server
 Uses below global variables
     global logStats
     global webServerURL, verifyCertificate, logStatsToPost
@@ -755,7 +801,7 @@ Return values:
 """
 
 
-def JAPostDataToWebServer():
+def JAPostAllDataToWebServer():
     global logStats, debugLevel
     global webServerURL, verifyCertificate, logStatsToPost, logLinesToPost, logEventPriorityLevel
     timeStamp = JAGlobalLib.UTCDateTime()
@@ -779,17 +825,21 @@ def JAPostDataToWebServer():
     else:
         useRequests = False
 
-    if useRequests == True:
-        import requests
-
-        if disableWarnings == True:
-            requests.packages.urllib3.disable_warnings()
 
     numPostings = 0
     # use temporary buffer for each posting
     tempLogStatsToPost = logStatsToPost.copy()
 
     postData = False
+
+    ### default DBType
+    prevDBType = DBDetails['DBType']
+    tempLogStatsToPost['DBType'] = DBDetails['DBType']
+    if prevDBType == 'Influxdb' :
+        tempLogStatsToPost['InfluxdbBucket'] =  DBDetails['InfluxdbBucket']
+        tempLogStatsToPost['InfluxdbOrg'] =  DBDetails['InfluxdbOrg']
+
+    floatDataPostIntervalInSec = float(dataPostIntervalInSec)
 
     # sampling interval elapsed
     # push current sample stats to the data to be posted to the web server
@@ -799,10 +849,25 @@ def JAPostDataToWebServer():
     #   'ApacheICDR': [ 2, True, 0, False, 0, False, 0, False]}
     #                    pass      fail     count     stats
     for key, values in logStats.items():
-    
-        tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
-        floatDataPostIntervalInSec = float(dataPostIntervalInSec)
+        if logStats[key][patternIndexForDBDetails*2+1] == True:
+            if logStats[key][patternIndexForDBDetails*2]['DBType'] != prevDBType:
+                ### current key's DBDetails differ from prevDBType
+                ###   post the data aggregated so far in tempLogStatsToPost
+                if postData == True :
+                    JAPostDataToWebServer(tempLogStatsToPost, useRequests)
+                    numPostings += 1
+                    postData = False
+                ### prepare tempLogStatsToPost with fixed data for next posting
+                tempLogStatsToPost = logStatsToPost.copy()
 
+                prevDBType = tempLogStatsToPost['DBType'] = logStats[key][patternIndexForDBDetails*2]['DBType']
+                if logStats[key][patternIndexForDBDetails*2]['InfluxdbBucket'] != None:
+                    tempLogStatsToPost['InfluxdbBucket'] = logStats[key][patternIndexForDBDetails*2]['InfluxdbBucket']
+                if logStats[key][patternIndexForDBDetails*2]['InfluxdbOrg'] != None:
+                    tempLogStatsToPost['InfluxdbOrg'] = logStats[key][patternIndexForDBDetails*2]['InfluxdbOrg']
+
+        tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
+        
         if values[patternIndexForPatternPass*2+1] == True:
             tempLogStatsToPost[key] += ",{0}_pass={1:.2f}".format(key,float(values[patternIndexForPatternPass*2]) / floatDataPostIntervalInSec)
             logStats[key][patternIndexForPatternPass*2] = 0
@@ -926,24 +991,8 @@ def JAPostDataToWebServer():
     tempLogStatsToPost['logEventPriorityLevel'] = 'timeStamp={0},logEventPriorityLevel={1}'.format(timeStamp, logEventPriorityLevel)
     
     if postData == True :
-        data = json.dumps(tempLogStatsToPost)
-        if useRequests == True:
-            # post interval elapsed, post the data to web server
-            returnResult = requests.post(
-                webServerURL, data, verify=verifyCertificate, headers=headers)
-            if debugLevel > 1:
-                print(
-                    'DEBUG-2 JAPostDataToWebServer() logStatsToPost: {0}'.format(tempLogStatsToPost))
-            print('INFO JAPostDataToWebServer() Result of posting data to web server ' +
-                    webServerURL + ' :\n' + returnResult.text)
-            numPostings += 1
-        else:
-            result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
-                                    "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            returnStatus = result.stdout.decode('utf-8').split('\n')
-            print('INFO JAPostDataToWebServer() result of posting data to web server:{0}\n{1}'.format(
-                webServerURL, returnStatus))
-            numPostings += 1
+        JAPostDataToWebServer(tempLogStatsToPost, useRequests)
+        numPostings += 1
     else:
         if debugLevel > 1:
             print(
@@ -1600,7 +1649,7 @@ while loopStartTimeInSec <= statsEndTimeInSec:
     # post the data to web server if the gathering is enabled.
     if JAGatherLogStatsEnabled == True:
         # post collected stats to Web Server
-        JAPostDataToWebServer()
+        JAPostAllDataToWebServer()
     else:
         errorMsg = "WARN  Current CPU Usage: {0} is above max CPU usage level specified: {1}, Skipped gathering Log stats".format(
             averageCPUUsage, maxCPUUsageForEvents)

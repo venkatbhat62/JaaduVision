@@ -386,6 +386,10 @@ try:
                 ###    this sample from source can't be used for time series graphs
                 tempSampleDateTime = items.pop(0)
 
+                ### only timestamp present, no data, skip it
+                if len(items) == 0 :
+                    continue
+
                 if JADBTypeInfludb == True :
                     ### sampleDateTimeString is of the format timestamp=YYYY-MM-DDTHH:MM:SS.uuuuuu
                     ###   extract only time string
@@ -401,7 +405,7 @@ try:
                     ### holds data for entire row, including one or more variable name=value pairs
                     ### measurement,tag1=value1,tag2=value2[,...] field1=value1,field2=value2[,...]
                     ### add space separator between tag and field values 
-                    influxdbRowData = "{0},{1} ".format(key,labelParams)
+                    influxdbRowData = "{0},{1} ".format(jobName,labelParams)
                     ### set this to ,(comma) after appending first field1=value1 to 
                     comma = ''
     
@@ -478,7 +482,7 @@ try:
                         ### if label values are present, add separate row per label to influxdbDataArrayToPost
                         for label, labelValue in statsToPostForLabel.items():
                             ### prepare one row data per label
-                            influxdbRowData = "{0},{1},client={2} {3} {4}".format(key,labelParams, label,labelValue,sampleTime)
+                            influxdbRowData = "{0},{1},client={2} {3} {4}".format(jobName,labelParams, label,labelValue,sampleTime)
                             influxdbDataArrayToPost.append(influxdbRowData)
                     else :
                         ### measurement,tag1=value1,tag2=value2[,...] field1=value1,field2=value2[,....] timestamp
