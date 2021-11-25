@@ -599,6 +599,8 @@ try:
 
             ### if DBDetails available per service definition, store that.
             if value.get('DBDetails') != None:
+                ### initialize it with default DBDetails. This is to inherit any value that is not specified locally.
+                tempPatternList[patternIndexForDBDetails] = defaultdict(dict)
                 tempValue = str(value.get('DBDetails')).strip()
                 tempDBDetailsArray = tempValue.split(',')
                 if len(tempDBDetailsArray) == 0 :
@@ -607,7 +609,7 @@ try:
                 for keyValuePair in tempDBDetailsArray:
                     fieldArray = keyValuePair.split('=')
                     if len(fieldArray) > 0:
-                        tempPatternList[patternIndexForDBDetails][fieldArray[0]] = fieldArray[1]
+                        tempPatternList[patternIndexForDBDetails][fieldArray[0]]= fieldArray[1]
                     else:
                         print("ERROR invalid format in DB spec:|{0}|, DBDetails:|{1}|".format(keyValuePair, tempValue))
                         continue
@@ -830,7 +832,7 @@ def JAPostAllDataToWebServer():
     # use temporary buffer for each posting
     tempLogStatsToPost = logStatsToPost.copy()
 
-    postData = False
+    postData = True
 
     ### default DBType
     prevDBType = DBDetails['DBType']
@@ -840,6 +842,9 @@ def JAPostAllDataToWebServer():
         tempLogStatsToPost['InfluxdbOrg'] =  DBDetails['InfluxdbOrg']
 
     floatDataPostIntervalInSec = float(dataPostIntervalInSec)
+
+    ### post logEventPriorityLevel with environment specific DBDetails.
+    tempLogStatsToPost['logEventPriorityLevel'] = 'timeStamp={0},logEventPriorityLevel={1}'.format(timeStamp, logEventPriorityLevel)
 
     # sampling interval elapsed
     # push current sample stats to the data to be posted to the web server
@@ -988,7 +993,6 @@ def JAPostAllDataToWebServer():
             logStats[key][patternIndexForPatternAverage*2] = []
             logStats[key][patternIndexForPatternAverage*2+1] = []
 
-    tempLogStatsToPost['logEventPriorityLevel'] = 'timeStamp={0},logEventPriorityLevel={1}'.format(timeStamp, logEventPriorityLevel)
     
     if postData == True :
         JAPostDataToWebServer(tempLogStatsToPost, useRequests)

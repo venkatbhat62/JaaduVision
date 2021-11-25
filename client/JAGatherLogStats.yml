@@ -167,13 +167,15 @@ Environment:
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
      ### debug level 0, no debug, 1 to 4, 4 being max details
      DebugLevel: 1
-     ### optional - valid values are Influxdb, Prometheus, default is Prometheus
-     DBType: Influxdb
-     ### influxdb - optional - specify different bucket for different application or platform that needs different retency period
-     ###                     default value is as specified in JAGlobalVars.yml on web server
-     InfluxdbBucket: test
-     ### influxdb - optional - default value as specified in JAGlobalVars.yml on web server
-     InfluxdbOrg: havembha
+     ### DBDetails - optional, defaults to Prometheus, if present, applies to all service types or measurements 
+     ###            where local DBDetails is not specified
+     ###     DBType - influxdb, Prometheus
+     ###              defaults to Prometheus
+     ###     InfluxdbBucket - can be present when DBType is influxdb,  specify different bucket for different application or platform that needs different retency period
+     ###              default value is as specified in JAGlobalVars.yml on web server
+     ###     InfluxdbOrg - can be present when DBType is influxdb - can specify diff org for diff application or platform
+     ###              default value is as specified in JAGlobalVars.yml on web server
+     # DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
 
 Execute:
     Health:
@@ -273,7 +275,9 @@ LogFile:
       # 2021-10-05T01:09:03.249334 Stats MicroService25 total key1 9 dummy1 total key2 4.50 dummy2
       PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
       Priority: 1
+
     TestStatsWithLabel:
+      DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
       LogFileName: client/JATest.log*
       # 2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
       # 2021-10-31T19:11:12.096877 Stats client2 total key1 34 dummy1 total key2 200.00 key3 200.00 dummy3

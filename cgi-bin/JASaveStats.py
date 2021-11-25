@@ -437,13 +437,13 @@ try:
                                 ###                                                         ^^^^^^^^^
                                 labelPrefix = myResults.group(1)
                                 if debugLevel > 2 :
-                                    print ("DEBUG-3 JASaveStats.py label:|{0}|, variableName BEFORE removing the label:{1}\n".format(labelPrefix, variableName))
+                                    print ("DEBUG-3 JASaveStats.py label:|{0}|, variableName BEFORE removing the label:|{1}|".format(labelPrefix, variableName))
                                 if labelPrefix != None:
                                     ### this format needs to match the format used in JAGatherLogStats.py function JAProcessLogFile()
                                     replaceString = '_:{0}:'.format(labelPrefix)
                                     variableName = re.sub(replaceString,'_',variableName)
                                 if debugLevel > 2 :
-                                    print ("DEBUG-3 JASaveStats.py, label:|{0}|, variableName AFTER removing the label:|{1}|\n".format(labelPrefix, variableName))
+                                    print ("DEBUG-3 JASaveStats.py, label:|{0}|, variableName AFTER removing the label:|{1}|".format(labelPrefix, variableName))
                                 
                                 if JADBTypeInfludb == True :
                                     ### for influxdb, need to post these later along with label
@@ -459,7 +459,9 @@ try:
                                         statsToPostForLabel[labelPrefix] += '{0} {1}\n'.format( variableName, variableNameAndValues[1])                                
                                     else:
                                         statsToPostForLabel[labelPrefix] = '{0} {1}\n'.format( variableName, variableNameAndValues[1])
-
+                                if debugLevel > 2 :
+                                    print ("DEBUG-3 JASaveStats.py, statsToPostForLabel[{0}]:|{1}|".format(labelPrefix,statsToPostForLabel[labelPrefix]))
+                                postData = True
                             else:
                                 if JADBTypeInfludb == True :
                                     ### append fieldN=valueN to row data
@@ -484,6 +486,8 @@ try:
                             ### prepare one row data per label
                             influxdbRowData = "{0},{1},client={2} {3} {4}".format(jobName,labelParams, label,labelValue,sampleTime)
                             influxdbDataArrayToPost.append(influxdbRowData)
+                            if debugLevel > 2:
+                                print("DEBUG-3 JASaveStats.py influxdbRowData for label:|{0}|, influxdbRowData:|{1}|".format(label,influxdbRowData))
                     else :
                         ### measurement,tag1=value1,tag2=value2[,...] field1=value1,field2=value2[,....] timestamp
                         #   add space between fieldN=valueN and timestamp, and append to array
@@ -498,8 +502,8 @@ try:
 
 
         else:
-            if debugLevel > 2:
-                print('DEBUG-3 JASaveStats.py skipping key:{0} this data not added to stats key'.format(key) )
+            if debugLevel > 3:
+                print('DEBUG-4 JASaveStats.py skipping key:{0} this data not added to stats key'.format(key) )
 
     if postData == True :
         if JADBTypeInfludb == True :
