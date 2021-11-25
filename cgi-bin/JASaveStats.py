@@ -55,9 +55,9 @@ from collections import defaultdict
 
 def JASaveStatsExit(reason):
     if re.match('^ERROR ', reason):
-        print('ERROR JASaveStats.py() ' + reason )
+        print('ERROR JASaveStats.py() ' + reason + '<Response [500]>')
     elif re.match('^PASS ', reason):
-        print('PASS  JASaveStats.py() ' + reason)
+        print('PASS  JASaveStats.py() ' + reason + '<Response [200]>')
     else:
         print('      JASaveStats.py() ' + reason)
 
@@ -521,7 +521,7 @@ try:
             fpo.close()
 
 except OSError as err:
-    JASaveStatsError('ASaveStats.py Can not open file:|' + fileName + '|' + "OS error: {0}".format(err) )
+    JASaveStatsError('JASaveStats.py Can not open file:|' + fileName + '|' + "OS error: {0}".format(err) )
 
 ### print status and get out
 JASaveStatsExit(str(returnResult))

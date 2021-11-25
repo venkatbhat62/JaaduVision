@@ -109,7 +109,7 @@ Environment:
      HostName: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T)
      ### save logs on web server (local cache, in addition to sending to loki)
      SaveLogsOnWebServer: True
-     #WebServerURL: https://192.168.1.221:443/cgi-bin/try1.py
+     #WebServerURL: https://192.168.1.221:443/cgi-bin/try6.py
    Test:
      HostName: (...)(t)(...)([0-9][0-9])
      ### save logs on web server (local cache, in addition to sending to loki)
@@ -176,6 +176,11 @@ Environment:
      ###     InfluxdbOrg - can be present when DBType is influxdb - can specify diff org for diff application or platform
      ###              default value is as specified in JAGlobalVars.yml on web server
      # DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
+     ###
+     ### Retry sending stats to Web server, 0 to disable retry. Applicable when DBDetails is set to use influxdb.
+     ###   if web server is not available, history stats older than this period will be discarded
+     ###   
+     RetryDurationInHours: 48
 
 Execute:
     Health:

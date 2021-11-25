@@ -145,6 +145,8 @@ verifyCertificate = None
 cacheLogFileName = None
 processSingleLogFileName = None
 saveLogsOnWebServer = None
+### retry disabled by default
+retryDurationInHours = None
 
 ### keys DBType, influxdbBucket, influxdbOrg
 ###    default DBType is Prometheus
@@ -303,7 +305,7 @@ def JAGatherEnvironmentSpecs(key, values):
     # declare global variables
     global dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageForEvents, maxProcessingTimeForAllEvents
     global webServerURL, disableWarnings, verifyCertificate, debugLevel, maxLogLines, saveLogsOnWebServer
-    global DBDetails
+    global DBDetails, retryDurationInHours
 
     for myKey, myValue in values.items():
         if debugLevel > 1:
@@ -353,6 +355,11 @@ def JAGatherEnvironmentSpecs(key, values):
             if maxLogLines == 0:
                 if myValue != None:
                     maxLogLines = int(myValue)
+
+        elif myKey == 'RetryDurationInHours':
+            if retryDurationInHours == None:
+                if myValue != None:
+                    retryDurationInHours = int(myValue)
 
         elif myKey == 'SaveLogsOnWebServer':
             if saveLogsOnWebServer == None:           
@@ -509,7 +516,7 @@ try:
             maxCPUUsageForEvents[3] = 50
         if maxLogLines == None:
             maxLogLines = 10
-
+            
         if statsLogFileName == None:
             statsLogFileName = "JAGatherLogStats.log"
         if cacheLogFileName == None:
@@ -766,6 +773,7 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests):
     Post data to web server
     """
     global webServerURL, verifyCertificate, debugLevel, headers
+    operationStatus = True
     if useRequests == True:
         import requests
 
@@ -778,17 +786,23 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests):
         returnResult = requests.post(
             webServerURL, data, verify=verifyCertificate, headers=headers)
         if debugLevel > 1:
-            print(
-                'DEBUG-2 JAPost() logStatsToPost: {0}'.format(tempLogStatsToPost))
-        print('INFO JAPost() Result of posting data to web server ' +
-                webServerURL + ' :\n' + returnResult.text)
+            print('DEBUG-2 JAPost() logStatsToPost: {0}'.format(tempLogStatsToPost))
+        resultText = returnResult.text
     else:
         result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
                                 "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        returnStatus = result.stdout.decode('utf-8').split('\n')
-        print('INFO JAPost() result of posting data to web server:{0}\n{1}'.format(
-            webServerURL, returnStatus))
+        resultText = result.stdout.decode('utf-8').split('\n')
+        
+    print('INFO JAPost() Posted data to web server:|{0}|, with result:|{1}|'.format(webServerURL, resultText))
 
+    resultLength = len(resultText)
+    if resultLength > 1 :
+        statusLine = resultText[resultLength-2]   
+        if re.search(r'\[2..\]', statusLine) == None :
+            operationStatus = False
+    else:
+        operationStatus = False
+    return operationStatus
 
 """
 def JAPostAllDataToWebServer()
@@ -801,7 +815,6 @@ Return values:
     None
 
 """
-
 
 def JAPostAllDataToWebServer():
     global logStats, debugLevel
