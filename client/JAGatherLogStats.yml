@@ -181,6 +181,8 @@ Environment:
      ###   if web server is not available, history stats older than this period will be discarded
      ###   
      RetryDurationInHours: 48
+     ### During retry, batch below number of stats lines together and send to web server
+     RetryLogStatsBatchSize: 100
 
 Execute:
     Health:
@@ -282,7 +284,7 @@ LogFile:
       Priority: 1
 
     TestStatsWithLabel:
-      DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
+      DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha1
       LogFileName: client/JATest.log*
       # 2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
       # 2021-10-31T19:11:12.096877 Stats client2 total key1 34 dummy1 total key2 200.00 key3 200.00 dummy3

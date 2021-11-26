@@ -147,6 +147,17 @@ processSingleLogFileName = None
 saveLogsOnWebServer = None
 ### retry disabled by default
 retryDurationInHours = None
+### send 100 lines at a time to web serve while retrying
+retryLogStatsBatchSize = 100
+
+
+### YYYYMMDD will be appended to this name to make daily file where retry stats are kept
+retryLogStatsFileNamePartial = "JARetryLogStats."
+### this file handle points to current retry log stats file. If not None, it points to position in file at which new data is to be written
+retryLogStatsFileHandleCurrent = None
+
+### cache file name
+JAGatherLogStatsCache = "JAGatherLogStats.cache"
 
 ### keys DBType, influxdbBucket, influxdbOrg
 ###    default DBType is Prometheus
@@ -305,7 +316,7 @@ def JAGatherEnvironmentSpecs(key, values):
     # declare global variables
     global dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageForEvents, maxProcessingTimeForAllEvents
     global webServerURL, disableWarnings, verifyCertificate, debugLevel, maxLogLines, saveLogsOnWebServer
-    global DBDetails, retryDurationInHours
+    global DBDetails, retryDurationInHours, retryLogStatsBatchSize
 
     for myKey, myValue in values.items():
         if debugLevel > 1:
@@ -360,6 +371,10 @@ def JAGatherEnvironmentSpecs(key, values):
             if retryDurationInHours == None:
                 if myValue != None:
                     retryDurationInHours = int(myValue)
+
+        elif myKey == 'RetryLogStatsBatchSize':
+            if myValue != None:
+                retryLogStatsBatchSize = int(myValue)
 
         elif myKey == 'SaveLogsOnWebServer':
             if saveLogsOnWebServer == None:           
@@ -723,6 +738,17 @@ if prevStartTime > 0:
 ### Create a file with current time stamp
 JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.PrevStartTime")
 
+### if retryDurationInHours is not zero, open file in append mode to append failed postings
+if retryDurationInHours > 0:
+    fileNameRetryStatsPost = retryLogStatsFileNamePartial + JAGlobalLib.UTCDateForFileName()
+    try:
+        retryLogStatsFileHandleCurrent = open( fileNameRetryStatsPost,"a")
+    except OSError as err:
+        errorMsg = 'ERROR - Can not open file:{0}, OS error: {1}'.format(fileNameRetryStatsPost, err)
+        print(errorMsg)
+        JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+        retryLogStatsFileHandleCurrent = None
+
 returnResult = ''
 
 ### contains key, value pairs of stats to be posted
@@ -768,12 +794,29 @@ if saveLogsOnWebServer == True:
 
 headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
 
-def JAPostDataToWebServer(tempLogStatsToPost, useRequests):
+if sys.version_info >= (3, 3):
+    import importlib
+    import importlib.util
+    try:
+        if importlib.util.find_spec("requests") != None:
+            useRequests = True
+        else:
+            useRequests = False
+
+        importlib.util.find_spec("json")
+        
+    except ImportError:
+        useRequests = False
+else:
+    useRequests = False
+
+def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
     """
     Post data to web server
+    Returns True up on success, False upon failure
     """
-    global webServerURL, verifyCertificate, debugLevel, headers
-    operationStatus = True
+    global webServerURL, verifyCertificate, debugLevel, headers, retryLogStatsFileHandleCurrent
+    logStatsPostSuccess = True
     if useRequests == True:
         import requests
 
@@ -799,10 +842,21 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests):
     if resultLength > 1 :
         statusLine = resultText[resultLength-2]   
         if re.search(r'\[2..\]', statusLine) == None :
-            operationStatus = False
+            logStatsPostSuccess = False
     else:
-        operationStatus = False
-    return operationStatus
+        logStatsPostSuccess = False
+
+    
+    if logStatsPostSuccess == False:
+        if retryLogStatsFileHandleCurrent != None and storeUponFailure == True:
+            try:
+                ### if DBType is influxdb and retryStatsFileHandle is not None, store current data to be sent later
+                retryLogStatsFileHandleCurrent.write( data + '\n')
+            except OSError as err:
+                print("ERROR JAPostDataToWebServer() could not append data to retryStatsFile, error:{0}".format(err))
+            except Exception as err:
+                print("ERROR Unknwon error:{0}".format( err ))
+    return logStatsPostSuccess
 
 """
 def JAPostAllDataToWebServer()
@@ -817,29 +871,12 @@ Return values:
 """
 
 def JAPostAllDataToWebServer():
-    global logStats, debugLevel
+    global logStats, debugLevel, useRequests
     global webServerURL, verifyCertificate, logStatsToPost, logLinesToPost, logEventPriorityLevel
     timeStamp = JAGlobalLib.UTCDateTime()
     if debugLevel > 1:
         print('DEBUG-2 JAPostDataToWebServer() ' +
               timeStamp + ' Posting the stats collected')
-
-    if sys.version_info >= (3, 3):
-        import importlib
-        import importlib.util
-        try:
-            if importlib.util.find_spec("requests") != None:
-                useRequests = True
-            else:
-                useRequests = False
-
-            importlib.util.find_spec("json")
-            
-        except ImportError:
-            useRequests = False
-    else:
-        useRequests = False
-
 
     numPostings = 0
     # use temporary buffer for each posting
@@ -872,8 +909,9 @@ def JAPostAllDataToWebServer():
                 ### current key's DBDetails differ from prevDBType
                 ###   post the data aggregated so far in tempLogStatsToPost
                 if postData == True :
-                    JAPostDataToWebServer(tempLogStatsToPost, useRequests)
-                    numPostings += 1
+                    if JAPostDataToWebServer(tempLogStatsToPost, useRequests, True) == True:
+                        ### successful posting, increment count
+                        numPostings += 1
                     postData = False
                 ### prepare tempLogStatsToPost with fixed data for next posting
                 tempLogStatsToPost = logStatsToPost.copy()
@@ -1008,8 +1046,9 @@ def JAPostAllDataToWebServer():
 
     
     if postData == True :
-        JAPostDataToWebServer(tempLogStatsToPost, useRequests)
-        numPostings += 1
+        if JAPostDataToWebServer(tempLogStatsToPost, useRequests, True) == True:
+            ### successful posting, increment count
+            numPostings += 1
     else:
         if debugLevel > 1:
             print(
@@ -1093,6 +1132,7 @@ Save log file name, file pointer position so that processing can resume from thi
 
 
 def JAWriteFileInfo():
+    global JAGatherLogStatsCache
     try:
         with open(cacheLogFileName, "w") as file:
             numItems = 0
@@ -1204,7 +1244,7 @@ def JAProcessCommands( logFileProcessingStartTime, debugLevel):
 def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, gatherLogStatsEnabled, debugLevel):
     global averageCPUUsage, thisHostName, logEventPriorityLevel
     logFileNames = JAGlobalLib.JAFindModifiedFiles(
-        logFileName, thisHostName, startTimeInSec, debugLevel)
+        logFileName, startTimeInSec, debugLevel)
 
     if logFileNames == None:
         return False
@@ -1575,6 +1615,54 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
     return True
 
+def JARetryLogStatsPost(currentTime):
+    """
+    This function tries to send the retryLogStats to web server
+    """
+    global useRequests, debugLevel, retryLogStatsBatchSize, retryDurationInHours, retryLogStatsFileNamePartial
+
+    ### find history files with updated time within retryDurationInHours
+    ###   returned files in sorted order, oldest file fist
+    retryLogStatsFileNames = JAGlobalLib.JAFindModifiedFiles(
+        retryLogStatsFileNamePartial, (currentTime - retryDurationInHours * 3600), debugLevel)
+
+    returnStatus = True
+    for retryLogStatsFileName in retryLogStatsFileNames :
+        if debugLevel > 0:
+            print("DEBUG-1 JARetryLogStatsPost() processing retry log stats file:|{0}".format(retryLogStatsFileName))
+        try:
+            ### read each line from a file and send to web server
+            retryFileHandle = open ( retryLogStatsFileName, "r")
+            logStatsLines = []
+            numberOfLines = 0
+            while returnStatus == True:
+                tempLine = retryFileHandle.readline()
+                if not tempLine:
+                    break
+                logStatsLines.append(tempLine)
+                if ++numberOfLines >= retryLogStatsBatchSize :
+                    ### send data to web server
+                    returnStatus = JAPostDataToWebServer(logStatsLines, useRequests, False)
+                    numberOfLines = 0
+
+            if returnStatus == True:
+                ### send remaining data
+                returnStatus = JAPostDataToWebServer(logStatsLines, useRequests, False)
+                retryFileHandle.close()
+
+            if returnStatus == True:
+                ### delete the file
+                os.remove( deleteFileName)
+                errorMsg = "INFO JARetryLogStatsPost() retry passed for LogStats file:{0}, deleted this file".format(retryLogStatsFileName)
+            else:
+                errorMsg = 'WARN JARetryLogStatsPost() retry failed for LogStats file:{0}'.format(retryLogStatsFileName)
+            print(errorMsg)
+            JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+
+        except OSError as err:
+            errorMsg = "ERROR JARetryLogStatsPost() not able to read the file:|{0}, error:{1}".format(retryLogStatsFileName, err)
+            print(errorMsg)
+            JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
 
 # read file info saved during prev run
 # JAReadFileInfo()
@@ -1606,9 +1694,23 @@ if logFilesToDelete != None:
         if deleteFileName != '':
             os.remove( deleteFileName)
 
+
 # get current time in seconds since 1970 jan 1
 programStartTime = loopStartTimeInSec = time.time()
 statsEndTimeInSec = loopStartTimeInSec + dataCollectDurationInSec
+
+### process retryLogStats files if present with time stamp within retryDurationInHours
+if retryDurationInHours > 0 :
+    if OSType == 'Windows':
+        errorMsg = "ERROR RetryDurationInHours is not suppported on Windows, history data not sent to webserver automatically"
+        print(errorMsg)
+        JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+    else:
+        procId = os.fork()
+        if procId == 0:
+            ### child process
+            JARetryLogStatsPost(programStartTime)
+            sys.exit(0)
 
 # first time, sleep for dataPostIntervalInSec so that log file can be processed and posted after waking up
 sleepTimeInSec = dataPostIntervalInSec
@@ -1641,6 +1743,7 @@ while loopStartTimeInSec <= statsEndTimeInSec:
             myProcessingTime = 0
         print('DEBUG-1 log file(s) processing time: {0}, Sleeping for: {1} sec'.format(
             myProcessingTime, sleepTimeInSec))
+
     time.sleep(sleepTimeInSec)
 
     # take current time, it will be used to find files modified since this time for next round
@@ -1674,18 +1777,23 @@ while loopStartTimeInSec <= statsEndTimeInSec:
         JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
 
     # if elapsed time is less than post interval, sleep till post interval elapses
-    elapsedTimeInSec = time.time() - logFileProcessingStartTime
+    currentTime = time.time()
+    elapsedTimeInSec = currentTime - logFileProcessingStartTime
     if elapsedTimeInSec < dataPostIntervalInSec:
         sleepTimeInSec = dataPostIntervalInSec - elapsedTimeInSec
     else:
         sleepTimeInSec = 0
-
+        
     # take curren time so that processing will start from current time
     loopStartTimeInSec = logFileProcessingStartTime
 
 
 # Save file info to be used next round
 # JAWriteFileInfo()
+
+### close fileNameRetryStatsPost
+if retryLogStatsFileHandleCurrent != None :
+    retryLogStatsFileHandleCurrent.close()
 
 if sys.version_info >= (3, 3):
     myProcessingTime = time.process_time()
