@@ -8,6 +8,8 @@
 """
 import datetime, platform, re, sys, os
 
+JACPUUsageFileName = 'JACPUUsage.data'
+
 def UTCDateTime():
     return datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f%Z")
 
@@ -33,11 +35,12 @@ def JAGetDayOfMonth( deltaSeconds ):
     tempTime = datetime.datetime.now()
     deltaTime = datetime.timedelta(seconds=deltaSeconds)
     newTime = tempTime - deltaTime
-    return newTime.strftime("%d")
+    newTimeString = newTime.strftime("%d")
+    return newTimeString 
 
 def LogMsg(logMsg, fileName, appendDate=True):
     if appendDate == True:
-        logFileName = fileName + "." + UTCDateForFileName()
+        logFileName = "{0}.{1}".format( fileName, UTCDateForFileName())
     else:
         logFileName = fileName
 
@@ -189,9 +192,11 @@ def JAYamlLoad(fileName ):
         return yamlData
 
 import os
+
 def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
     """
         This function returns file names in a directory that are modified since given GMT time in seconds
+        if sinceTimeInSec is 0, latest file is picked up regardless of modified time
         Can be used instead of find command
     """
     head_tail = os.path.split( fileName )
@@ -203,6 +208,10 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
 
     fileNameWithoutPath = head_tail[1]
 
+    ### if fileName has variable {HOSTNAME}, replace that with current short hostname
+    if re.search(r'{HOSTNAME}', fileNameWithoutPath) != None:
+        fileNameWithoutPath = re.sub(r'{HOSTNAME}', thisHostName, fileNameWithoutPath)
+
     if debugLevel > 1 :
         print('DEBUG-2 JAFileFilesModified() filePath:{0}, fileName: {1}'.format( myDirPath, fileNameWithoutPath))
 
@@ -212,24 +221,28 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
     returnFileNames = []
     fileNames = {}
 
-    ### get all file names in desired directory
-    for file in os.listdir( myDirPath ) :
-        ### select the file name that matches to passed file name
-        if fnmatch.fnmatch(file, fileNameWithoutPath) :
-    
-            if debugLevel > 2 :
-                print('DEBUG-3 JAFileFilesModified() fileName: {0}, match to desired fileNamePattern: {1}'.format(file, fileNameWithoutPath) )
-
-            ### make full file name including path/name
-            fullFileName = myDirPath + '/' + file
-
-            ### now check the file modified time, if greater than or equal to passed time, save the file name
-            fileModifiedTime = os.path.getmtime ( fullFileName )
-            if fileModifiedTime >= sinceTimeInSec :
-                fileNames[ fileModifiedTime ] = fullFileName 
+    try:
+        ### get all file names in desired directory
+        for file in os.listdir( myDirPath ) :
+            ### select the file name that matches to passed file name
+            if fnmatch.fnmatch(file, fileNameWithoutPath) :
+        
                 if debugLevel > 2 :
-                    print('DEBUG-3 JAFileFilesModified() fileName: {0}, modified time: {1}, later than desired time: {2}'.format( file, fileModifiedTime, sinceTimeInSec) )
+                    print('DEBUG-3 JAFileFilesModified() fileName: {0}, match to desired fileNamePattern: {1}'.format(file, fileNameWithoutPath) )
 
+                ### make full file name including path/name
+                fullFileName = myDirPath + '/' + file
+
+                ### now check the file modified time, if greater than or equal to passed time, save the file name
+                fileModifiedTime = os.path.getmtime ( fullFileName )
+                if fileModifiedTime >= sinceTimeInSec :
+                    fileNames[ fileModifiedTime ] = fullFileName 
+                    if debugLevel > 2 :
+                        print('DEBUG-3 JAFileFilesModified() fileName: {0}, modified time: {1}, later than desired time: {2}'.format( file, fileModifiedTime, sinceTimeInSec) )
+    except OSError as err:
+        errorMsg = "ERROR JAFileFilesModified() Not able to find files in fileName: {0}, error:{1}".format( myDirPath, err)
+        print( errorMsg)
+        
     sortedFileNames = []
     for fileModifiedTime, fileName in sorted ( fileNames.items() ):
         sortedFileNames.append( fileName )
@@ -237,6 +250,12 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
     if debugLevel > 0 :
         print('DEBUG-1 JAFileFilesModified() modified files in:{0}, since gmtTimeInSec:{1}, fileNames:{2}'.format( fileName, sinceTimeInSec, sortedFileNames) )
 
+    ### if sinceTimeInSec is zero, pick up latest file only
+    if sinceTimeInSec == 0:
+        if len(sortedFileNames) > 0:
+            ### return single file as list
+            return [sortedFileNames[-1]]
+    
     return sortedFileNames
 
 def JAGetOSInfo(pythonVersion, debugLevel):
@@ -264,6 +283,10 @@ def JAGetOSInfo(pythonVersion, debugLevel):
 
                     if re.match(r'ID=', tempLine) != None:
                         dummy, OSName = re.split(r'ID=', tempLine)
+
+                        ### remove double quote around the value
+                        OSName = re.sub('"','',OSName)
+
                     elif re.match(r'VERSION_ID',tempLine) != None:
                         dummy,tempOSVersion = re.split(r'VERSION_ID=', tempLine)
                 file.close()
@@ -292,3 +315,113 @@ def JAGetOSType():
         Returns values like Linux, Windows
     """
     return platform.system()
+
+def JAWriteCPUUsageHistory( CPUUsage, logFileName=None, debugLevel=0):
+    """
+    Write CPU usage data to given file name
+    Keep 10 sample values
+
+    First line has the average value of max 10 samples 
+    Rest of the lines have values of 10 samples, current CPUUsage passed as last line
+
+    Returns True up on success, False if file could not be opened
+    """
+    historyCPUUsage, average = JAReadCPUUsageHistory() 
+    if historyCPUUsage == None:
+        ### first time, start with empty list
+        historyCPUUsage = []
+    else:
+        if len( historyCPUUsage ) == 10:
+            ### history has 10 samples, drop the oldest sample
+            historyCPUUsage.pop(0)
+
+    ### append current CPU Usage to the list
+    historyCPUUsage.append( float(CPUUsage) )
+    average = sum(historyCPUUsage) / len( historyCPUUsage)
+
+    try:
+        with open( JACPUUsageFileName, "w") as file:
+            file.write( '{:.2f}\n'.format( average) )
+            for value in historyCPUUsage:
+                file.write('{:.2f}\n'.format( value ))
+            file.close()
+            return True
+
+    except OSError as err:
+        errorMsg = 'ERROR - JAWriteCPUUsageStats() Can not open file: {0} to save CPU usage info, error:{1}\n'.format( JACPUUsageFileName, err)
+        print(errorMsg)
+        if logFileName != None:
+            LogMsg( errorMsg, logFileName, True)
+        return False
+
+def JAReadCPUUsageHistory( logFileName=None, debugLevel=0):
+    """
+    Read CPU usage data from a file
+    Return CPUUsage values in list form, return avarge value separtely
+    Return None if file could not be read
+
+    """
+    try:
+        if os.path.exists( JACPUUsageFileName ) == False:
+            return [0], 0
+        with open( JACPUUsageFileName, "r") as file:
+            tempLine = file.readline().strip()
+            if len(tempLine) > 0 :
+                average = float( tempLine )
+                CPUUsage = []
+                while True:
+                    tempLine = file.readline()
+                    if not tempLine:
+                        break
+                    CPUUsage.append( float( tempLine.strip() ) )
+                file.close()
+                return CPUUsage, average 
+            else:
+                return [0], 0
+    except OSError as err:
+        errorMsg = 'ERROR - JAReadCPUUsageStats() Can not open file: {0} to read CPU usage info, error:{1}\n'.format( JACPUUsageFileName, err)
+        print(errorMsg)
+        if logFileName != None:
+            LogMsg( errorMsg, logFileName, True)
+        return [0], 0
+
+def JAGetAverageCPUUsage( ):
+    tempCPUUsage, average = JAReadCPUUsageHistory()
+    return average
+
+def JAWriteTimeStamp(fileName, currentTime=None):
+    """
+    This function writes current time to given filename
+    If currentTime is not passed, current time is taken and written to the file
+    """
+    import time
+    if currentTime == None:
+        currentTime = time.time()
+    
+    try:
+        with open (fileName, "w") as file:
+            file.write( '{:.2f}\n'.format( currentTime) )
+            file.close()
+            return True
+
+    except OSError as err:
+        errorMsg = 'ERROR - JAWriteTimeStamp() Can not open file: {0} to save current time, error:{1}\n'.format( fileName, err)
+        print(errorMsg)
+        return False
+
+def JAReadTimeStamp( fileName):
+    """
+    This function reads the time stamp from a given file
+    """
+    try:
+        if os.path.exists(fileName) == False:
+            return 0
+        with open (fileName, "r") as file:
+            prevTime = float( file.readline().strip() )
+            file.close()
+            return prevTime
+
+    except OSError as err:
+        errorMsg = 'INFO - JAReadTimeStamp() Can not open file: {0} to save current time, error:{1}\n'.format( fileName, err)
+        print(errorMsg)
+        return 0
