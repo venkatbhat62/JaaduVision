@@ -917,10 +917,14 @@ def JAPostAllDataToWebServer():
                 tempLogStatsToPost = logStatsToPost.copy()
 
                 prevDBType = tempLogStatsToPost['DBType'] = logStats[key][patternIndexForDBDetails*2]['DBType']
-                if logStats[key][patternIndexForDBDetails*2]['InfluxdbBucket'] != None:
-                    tempLogStatsToPost['InfluxdbBucket'] = logStats[key][patternIndexForDBDetails*2]['InfluxdbBucket']
-                if logStats[key][patternIndexForDBDetails*2]['InfluxdbOrg'] != None:
-                    tempLogStatsToPost['InfluxdbOrg'] = logStats[key][patternIndexForDBDetails*2]['InfluxdbOrg']
+                try:
+                    if logStats[key][patternIndexForDBDetails*2]['InfluxdbBucket'] != None:
+                        tempLogStatsToPost['InfluxdbBucket'] = logStats[key][patternIndexForDBDetails*2]['InfluxdbBucket']
+                    if logStats[key][patternIndexForDBDetails*2]['InfluxdbOrg'] != None:
+                        tempLogStatsToPost['InfluxdbOrg'] = logStats[key][patternIndexForDBDetails*2]['InfluxdbOrg']
+                except:
+                    if debugLevel > 0:
+                        print("DEBUG-1 Better to add other DBDetails for :|{0}|".format(logStats[key][patternIndexForDBDetails*2]))
 
         tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
         
