@@ -284,7 +284,7 @@ LogFile:
       Priority: 1
 
     TestStatsWithLabel:
-      DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha1
+      DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
       LogFileName: client/JATest.log*
       # 2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
       # 2021-10-31T19:11:12.096877 Stats client2 total key1 34 dummy1 total key2 200.00 key3 200.00 dummy3
@@ -299,4 +299,21 @@ LogFile:
       #                                                                    ^^^^^^^^ <-- SKIP posting this data
       PatternSkipGroups: 3,4
       PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) (\w+) (\d+.\d+) dummy3
+      Priority: 1
+
+    TestStatsRepeatFieldValueSpec:
+      DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
+      LogFileName: client/JATest.log*
+      # 2021-11-28T14:00:03.228652 ValuePair client11,key1=39,key2=100.00,key3=19.50
+      # 2021-11-28T14:00:03.228829 ValuePair client12,key1=69,key2=200.00,key3=34.50
+      ### extract the regular expression value that matches to label definition
+      PatternVariablePrefix: ValuePair client(\d)(\d)
+      ###                                         ^^
+      ###  use 2nd group value as variable prefix for the *_avrage metrics variable
+      PatternVariablePrefixGroup: 2
+      # 2021-11-28T14:00:03.228652 ValuePair client11,key1=39,key2=100.00,key3=19.50
+      #                                               1    2  3    4      5    6     
+      #                                                       ^^^^^^^^ <-- SKIP posting this data
+      PatternSkipGroups: 3,4
+      PatternAverage: (\w+)=(\d+)
       Priority: 1

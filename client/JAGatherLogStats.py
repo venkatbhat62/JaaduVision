@@ -53,6 +53,7 @@ import time
 import subprocess
 import signal
 
+from JAGlobalLib import LogMsg
 
 # Major 01, minor 00, buildId 01
 JAVersion = "01.10.00"
@@ -261,7 +262,7 @@ signal.signal(signal.SIGINT, JASignalHandler)
 def JAStatsExit(reason):
     print(reason)
     JAStatsDurationInSec = statsEndTimeInSec - statsStartTimeInSec
-    JAGlobalLib.LogMsg('{0} processing duration: {1} sec\n'.format(
+    LogMsg('{0} processing duration: {1} sec\n'.format(
         reason, JAStatsDurationInSec), statsLogFileName, True)
     ### write prev start time of 0 so that next time process will run
     JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.PrevStartTime", 0)
@@ -746,7 +747,7 @@ if retryDurationInHours > 0:
     except OSError as err:
         errorMsg = 'ERROR - Can not open file:{0}, OS error: {1}'.format(fileNameRetryStatsPost, err)
         print(errorMsg)
-        JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+        LogMsg(errorMsg, statsLogFileName, True)
         retryLogStatsFileHandleCurrent = None
 
 returnResult = ''
@@ -1059,7 +1060,7 @@ def JAPostAllDataToWebServer():
             print(
                 'DEBUG-2 JAPostDataToWebServer() No data to post for the key:{0}\n'.format(key))
 
-    JAGlobalLib.LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp +
+    LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp +
                        ' Number of stats posted: ' + str(numPostings) + '\n', statsLogFileName, True)
 
     numPostings = 0
@@ -1113,7 +1114,7 @@ def JAPostAllDataToWebServer():
                     webServerURL, returnStatus))
                 numPostings += 1
 
-        JAGlobalLib.LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp +
+        LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp +
                         ' Number of log lines posted: ' + str(numPostings) + '\n', statsLogFileName, True)
     return True
 
@@ -1152,7 +1153,7 @@ def JAWriteFileInfo():
                 # logFileInfo[key]['filePointer'].close()
 
             file.close()
-        JAGlobalLib.LogMsg('INFO  JAWriteFileInfo() Wrote {0} log file info items to cache file: {1}\n'.format(
+        LogMsg('INFO  JAWriteFileInfo() Wrote {0} log file info items to cache file: {1}\n'.format(
             numItems, cacheLogFileName), statsLogFileName, True)
 
         return True
@@ -1161,7 +1162,7 @@ def JAWriteFileInfo():
         errorMsg = 'ERROR - JAWriteFileInfo() Can not open file ' + JAGatherLogStatsCache + \
             ' to save log file info ' + "OS error: {0}".format(err) + '\n'
         print(errorMsg)
-        JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+        LogMsg(errorMsg, statsLogFileName, True)
         return False
 
 
@@ -1192,7 +1193,7 @@ def JAReadFileInfo():
         errorMsg = 'INFO - JAReadFileInfo() Can not open file ' + cacheLogFileName + \
             'to read log file info ' + "OS error: {0}".format(err) + '\n'
         print(errorMsg)
-        JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+        LogMsg(errorMsg, statsLogFileName, True)
 
 """
 Execute command if elapsed time is greater than IntervalInSec specified for that command
@@ -1284,7 +1285,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                 errorMsg = 'ERROR - JAProcessLogFile() Can not open logFile:| ' + fileName + \
                     '|' + "OS error: {0}".format(err) + '\n'
                 print(errorMsg)
-                JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+                LogMsg(errorMsg, statsLogFileName, True)
                 # store error status so that next round, this will not be tried
                 logFileInfo[fileName]['filePosition'] = 'ERROR'
                 continue
@@ -1301,7 +1302,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                 errorMsg = 'ERROR - JAProcessLogFile() Can not seek position in logFile:|' + \
                     fileName + '|' + "OS error: {0}".format(err) + '\n'
                 print(errorMsg)
-                JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+                LogMsg(errorMsg, statsLogFileName, True)
                 # store error status so that next round, this will not be tried
                 logFileInfo[fileName]['filePosition'] = 'ERROR'
                 continue
@@ -1330,7 +1331,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                 errorMsg = 'ERROR - JAProcessLogFile() Can not go to end of file in logFile:|' + \
                     fileName + '|' + "OS error: {0}".format(err) + '\n'
                 print(errorMsg)
-                JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+                LogMsg(errorMsg, statsLogFileName, True)
                 # store error status so that next round, this will not be tried
                 logFileInfo[fileName]['filePosition'] = 'ERROR'
                 continue
@@ -1441,7 +1442,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         ### logStats[key] is indexed with twice the value
                         while index < len(values):
 
-                            if index == patternIndexForSkipGroups or index == patternIndexForPriority or index == patternIndexForVariablePrefix or index == patternIndexForVariablePrefixGroup or index == patternIndexForLabel or index == patternIndexForLabelGroup or values[index] == None:
+                            if index == patternIndexForDBDetails or index == patternIndexForSkipGroups or index == patternIndexForPriority or index == patternIndexForVariablePrefix or index == patternIndexForVariablePrefixGroup or index == patternIndexForLabel or index == patternIndexForLabelGroup or values[index] == None:
                                 index += 1
                                 continue
 
@@ -1465,9 +1466,15 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 searchPattern = r'{0}'.format(values[index])
                                 if index == patternIndexForPatternSum or index == patternIndexForPatternAverage or index == patternIndexForPatternDelta :
                                     ### special processing needed to extract the statistics from current line
-                                    
-                                    myResults = re.findall( searchPattern, tempLine)
-                                    if myResults != None and len(myResults) > 0 :
+                                    try:
+                                        myResults = re.findall( searchPattern, tempLine)
+                                    except re.error as err:
+                                        errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
+                                        print(errorMsg)
+                                        LogMsg(errorMsg)
+                                        continue
+                                    patternMatchCount =  len(myResults)
+                                    if myResults != None and patternMatchCount > 0 :
                                         ### current line has stats in one or more places. Aggregate the values
                                         ### the pattern spec is in the format
                                         ###   <pattern>(Key1)<pattern>(value1)<pattern>key2<pattern>value2....
@@ -1480,106 +1487,112 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         if index == patternIndexForPatternAverage :
                                             sampleCountList = list(logStats[key][logStatsKeyValueIndexEven])
 
-                                        ### myResults is of the form = [ (key1, value1, key2, value2....)]
-                                        tempResults = myResults.pop(0)
-
                                         if debugLevel > 3:
                                             print("DEBUG-4 JAProcessLogFile() processing line with PatternDelta, PatternSum or PatternAverage, search result:{0}\n Previous values:{1}".format(tempResults, tempStats))
                                         tempKey = ''
                                         appendCurrentValueToList = False
                                         indexToCurrentKeyInTempStats = 0
                                         groupNumber = 0
-                                        for tempResult in tempResults:
-                                            groupNumber += 1
-                                            if values[patternIndexForSkipGroups] != None:
-                                                ### if current group number is in skipGroup list, skip it
-                                                if ( str(groupNumber) in values[patternIndexForSkipGroups]):
-                                                    continue
-                                            
-                                            if numStats % 2 == 0:
 
-                                                ### if current name has space, replace it with '_'
-                                                tempResult = re.sub('\s','_',tempResult)
+                                        ### if pattern matches to single instance in line, len(myResults) will be 1
+                                        ###     myResults is of the form = [ (key1, value1, key2, value2....)]
+                                        ### if pattern matches to multiple instances in line, len(myResults) will be > 1
+                                        while patternMatchCount > 0:
+                                            patternMatchCount -= 1
 
-                                                ### if variable prefix is present, prefix that to current key
-                                                if variablePrefix != None :
-                                                    tempResult = '{0}_{1}'.format( variablePrefix, tempResult)
+                                            tempResults = myResults.pop(0)
 
-                                                ### if label is present, prefix that to updated current key
-                                                ### this format of :<label>: needs to match the pattern searched
-                                                ###  in JASaveStats.py
-                                                if labelPrefix != None:
-                                                    tempResult = ':{0}:{1}'.format( labelPrefix, tempResult)
-
-                                                ### if current key is NOT present in list, append it
-                                                # if len(tempStats) <= numStats :
-                                                try:
-                                                    tempIndexToCurrentKeyInTempStats = tempStats.index( tempResult)
-                                                    if tempIndexToCurrentKeyInTempStats >= 0 :
-                                                        appendCurrentValueToList = False
-                                                        ### in order to store key/value pair associated with variable prefefix
-                                                        ###    need to find the index at which that variablePrefix_key is present
-                                                        ##     in the list and use that to aggregate the value
-                                                        indexToCurrentKeyInTempStats = tempIndexToCurrentKeyInTempStats                                                        
-                                                except ValueError:
-                                                    ### value is NOT present in tempStats list
-                                                    appendCurrentValueToList = True
-                                                    ### current tempResult is not yet in the list, append it
-                                                    tempStats.append(tempResult)
-                                                    if index == patternIndexForPatternAverage :
-                                                        sampleCountList.append(1)
-
-                                                ### save the key name, this is used to make a combined key later <serviceName>_<key>
-                                                tempKey = tempResult
-                                            else:
-                                                ### find out the nature of the value, number or string
-                                                try:
-                                                    float(tempResult)
-                                                    tempResultIsNumber = True
-                                                except:
-                                                    tempResultIsNumber = False
-
-                                                ## value portion of key/ value pair
-                                                ## if index is patternIndexForPatternDelta, tempResult is cumulative value, need to subtract previous sample
-                                                ## value to get delta value and store it as current sample value.
-                                                if  index == patternIndexForPatternDelta:
-                                                    serviceNameSubKey = "{0}_{1}".format( key, tempKey)
-                                                    if tempResultIsNumber == True:
-                                                        tempResultToStore = float(tempResult)
-                                                    else:
-                                                        tempResultToStore = tempResult
-                                                    if previousSampleValues[serviceNameSubKey] != None:
-                                                        if tempResultIsNumber == True:
-                                                            ### previous value present, subtract prev value from current value to get delta value for current sample
-                                                            tempResult = float(tempResult) - previousSampleValues[serviceNameSubKey]
-                                                        ## if string, leave the value as is
-
-                                                    ### store current sample value as is as previous sample
-                                                    previousSampleValues[serviceNameSubKey] = tempResultToStore
+                                            for tempResult in tempResults:
+                                                groupNumber += 1
+                                                if values[patternIndexForSkipGroups] != None:
+                                                    ### if current group number is in skipGroup list, skip it
+                                                    if ( str(groupNumber) in values[patternIndexForSkipGroups]):
+                                                        continue
                                                 
-                                                if appendCurrentValueToList == True:
-                                                    if tempResultIsNumber == True:
-                                                        tempStats.append(float(tempResult))
-                                                    else:
-                                                        ### vlaue is string type
+                                                if numStats % 2 == 0:
+
+                                                    ### if current name has space, replace it with '_'
+                                                    tempResult = re.sub('\s','_',tempResult)
+
+                                                    ### if variable prefix is present, prefix that to current key
+                                                    if variablePrefix != None :
+                                                        tempResult = '{0}_{1}'.format( variablePrefix, tempResult)
+
+                                                    ### if label is present, prefix that to updated current key
+                                                    ### this format of :<label>: needs to match the pattern searched
+                                                    ###  in JASaveStats.py
+                                                    if labelPrefix != None:
+                                                        tempResult = ':{0}:{1}'.format( labelPrefix, tempResult)
+
+                                                    ### if current key is NOT present in list, append it
+                                                    # if len(tempStats) <= numStats :
+                                                    try:
+                                                        tempIndexToCurrentKeyInTempStats = tempStats.index( tempResult)
+                                                        if tempIndexToCurrentKeyInTempStats >= 0 :
+                                                            appendCurrentValueToList = False
+                                                            ### in order to store key/value pair associated with variable prefefix
+                                                            ###    need to find the index at which that variablePrefix_key is present
+                                                            ##     in the list and use that to aggregate the value
+                                                            indexToCurrentKeyInTempStats = tempIndexToCurrentKeyInTempStats                                                        
+                                                    except ValueError:
+                                                        ### value is NOT present in tempStats list
+                                                        appendCurrentValueToList = True
+                                                        ### current tempResult is not yet in the list, append it
                                                         tempStats.append(tempResult)
+                                                        if index == patternIndexForPatternAverage :
+                                                            sampleCountList.append(1)
 
-                                                    ### if working average type metrics, set sample count in the list corresponding to 
-                                                    ###     current key in key/value list
-                                                    if index == patternIndexForPatternAverage :
-                                                        sampleCountList.append(1)
-
+                                                    ### save the key name, this is used to make a combined key later <serviceName>_<key>
+                                                    tempKey = tempResult
                                                 else:
-                                                    if tempResultIsNumber == True:
-                                                        ### add to existing value
-                                                        tempStats[indexToCurrentKeyInTempStats+1] += float(tempResult)
-                                                    ### if string type, leave it as is
+                                                    ### find out the nature of the value, number or string
+                                                    try:
+                                                        float(tempResult)
+                                                        tempResultIsNumber = True
+                                                    except:
+                                                        tempResultIsNumber = False
 
-                                                    ### if working average type metrics, increment sample count in the list corresponding to 
-                                                    ###     current key in key/value list
-                                                    if index == patternIndexForPatternAverage :
-                                                        sampleCountList[indexToCurrentKeyInTempStats+1] += 1
-                                            numStats += 1
+                                                    ## value portion of key/ value pair
+                                                    ## if index is patternIndexForPatternDelta, tempResult is cumulative value, need to subtract previous sample
+                                                    ## value to get delta value and store it as current sample value.
+                                                    if  index == patternIndexForPatternDelta:
+                                                        serviceNameSubKey = "{0}_{1}".format( key, tempKey)
+                                                        if tempResultIsNumber == True:
+                                                            tempResultToStore = float(tempResult)
+                                                        else:
+                                                            tempResultToStore = tempResult
+                                                        if previousSampleValues[serviceNameSubKey] != None:
+                                                            if tempResultIsNumber == True:
+                                                                ### previous value present, subtract prev value from current value to get delta value for current sample
+                                                                tempResult = float(tempResult) - previousSampleValues[serviceNameSubKey]
+                                                            ## if string, leave the value as is
+
+                                                        ### store current sample value as is as previous sample
+                                                        previousSampleValues[serviceNameSubKey] = tempResultToStore
+                                                    
+                                                    if appendCurrentValueToList == True:
+                                                        if tempResultIsNumber == True:
+                                                            tempStats.append(float(tempResult))
+                                                        else:
+                                                            ### vlaue is string type
+                                                            tempStats.append(tempResult)
+
+                                                        ### if working average type metrics, set sample count in the list corresponding to 
+                                                        ###     current key in key/value list
+                                                        if index == patternIndexForPatternAverage :
+                                                            sampleCountList.append(1)
+
+                                                    else:
+                                                        if tempResultIsNumber == True:
+                                                            ### add to existing value
+                                                            tempStats[indexToCurrentKeyInTempStats+1] += float(tempResult)
+                                                        ### if string type, leave it as is
+
+                                                        ### if working average type metrics, increment sample count in the list corresponding to 
+                                                        ###     current key in key/value list
+                                                        if index == patternIndexForPatternAverage :
+                                                            sampleCountList[indexToCurrentKeyInTempStats+1] += 1
+                                                numStats += 1
 
                                         ### for average type, sample count is incremented based for ecach prefix variable key values   
                                         if index == patternIndexForPatternAverage :
@@ -1662,12 +1675,12 @@ def JARetryLogStatsPost(currentTime):
             else:
                 errorMsg = 'WARN JARetryLogStatsPost() retry failed for LogStats file:{0}'.format(retryLogStatsFileName)
             print(errorMsg)
-            JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+            LogMsg(errorMsg, statsLogFileName, True)
 
         except OSError as err:
             errorMsg = "ERROR JARetryLogStatsPost() not able to read the file:|{0}, error:{1}".format(retryLogStatsFileName, err)
             print(errorMsg)
-            JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+            LogMsg(errorMsg, statsLogFileName, True)
 
 # read file info saved during prev run
 # JAReadFileInfo()
@@ -1709,7 +1722,7 @@ if retryDurationInHours > 0 :
     if OSType == 'Windows':
         errorMsg = "ERROR RetryDurationInHours is not suppported on Windows, history data not sent to webserver automatically"
         print(errorMsg)
-        JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+        LogMsg(errorMsg, statsLogFileName, True)
     else:
         procId = os.fork()
         if procId == 0:
@@ -1779,7 +1792,7 @@ while loopStartTimeInSec <= statsEndTimeInSec:
         errorMsg = "WARN  Current CPU Usage: {0} is above max CPU usage level specified: {1}, Skipped gathering Log stats".format(
             averageCPUUsage, maxCPUUsageForEvents)
         print(errorMsg)
-        JAGlobalLib.LogMsg(errorMsg, statsLogFileName, True)
+        LogMsg(errorMsg, statsLogFileName, True)
 
     # if elapsed time is less than post interval, sleep till post interval elapses
     currentTime = time.time()
