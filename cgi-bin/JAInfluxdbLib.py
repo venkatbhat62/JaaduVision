@@ -5,7 +5,7 @@ Author: 2021-11-23 havembha@gmail.com
 from influxdb_client import InfluxDBClient, WriteOptions
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-def JAInfluxdbWriteData( url, token, org, bucket, data):
+def JAInfluxdbWriteData( url, token, org, bucket, data, debugLevel=0):
 
     returnStatus = "<Response [200]>"
     _client = InfluxDBClient(url=url, token=token, org=org)
@@ -22,7 +22,8 @@ def JAInfluxdbWriteData( url, token, org, bucket, data):
 
     try:
         result = _write_client.write(record=data,bucket=bucket, org=org,protocol='line')
-        print("_Status_PASS_ data written to influxdb:|{0}, status:{1}|".format( data, returnStatus ))
+        if debugLevel > 0:
+            print("_Status_PASS_ data written to influxdb:|{0}, status:{1}|".format( data, returnStatus ))
         if result != None:
             returnStatus = "<Response [500]>"    
     except Exception as err:

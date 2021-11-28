@@ -507,7 +507,7 @@ try:
 
     if postData == True :
         if JADBTypeInfludb == True :
-            returnResult = JAInfluxdbLib.JAInfluxdbWriteData(JAInfluxdbURL,JAInfluxdbToken,JAInfluxdbOrg,JAInfluxdbBucket, influxdbDataArrayToPost)
+            returnResult = JAInfluxdbLib.JAInfluxdbWriteData(JAInfluxdbURL,JAInfluxdbToken,JAInfluxdbOrg,JAInfluxdbBucket, influxdbDataArrayToPost, debugLevel)
             if debugLevel > 0:
                 print("DEBUG-1 JASaveStats.py data: {0} posted to influxdb with returnStatus:|{1}|".format(influxdbDataArrayToPost, returnResult ))
                 fpo.write("influxDataArrayToPost:|{0}|, returnResult:|{1}|".format(influxdbDataArrayToPost, returnResult))
