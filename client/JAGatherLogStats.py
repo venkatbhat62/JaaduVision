@@ -923,8 +923,9 @@ def JAPostAllDataToWebServer():
                     if logStats[key][patternIndexForDBDetails*2]['InfluxdbOrg'] != None:
                         tempLogStatsToPost['InfluxdbOrg'] = logStats[key][patternIndexForDBDetails*2]['InfluxdbOrg']
                 except:
-                    if debugLevel > 0:
-                        print("DEBUG-1 Better to add other DBDetails for :|{0}|".format(logStats[key][patternIndexForDBDetails*2]))
+                    if prevDBType != 'Prometheus' :
+                        if debugLevel > 0:
+                            print("DEBUG-1 Better to add other DBDetails for :|{0}|".format(logStats[key][patternIndexForDBDetails*2]))
 
         tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
         
