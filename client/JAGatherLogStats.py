@@ -830,14 +830,14 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
         returnResult = requests.post(
             webServerURL, data, verify=verifyCertificate, headers=headers)
         if debugLevel > 1:
-            print('DEBUG-2 JAPost() logStatsToPost: {0}'.format(tempLogStatsToPost))
+            print('DEBUG-2 JAPostDataToWebServer() logStatsToPost: {0}'.format(tempLogStatsToPost))
         resultText = returnResult.text
     else:
         result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
                                 "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         resultText = result.stdout.decode('utf-8').split('\n')
         
-    print('INFO JAPost() Posted data to web server:|{0}|, with result:|{1}|'.format(webServerURL, resultText))
+    print('INFO JAPostDataToWebServer() Posted data to web server:|{0}|, with result:|{1}|'.format(webServerURL, resultText))
 
     resultLength = len(resultText)
     if resultLength > 1 :
