@@ -1724,16 +1724,33 @@ statsEndTimeInSec = loopStartTimeInSec + dataCollectDurationInSec
 
 ### process retryLogStats files if present with time stamp within retryDurationInHours
 if retryDurationInHours > 0 :
-    if OSType == 'Windows':
-        errorMsg = "ERROR RetryDurationInHours is not suppported on Windows, history data not sent to webserver automatically"
-        print(errorMsg)
-        LogMsg(errorMsg, statsLogFileName, True)
-    else:
-        procId = os.fork()
-        if procId == 0:
-            ### child process
-            JARetryLogStatsPost(programStartTime)
-            sys.exit(0)
+    ### read the last time this process was started, 
+    ###   if the time elapsed is less than dataCollectDurationInSec, 
+    ###   prev instance is still running, get out
+    prevStartTime = JAGlobalLib.JAReadTimeStamp( "JAGatherLogStats.RetryStartTime")
+    if prevStartTime > 0:
+        currentTime = time.time()
+        if ( prevStartTime +  dataCollectDurationInSec) > currentTime:
+            errorMsg = 'INFO - Previous retry operation still in progress'
+            print(errorMsg)
+            LogMsg(errorMsg,statsLogFileName, True)
+        else:
+            ### Create a file with current time stamp
+            JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.RetryStartTime")
+            if OSType == 'Windows':
+                errorMsg = "ERROR RetryDurationInHours is not suppported on Windows, history data not sent to webserver automatically"
+                print(errorMsg)
+                LogMsg(errorMsg, statsLogFileName, True)
+            else:
+                procId = os.fork()
+                if procId == 0:
+                    ### child process
+                    JARetryLogStatsPost(programStartTime)
+                    JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.RetryStartTime", 0)
+                    errorMsg = "INFO Retry operation completed"
+                    print(errorMsg)
+                    LogMsg(errorMsg,statsLogFileName, True)
+                    sys.exit(0)
 
 # first time, sleep for dataPostIntervalInSec so that log file can be processed and posted after waking up
 sleepTimeInSec = dataPostIntervalInSec
