@@ -1649,20 +1649,24 @@ def JARetryLogStatsPost(currentTime):
         if debugLevel > 0:
             print("DEBUG-1 JARetryLogStatsPost() processing retry log stats file:|{0}".format(retryLogStatsFileName))
         try:
+            numberOfRecordsSent = 0
             ### read each line from a file and send to web server
             retryFileHandle = open ( retryLogStatsFileName, "r")
             while returnStatus == True:
                 tempLine = retryFileHandle.readline()
                 if not tempLine:
                     break
-                returnStatus = JAPostDataToWebServer(tempLine, useRequests, False)
-                
+                ### Need to pass dictionary type object to JAPostDataToWebServer()
+                returnStatus = JAPostDataToWebServer(json.loads(tempLine), useRequests, False)
+                if returnStatus == True:
+                    numberOfRecordsSent += 1
+
             retryFileHandle.close()
 
             if returnStatus == True:
                 ### delete the file
                 os.remove( deleteFileName)
-                errorMsg = "INFO JARetryLogStatsPost() retry passed for LogStats file:{0}, deleted this file".format(retryLogStatsFileName)
+                errorMsg = "INFO JARetryLogStatsPost() retry passed for LogStats file:{0}, numberOfRecordsSent:|{1}|, deleted this file".format(retryLogStatsFileName, numberOfRecordsSent)
             else:
                 errorMsg = 'WARN JARetryLogStatsPost() retry failed for LogStats file:{0}'.format(retryLogStatsFileName)
             print(errorMsg)
