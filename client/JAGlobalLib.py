@@ -216,29 +216,25 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
         print('DEBUG-2 JAFileFilesModified() filePath:{0}, fileName: {1}'.format( myDirPath, fileNameWithoutPath))
 
     import fnmatch
-    
+    import glob
+
     ### return buffer
     returnFileNames = []
     fileNames = {}
 
     try:
-        ### get all file names in desired directory
-        for file in os.listdir( myDirPath ) :
-            ### select the file name that matches to passed file name
-            if fnmatch.fnmatch(file, fileNameWithoutPath) :
+        ### get all file names in desired directory with matching file spec
+        for file in glob.glob(myDirPath + "/" + fileNameWithoutPath):
         
+            if debugLevel > 2 :
+                print('DEBUG-3 JAFileFilesModified() fileName: {0}, match to desired fileNamePattern: {1}'.format(file, fileNameWithoutPath) )
+
+            ### now check the file modified time, if greater than or equal to passed time, save the file name
+            fileModifiedTime = os.path.getmtime ( file )
+            if fileModifiedTime >= sinceTimeInSec :
+                fileNames[ fileModifiedTime ] = file 
                 if debugLevel > 2 :
-                    print('DEBUG-3 JAFileFilesModified() fileName: {0}, match to desired fileNamePattern: {1}'.format(file, fileNameWithoutPath) )
-
-                ### make full file name including path/name
-                fullFileName = myDirPath + '/' + file
-
-                ### now check the file modified time, if greater than or equal to passed time, save the file name
-                fileModifiedTime = os.path.getmtime ( fullFileName )
-                if fileModifiedTime >= sinceTimeInSec :
-                    fileNames[ fileModifiedTime ] = fullFileName 
-                    if debugLevel > 2 :
-                        print('DEBUG-3 JAFileFilesModified() fileName: {0}, modified time: {1}, later than desired time: {2}'.format( file, fileModifiedTime, sinceTimeInSec) )
+                    print('DEBUG-3 JAFileFilesModified() fileName: {0}, modified time: {1}, later than desired time: {2}'.format( file, fileModifiedTime, sinceTimeInSec) )
     except OSError as err:
         errorMsg = "ERROR JAFileFilesModified() Not able to find files in fileName: {0}, error:{1}".format( myDirPath, err)
         print( errorMsg)
