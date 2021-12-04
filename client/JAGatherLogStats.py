@@ -1658,7 +1658,8 @@ def JARetryLogStatsPost(currentTime):
                 if not tempLine:
                     break
                 logStatsLines.append(tempLine)
-                if ++numberOfLines >= retryLogStatsBatchSize :
+                numberOfLines += 1
+                if numberOfLines >= retryLogStatsBatchSize :
                     ### send data to web server
                     returnStatus = JAPostDataToWebServer(logStatsLines, useRequests, False)
                     numberOfLines = 0
