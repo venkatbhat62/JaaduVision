@@ -1651,23 +1651,13 @@ def JARetryLogStatsPost(currentTime):
         try:
             ### read each line from a file and send to web server
             retryFileHandle = open ( retryLogStatsFileName, "r")
-            logStatsLines = []
-            numberOfLines = 0
             while returnStatus == True:
                 tempLine = retryFileHandle.readline()
                 if not tempLine:
                     break
-                logStatsLines.append(tempLine)
-                numberOfLines += 1
-                if numberOfLines >= retryLogStatsBatchSize :
-                    ### send data to web server
-                    returnStatus = JAPostDataToWebServer(logStatsLines, useRequests, False)
-                    numberOfLines = 0
-
-            if returnStatus == True:
-                ### send remaining data
-                returnStatus = JAPostDataToWebServer(logStatsLines, useRequests, False)
-                retryFileHandle.close()
+                returnStatus = JAPostDataToWebServer(tempLine, useRequests, False)
+                
+            retryFileHandle.close()
 
             if returnStatus == True:
                 ### delete the file
