@@ -910,7 +910,12 @@ def JAPostAllDataToWebServer():
                 ### current key's DBDetails differ from prevDBType
                 ###   post the data aggregated so far in tempLogStatsToPost
                 if postData == True :
-                    if JAPostDataToWebServer(tempLogStatsToPost, useRequests, True) == True:
+                    if prevDBType == 'Influxdb' :
+                        storeUponFailure = True
+                    else:
+                        storeUponFailure = False
+
+                    if JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure) == True:
                         ### successful posting, increment count
                         numPostings += 1
                     postData = False
@@ -1052,7 +1057,12 @@ def JAPostAllDataToWebServer():
 
     
     if postData == True :
-        if JAPostDataToWebServer(tempLogStatsToPost, useRequests, True) == True:
+        if prevDBType == 'Influxdb' :
+            storeUponFailure = True
+        else:
+            storeUponFailure = False
+
+        if JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure) == True:
             ### successful posting, increment count
             numPostings += 1
     else:
