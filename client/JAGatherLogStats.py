@@ -742,13 +742,7 @@ JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.PrevStartTime")
 ### if retryDurationInHours is not zero, open file in append mode to append failed postings
 if retryDurationInHours > 0:
     fileNameRetryStatsPost = retryLogStatsFileNamePartial + JAGlobalLib.UTCDateForFileName()
-    try:
-        retryLogStatsFileHandleCurrent = open( fileNameRetryStatsPost,"a")
-    except OSError as err:
-        errorMsg = 'ERROR - Can not open file:{0}, OS error: {1}'.format(fileNameRetryStatsPost, err)
-        print(errorMsg)
-        LogMsg(errorMsg, statsLogFileName, True)
-        retryLogStatsFileHandleCurrent = None
+    retryLogStatsFileHandleCurrent = None
 
 returnResult = ''
 
@@ -816,7 +810,7 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
     Post data to web server
     Returns True up on success, False upon failure
     """
-    global webServerURL, verifyCertificate, debugLevel, headers, retryLogStatsFileHandleCurrent
+    global webServerURL, verifyCertificate, debugLevel, headers, retryLogStatsFileHandleCurrent, fileNameRetryStatsPost
     logStatsPostSuccess = True
     if useRequests == True:
         import requests
@@ -843,20 +837,32 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
     if resultLength > 1 :
         statusLine = resultText[resultLength-2]   
         if re.search(r'\[2..\]', statusLine) == None :
-            logStatsPostSuccess = False
+            ### see whether the pattern exists in entire string
+            if re.search(r'\[2..\]', resultText) == None :
+                logStatsPostSuccess = False
     else:
         logStatsPostSuccess = False
 
     
     if logStatsPostSuccess == False:
         if retryLogStatsFileHandleCurrent != None and storeUponFailure == True:
-            try:
-                ### if DBType is influxdb and retryStatsFileHandle is not None, store current data to be sent later
-                retryLogStatsFileHandleCurrent.write( data + '\n')
-            except OSError as err:
-                print("ERROR JAPostDataToWebServer() could not append data to retryStatsFile, error:{0}".format(err))
-            except Exception as err:
-                print("ERROR Unknwon error:{0}".format( err ))
+            if retryLogStatsFileHandleCurrent == None :
+                try:
+                    retryLogStatsFileHandleCurrent = open( fileNameRetryStatsPost,"a")
+                except OSError as err:
+                    errorMsg = 'ERROR - Can not open file:{0}, OS error: {1}'.format(fileNameRetryStatsPost, err)
+                    print(errorMsg)
+                    LogMsg(errorMsg, statsLogFileName, True)
+
+            if retryLogStatsFileHandleCurrent != None :
+                try:
+                    ### if DBType is influxdb and retryStatsFileHandle is not None, store current data to be sent later
+                    retryLogStatsFileHandleCurrent.write( data + '\n')
+                except OSError as err:
+                    print("ERROR JAPostDataToWebServer() could not append data to retryStatsFile, error:{0}".format(err))
+                except Exception as err:
+                    print("ERROR Unknwon error:{0}".format( err ))
+
     return logStatsPostSuccess
 
 """
@@ -1250,12 +1256,17 @@ def JAProcessCommands( logFileProcessingStartTime, debugLevel):
                 values[indexForLastExecutionTime] = tempCurrentTime
 
                 ### proceed with command execution if current CPU usage is lower than max CPU usage allowed
-
-                result = subprocess.run( values[indexForCommand],
+                try:
+                    result = subprocess.run( values[indexForCommand],
                                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                returnStatus = result.stdout.decode('utf-8').split('\n')
-                print('INFO JAProcessCommands() result of executing the command:{0}\n{1}'.format(
-                    values[indexForCommand], returnStatus))
+                    returnStatus = result.stdout.decode('utf-8').split('\n')
+                    print('INFO JAProcessCommands() result of executing the command:{0}\n{1}'.format(
+                        values[indexForCommand], returnStatus))
+                
+                except (subprocess.CalledProcessError or FileNotFoundError) as err :
+                    errorMsg = "ERROR failed to execute command:{0}".format(values[indexForCommand], err)
+                    print( errorMsg)
+                    LogMsg(errorMsg, statsLogFileName, True)
 
 def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, gatherLogStatsEnabled, debugLevel):
     global averageCPUUsage, thisHostName, logEventPriorityLevel
@@ -1674,14 +1685,21 @@ def JARetryLogStatsPost(currentTime):
             retryFileHandle.close()
 
             if returnStatus == True:
-                ### delete the file
-                os.remove( retryLogStatsFileName)
-                errorMsg = "INFO JARetryLogStatsPost() retry passed for LogStats file:{0}, numberOfRecordsSent:|{1}|, deleted this file".format(retryLogStatsFileName, numberOfRecordsSent)
+                if numberOfRecordsSent > 0:
+                    ### delete the file
+                    os.remove( retryLogStatsFileName)
+                    errorMsg = "INFO JARetryLogStatsPost() retry passed for LogStats file:{0}, numberOfRecordsSent:|{1}|, deleted this file".format(retryLogStatsFileName, numberOfRecordsSent)
+                else:
+                    errorMsg = "INFO No record to send in file:{0}".format(retryLogStatsFileName)
             else:
                 errorMsg = 'WARN JARetryLogStatsPost() retry failed for LogStats file:{0}'.format(retryLogStatsFileName)
             print(errorMsg)
             LogMsg(errorMsg, statsLogFileName, True)
 
+        except IOError as err:
+            errorMsg = "INFO file in open state already, skipping file: {0}".format(retryLogStatsFileName)
+            print(errorMsg)
+            LogMsg(errorMsg, statsLogFileName, True)
         except OSError as err:
             errorMsg = "ERROR JARetryLogStatsPost() not able to read the file:|{0}, error:{1}".format(retryLogStatsFileName, err)
             print(errorMsg)
