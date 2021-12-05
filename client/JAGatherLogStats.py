@@ -31,14 +31,14 @@ Author: havembha@gmail.com, 2021-07-18
    Added support for Influxdb via spec at top level applicable to all service definitions or for each service definitions.
       DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
    Values are sent to web server for each service definitions
-TBD havembha@gmail.com
+
+2021-12-4 havembha@gmail.com
    For DBType Influxdb, added retry logic
    If web server is not available, current stats are written to local history file
      next time, when program runs, it will try to send the stats from history file to web server
-   If the program exits due to expiry of  dataCollectDurationInSec, when the program starts next time,
-     it will try to send history stats to web server
-   This retry operation will be done while the program is going to sleep between the scrap intervals so that
-     current log file scraping continues in normal mode
+   If the program exits due to expiry of  dataCollectDurationInSec, child process created to post retry data will continue to run
+     During the time retry is in progress, it will create a file JAGatherLogStats.RetryStartTime with time stamp
+     If this file has time stamp is more recent than last 24 * dataCollectDurationInSec, retry will be skipped. (prev retry instance still running)
      
 """
 import json
@@ -1726,12 +1726,12 @@ statsEndTimeInSec = loopStartTimeInSec + dataCollectDurationInSec
 if retryDurationInHours > 0 :
     skipRetry = False 
     ### read the last time this process was started, 
-    ###   if the time elapsed is less than dataCollectDurationInSec, 
+    ###   if the time elapsed is less than 24 times dataCollectDurationInSec, 
     ###   prev instance is still running, get out
     prevStartTime = JAGlobalLib.JAReadTimeStamp( "JAGatherLogStats.RetryStartTime")
     if prevStartTime > 0:
         currentTime = time.time()
-        if ( prevStartTime +  dataCollectDurationInSec) > currentTime:
+        if ( prevStartTime + 24 * dataCollectDurationInSec) > currentTime:
             errorMsg = 'INFO - Previous retry operation still in progress'
             print(errorMsg)
             LogMsg(errorMsg,statsLogFileName, True)
