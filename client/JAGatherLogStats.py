@@ -1675,7 +1675,7 @@ def JARetryLogStatsPost(currentTime):
 
             if returnStatus == True:
                 ### delete the file
-                os.remove( deleteFileName)
+                os.remove( retryLogStatsFileName)
                 errorMsg = "INFO JARetryLogStatsPost() retry passed for LogStats file:{0}, numberOfRecordsSent:|{1}|, deleted this file".format(retryLogStatsFileName, numberOfRecordsSent)
             else:
                 errorMsg = 'WARN JARetryLogStatsPost() retry failed for LogStats file:{0}'.format(retryLogStatsFileName)
