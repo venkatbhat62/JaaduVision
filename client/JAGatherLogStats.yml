@@ -182,7 +182,7 @@ Environment:
      ###   
      RetryDurationInHours: 48
      ### During retry, batch below number of stats lines together and send to web server
-     RetryLogStatsBatchSize: 100
+     RetryLogStatsBatchSize: 1
 
 Execute:
     Health:
