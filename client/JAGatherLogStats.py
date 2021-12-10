@@ -741,7 +741,7 @@ JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.PrevStartTime")
 
 if retryDurationInHours == None:
     retryDurationInHours = 0
-    
+
 ### if retryDurationInHours is not zero, open file in append mode to append failed postings
 if retryDurationInHours > 0:
     fileNameRetryStatsPost = retryLogStatsFileNamePartial + JAGlobalLib.UTCDateForFileName()
@@ -1118,6 +1118,11 @@ def JAPostAllDataToWebServer():
             data = json.dumps(tempLogLinesToPost)
 
             if useRequests == True:
+                import requests
+
+                if disableWarnings == True:
+                    requests.packages.urllib3.disable_warnings()
+
                 # post interval elapsed, post the data to web server
                 returnResult = requests.post(
                     webServerURL, data, verify=verifyCertificate, headers=headers)
