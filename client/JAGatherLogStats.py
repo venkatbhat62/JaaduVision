@@ -739,6 +739,9 @@ if prevStartTime > 0:
 ### Create a file with current time stamp
 JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.PrevStartTime")
 
+if retryDurationInHours == None:
+    retryDurationInHours = 0
+    
 ### if retryDurationInHours is not zero, open file in append mode to append failed postings
 if retryDurationInHours > 0:
     fileNameRetryStatsPost = retryLogStatsFileNamePartial + JAGlobalLib.UTCDateForFileName()
