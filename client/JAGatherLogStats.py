@@ -1743,7 +1743,7 @@ if OSType == 'Windows':
 
     if psutilModulePresent == True:
         import psutil
-        psutil.Process().nice(psutil.LOW_PRIORITY_CLASS)
+        psutil.Process().nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
 else:
     # on all unix hosts, reduce to lowest priority
     os.nice(19)
