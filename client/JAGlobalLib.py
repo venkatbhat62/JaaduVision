@@ -197,7 +197,7 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel, thisHostName):
     """
         This function returns file names in a directory that are modified since given GMT time in seconds
         if sinceTimeInSec is 0, latest file is picked up regardless of modified time
-        Can be used instead of find command
+        Can be used instead of find command 
     """
     head_tail = os.path.split( fileName )
     ### if no path specified, use ./ (current working directory)
