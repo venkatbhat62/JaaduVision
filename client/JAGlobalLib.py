@@ -193,7 +193,7 @@ def JAYamlLoad(fileName ):
 
 import os
 
-def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
+def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel, thisHostName):
     """
         This function returns file names in a directory that are modified since given GMT time in seconds
         if sinceTimeInSec is 0, latest file is picked up regardless of modified time
@@ -421,3 +421,17 @@ def JAReadTimeStamp( fileName):
         errorMsg = 'INFO - JAReadTimeStamp() Can not open file: {0} to save current time, error:{1}\n'.format( fileName, err)
         print(errorMsg)
         return 0
+
+def JAGetUptime(OSType):
+    """
+    returns uptime in number of seconds
+    if can't be computed, returns 0
+    """
+    if OSType == 'Linux':
+        with open('/proc/uptime', 'r') as f:
+            uptime_seconds = float(f.readline().split()[0])
+    elif OSType == 'Windows':
+        uptime_seconds = 0
+    else:
+         uptime_seconds = 0
+    return uptime_seconds

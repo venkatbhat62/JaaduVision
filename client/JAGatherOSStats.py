@@ -213,7 +213,7 @@ def JAGatherEnvironmentSpecs( key, values ):
                 if myValue != None:
                     webServerURL = myValue
                 elif key == 'All':
-                    JAStatsExit( 'ERROR mandatory param WebServerURL not available')
+                    JAOSStatsExit( 'ERROR mandatory param WebServerURL not available')
         
         elif myKey == 'DisableWarnings':
            if disableWarnings == None:
@@ -392,14 +392,35 @@ except ImportError:
         subprocess.run = sp_run
         # ^ This monkey patch allows it work on Python 2 or 3 the same way
 
-### read the last time this process was started, 
-###   if the time elapsed is less than dataCollectDurationInSec, 
-###   prev instance is still running, get out
-prevStartTime = JAGlobalLib.JAReadTimeStamp( "JAGatherOSStats.PrevStartTime")
-if prevStartTime > 0:
-    currentTime = time.time()
-    if ( prevStartTime +  dataCollectDurationInSec) > currentTime:
-        JAOSStatsExit('WARN - another instance of this program is running, exiting')
+### wait for twice the data collection duration for any prev instance to complete
+waitTime = dataCollectDurationInSec * 2
+OSUptime = JAGlobalLib.JAGetUptime(OSType)
+
+while waitTime > 0:
+    ### read the last time this process was started, 
+    ###   if the time elapsed is less than dataCollectDurationInSec, 
+    ###   prev instance is still running, get out
+    prevStartTime = JAGlobalLib.JAReadTimeStamp( "JAGatherOSStats.PrevStartTime")
+    if prevStartTime > 0:
+        currentTime = time.time()
+        if ( prevStartTime +  dataCollectDurationInSec) > currentTime:
+            ### if host just started, the PrevStartTime file can have recent time, but, process will not be running
+            ### if uptime is less than data collection duration, continue processing
+            if OSUptime > 0 and OSUptime < dataCollectDurationInSec:
+                break
+            errorMsg = "INFO - Another instance of this program still running, sleeping for 10 seconds"
+            print(errorMsg)
+            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+            ### sleep for 10 seconds, decrement waitTime by 10 seconds
+            time.sleep(10)
+            waitTime -= 10
+        else:
+            break
+    else:
+        break
+    
+if waitTime <= 0:
+    JAOSStatsExit('ERROR - another instance of this program is running, exceeded max wait time:{0}, exiting'.format(dataCollectDurationInSec * 2))
 
 ### Create a file with current time stamp
 JAGlobalLib.JAWriteTimeStamp("JAGatherOSStats.PrevStartTime")
@@ -1022,7 +1043,8 @@ if psutilModulePresent == True :
 ### reduce process priority
 if OSType == 'Windows':
     if psutilModulePresent == True:
-        p.nice(psutil.LOW_PRIORITY_CLASS)
+        p = psutil.Process()
+        p.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
 else:
     ### on all unix hosts, reduce to lowest priority
     os.nice(19) 
@@ -1040,7 +1062,7 @@ sleepTimeInSec = dataPostIntervalInSec
 ###   and post the stats per post interval
 while loopStartTimeInSec  <= statsEndTimeInSec :
   if debugLevel > 0:
-    if sys.version_info >= (3,3):
+    if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
         myProcessingTime = time.process_time()
     else:
         myProcessingTime = 0
@@ -1053,6 +1075,9 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
   JAToTimeString =  JAGlobalLib.JAGetTime( 0 )
   JADayOfMonth = JAGlobalLib.JAGetDayOfMonth(0)
   
+  ### copy constant data portion
+  tempOSStatsToPost = OSStatsToPost.copy()
+
   ### Now gather OS stats
   for key, spec in JAOSStatsSpec.items():
      fields = spec[0]
@@ -1178,21 +1203,22 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
                 tempValue2=tempValue1
     
         for item in tempValue2:
-            if valuePairs == '': 
-                if key == 'cpu_percent':
-                    if re.search('cpu_percent_used', item) == None:
-                        ### this has the value in the form cpu_percent 3.0
-                        valuePairs = '{0}_used={1}'.format(key,item)
+            if item != '':
+                if valuePairs == '': 
+                    if key == 'cpu_percent':
+                        if re.search('cpu_percent_used', item) == None:
+                            ### this has the value in the form cpu_percent 3.0
+                            valuePairs = '{0}_used={1}'.format(key,item)
+                        else:
+                            ### this has the value in the form cpu_percent_used=3.0
+                            valuePairs = '{0}'.format(item)
                     else:
-                        ### this has the value in the form cpu_percent_used=3.0
-                        valuePairs = '{0}'.format(item)
+                        valuePairs = '{0}_{1}'.format(key,item) 
                 else:
-                    valuePairs = '{0}_{1}'.format(key,item) 
-            else:
-                valuePairs = '{0},{1}_{2}'.format(valuePairs, key, item)
-
-        timeStamp = JAGlobalLib.UTCDateTime() 
-        OSStatsToPost[key] = 'timeStamp={0},{1}'.format(timeStamp, valuePairs)
+                    valuePairs = '{0},{1}_{2}'.format(valuePairs, key, item)
+        if valuePairs != '':
+            timeStamp = JAGlobalLib.UTCDateTime() 
+            tempOSStatsToPost[key] = 'timeStamp={0},{1}'.format(timeStamp, valuePairs)
 
   ### Now post the data to web server
   import json
@@ -1209,12 +1235,12 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
     useRequests = False
 
   import json
-  data = json.dumps(OSStatsToPost)
+  data = json.dumps(tempOSStatsToPost)
   if useRequests == True:
     import requests
 
     if debugLevel > 1:
-        print ('DEBUG-2 OSStatsToPost:{0}'.format( OSStatsToPost) )
+        print ('DEBUG-2 OSStatsToPost:{0}'.format( tempOSStatsToPost) )
     if disableWarnings == True:
         requests.packages.urllib3.disable_warnings()
 
@@ -1223,7 +1249,7 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
   else:
       result =  subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Content-Type: application/json", '-d', data],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
       returnStatus = result.stdout.decode('utf-8').split('\n')
-      print('INFO JAPostJSONData() returnStatus:{0}'.format( returnStatus ))
+      print('INFO - Result of posting data to web server {0}'.format( returnStatus ))
 
   ### if elapsed time is less than post interval, sleep till post interval elapses
   elapsedTimeInSec = time.time() - logFileProcessingStartTime
@@ -1237,7 +1263,7 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
   ### take curren time so that processing will start from current time
   loopStartTimeInSec = logFileProcessingStartTime
 
-if sys.version_info >= (3,3):
+if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
     myProcessingTime = time.process_time()
 else:
     myProcessingTime = 'N/A'

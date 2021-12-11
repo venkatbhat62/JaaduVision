@@ -727,14 +727,36 @@ if debugLevel > 0:
     for key, spec in JAStatsSpec.items():
         print('DEBUG-1 Name: {0}, Fields: {1}'.format(key, spec))
 
-### read the last time this process was started, 
-###   if the time elapsed is less than dataCollectDurationInSec, 
-###   prev instance is still running, get out
-prevStartTime = JAGlobalLib.JAReadTimeStamp( "JAGatherLogStats.PrevStartTime")
-if prevStartTime > 0:
-    currentTime = time.time()
-    if ( prevStartTime +  dataCollectDurationInSec) > currentTime:
-        JAStatsExit('WARN - another instance of this program is running, exiting')
+### wait for twice the data collection duration for any prev instance to complete
+waitTime = dataCollectDurationInSec * 2
+OSUptime = JAGlobalLib.JAGetUptime(OSType)
+while waitTime > 0:
+    ### read the last time this process was started, 
+    ###   if the time elapsed is less than dataCollectDurationInSec, 
+    ###   prev instance is still running, get out
+    prevStartTime = JAGlobalLib.JAReadTimeStamp( "JAGatherLogStats.PrevStartTime")
+    if prevStartTime > 0:
+        currentTime = time.time()
+        if ( prevStartTime +  dataCollectDurationInSec) > currentTime:
+            ### if host just started, the PrevStartTime file can have recent time, but, process will not be running
+            ### if uptime is less than data collection duration, continue processing
+            if OSUptime > 0 and OSUptime < dataCollectDurationInSec:
+                break
+
+            errorMsg = "INFO - Another instance of this program still running, sleeping for 10 seconds"
+            print(errorMsg)
+            LogMsg(errorMsg, statsLogFileName, True)
+
+            ### sleep for 10 seconds, decrement waitTime by 10 seconds
+            time.sleep(10)
+            waitTime -= 10
+        else:
+            break
+    else:
+        break
+
+if waitTime <= 0:
+    JAStatsExit('ERROR - another instance of this program is running, exceeded max wait time:{0}, exiting'.format(dataCollectDurationInSec * 2))
 
 ### Create a file with current time stamp
 JAGlobalLib.JAWriteTimeStamp("JAGatherLogStats.PrevStartTime")
@@ -1279,7 +1301,7 @@ def JAProcessCommands( logFileProcessingStartTime, debugLevel):
 def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, gatherLogStatsEnabled, debugLevel):
     global averageCPUUsage, thisHostName, logEventPriorityLevel
     logFileNames = JAGlobalLib.JAFindModifiedFiles(
-        logFileName, startTimeInSec, debugLevel)
+        logFileName, startTimeInSec, debugLevel, thisHostName)
 
     if logFileNames == None:
         return False
@@ -1671,7 +1693,7 @@ def JARetryLogStatsPost(currentTime):
     ### find history files with updated time within retryDurationInHours
     ###   returned files in sorted order, oldest file fist
     retryLogStatsFileNames = JAGlobalLib.JAFindModifiedFiles(
-        retryLogStatsFileNamePartial + "*", (currentTime - retryDurationInHours * 3600), debugLevel)
+        retryLogStatsFileNamePartial + "*", (currentTime - retryDurationInHours * 3600), debugLevel, thisHostName)
 
     returnStatus = True
     for retryLogStatsFileName in retryLogStatsFileNames :
