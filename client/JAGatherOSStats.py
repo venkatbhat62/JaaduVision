@@ -392,6 +392,11 @@ except ImportError:
         subprocess.run = sp_run
         # ^ This monkey patch allows it work on Python 2 or 3 the same way
 
+
+### get current time in seconds since 1970 jan 1
+programStartTime = loopStartTimeInSec = time.time()
+statsEndTimeInSec = loopStartTimeInSec + dataCollectDurationInSec
+
 ### wait for twice the data collection duration for any prev instance to complete
 waitTime = dataCollectDurationInSec * 2
 OSUptime = JAGlobalLib.JAGetUptime(OSType)
@@ -1050,10 +1055,6 @@ else:
     os.nice(19) 
     if debugLevel > 1:
         print("DEBUG-2 process priority: {0}".format( os.nice(0)) )
-
-### get current time in seconds since 1970 jan 1
-programStartTime = loopStartTimeInSec = time.time()
-statsEndTimeInSec = loopStartTimeInSec + dataCollectDurationInSec
 
 ### first time, sleep for dataCollectDurationInSec so that log file can be processed and posted after waking up
 sleepTimeInSec = dataPostIntervalInSec

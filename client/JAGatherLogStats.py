@@ -436,7 +436,7 @@ def JAGatherEnvironmentSpecs(key, values):
 # check whether yaml module is present
 yamlModulePresent = False
 
-if sys.version_info >= (3, 3):
+if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
     import importlib
     from importlib import util
     try: 
@@ -727,6 +727,10 @@ if debugLevel > 0:
     for key, spec in JAStatsSpec.items():
         print('DEBUG-1 Name: {0}, Fields: {1}'.format(key, spec))
 
+# get current time in seconds since 1970 jan 1
+programStartTime = loopStartTimeInSec = time.time()
+statsEndTimeInSec = loopStartTimeInSec + dataCollectDurationInSec
+
 ### wait for twice the data collection duration for any prev instance to complete
 waitTime = dataCollectDurationInSec * 2
 OSUptime = JAGlobalLib.JAGetUptime(OSType)
@@ -814,7 +818,7 @@ if saveLogsOnWebServer == True:
 
 headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
 
-if sys.version_info >= (3, 3):
+if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
     import importlib
     import importlib.util
     try:
@@ -1766,10 +1770,6 @@ if logFilesToDelete != None:
             os.remove( deleteFileName)
 
 
-# get current time in seconds since 1970 jan 1
-programStartTime = loopStartTimeInSec = time.time()
-statsEndTimeInSec = loopStartTimeInSec + dataCollectDurationInSec
-
 ### process retryLogStats files if present with time stamp within retryDurationInHours
 if retryDurationInHours > 0 :
     skipRetry = False 
@@ -1829,7 +1829,7 @@ for logFileName in sorted(JAStatsSpec.keys()):
 # and post the stats per post interval
 while loopStartTimeInSec <= statsEndTimeInSec:
     if debugLevel > 0:
-        if sys.version_info >= (3, 3):
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
             myProcessingTime = time.process_time()
         else:
             myProcessingTime = 0
@@ -1887,7 +1887,7 @@ while loopStartTimeInSec <= statsEndTimeInSec:
 if retryLogStatsFileHandleCurrent != None :
     retryLogStatsFileHandleCurrent.close()
 
-if sys.version_info >= (3, 3):
+if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
     myProcessingTime = time.process_time()
 else:
     myProcessingTime = 'N/A'
