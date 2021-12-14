@@ -1450,49 +1450,60 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         variablePrefix = None
                         if values[patternIndexForVariablePrefix] != None:
                             variablePrefixSearchPattern = r'{0}'.format( values[patternIndexForVariablePrefix])
-                            myResults = re.search( variablePrefixSearchPattern, tempLine)
-                            if myResults == None:
-                                ### since variable prefix is not matching, SKIP processing this line any further
-                                # since variable prefix will be prefixed to variables, if that is not present,
-                                #  no need to match any other patterns for this service 
-                                continue
-                            else:
-                                if values[patternIndexForVariablePrefixGroup] != None:
-                                    ### use the group value; based on pattern match, as variable prefix.
-                                    ### Log line: 2021-10-05T01:09:03.249334 Stats MicroService25 total key1 9 dummy1 total key2 4.50 dummy2
-                                    ###                                                        ^^ <-- variablePrefixGroupValues (two groups)
-                                    ### PatternVariablePrefix: Stats MicroService(\d)(\d) total
-                                    ###                                                ^ <-- variable prefix, group 2
-                                    ###  use 2nd group value as variable prefix for the *_avrage metrics variable
-                                    ###  PatternVariablePrefixGroup: 2
-                                    variablePrefix = myResults.group(int(values[patternIndexForVariablePrefixGroup]))
+                            try:
+                                myResults = re.search( variablePrefixSearchPattern, tempLine)
+                                if myResults == None:
+                                    ### since variable prefix is not matching, SKIP processing this line any further
+                                    # since variable prefix will be prefixed to variables, if that is not present,
+                                    #  no need to match any other patterns for this service 
+                                    continue
                                 else:
-                                    variablePrefix = myResults.group(1)
-
+                                    if values[patternIndexForVariablePrefixGroup] != None:
+                                        ### use the group value; based on pattern match, as variable prefix.
+                                        ### Log line: 2021-10-05T01:09:03.249334 Stats MicroService25 total key1 9 dummy1 total key2 4.50 dummy2
+                                        ###                                                        ^^ <-- variablePrefixGroupValues (two groups)
+                                        ### PatternVariablePrefix: Stats MicroService(\d)(\d) total
+                                        ###                                                ^ <-- variable prefix, group 2
+                                        ###  use 2nd group value as variable prefix for the *_avrage metrics variable
+                                        ###  PatternVariablePrefixGroup: 2
+                                        variablePrefix = myResults.group(int(values[patternIndexForVariablePrefixGroup]))
+                                    else:
+                                        variablePrefix = myResults.group(1)
+                            except re.error as err:
+                                errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(variablePrefixSearchPattern,err)
+                                print(errorMsg)
+                                LogMsg(errorMsg)
+                                continue
                         ### if patternLabel is defined for current service, 
                         ###   see whether the label  pattern is present in current line
                         labelPrefix = None
                         if values[patternIndexForLabel] != None:
                             patternLabelSearchPattern = r'{0}'.format( values[patternIndexForLabel])
-                            myResults = re.search( patternLabelSearchPattern, tempLine)
-                            if myResults == None:
-                                ### since pattern label is not matching, SKIP processing this line any further
-                                # since label will be posted with the data, if that label is not present,
-                                #  no need to match any other patterns for this service 
-                                continue
-                            else:
-                                if values[patternIndexForLabelGroup] != None:
-                                    ### use the group value; based on pattern match, as label.
-                                    ### Log line: 2021-10-30T13:32:49.825709 Stats client1 total key1 34 dummy1 total key2 17.00 dummy2
-                                    ###                                            ^^^^^^^ <-- labelGroup (signle group)
-                                    ### PatternLabel: Stats (\w+) total
-                                    ###                      ^^^ <-- label, group 1
-                                    ###  use 1st group value as label this metrics
-                                    ###  PatternLabelGroup: 1
-                                    labelPrefix = myResults.group(int(values[patternIndexForLabelGroup]))
+                            try:
+                                myResults = re.search( patternLabelSearchPattern, tempLine)
+                                if myResults == None:
+                                    ### since pattern label is not matching, SKIP processing this line any further
+                                    # since label will be posted with the data, if that label is not present,
+                                    #  no need to match any other patterns for this service 
+                                    continue
                                 else:
-                                    labelPrefix = myResults.group(1)
-
+                                    if values[patternIndexForLabelGroup] != None:
+                                        ### use the group value; based on pattern match, as label.
+                                        ### Log line: 2021-10-30T13:32:49.825709 Stats client1 total key1 34 dummy1 total key2 17.00 dummy2
+                                        ###                                            ^^^^^^^ <-- labelGroup (signle group)
+                                        ### PatternLabel: Stats (\w+) total
+                                        ###                      ^^^ <-- label, group 1
+                                        ###  use 1st group value as label this metrics
+                                        ###  PatternLabelGroup: 1
+                                        labelPrefix = myResults.group(int(values[patternIndexForLabelGroup]))
+                                    else:
+                                        labelPrefix = myResults.group(1)
+                            except re.error as err:
+                                errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(patternLabelSearchPattern,err)
+                                print(errorMsg)
+                                LogMsg(errorMsg)
+                                continue
+                            
                         ### values is indexed from 0 to patternIndexForPatternSum / patternIndexForPatternAverage / patternIndexForPatternDelta
                         ### logStats[key] is indexed with twice the value
                         while index < len(values):
@@ -1505,14 +1516,20 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 ### maxLogLines non-zero, logs collection is enabled for this host
                                 searchPattern = r'{0}'.format(values[index])
                                 ### search for matching PatternLog regardless of whether stats type pattern is found or not.
-                                if re.search(searchPattern, tempLine) != None:
-                                    ### matching pattern found, collect this log line
-                                    if int(logLinesCount[key]) < maxLogLines:
-                                        ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
-                                        logLines[key].append(tempLine)
-                                    ### increment the logLinesCount
-                                    logLinesCount[key] += 1
-                                    patternLogMatched = True
+                                try:
+                                    if re.search(searchPattern, tempLine) != None:
+                                        ### matching pattern found, collect this log line
+                                        if int(logLinesCount[key]) < maxLogLines:
+                                            ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
+                                            logLines[key].append(tempLine)
+                                        ### increment the logLinesCount
+                                        logLinesCount[key] += 1
+                                        patternLogMatched = True
+                                except re.error as err:
+                                    errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
+                                    print(errorMsg)
+                                    LogMsg(errorMsg)
+                                    continue
 
                             elif patternMatched != True:
                                 logStatsKeyValueIndexEven = index * 2
@@ -1664,15 +1681,22 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                 key, values[index], logStats[key][logStatsKeyValueIndexEven], logStats[key][logStatsKeyValueIndexOdd] ))
                                         ### get out of the loop
                                         patternMatched = True
-                                elif re.search(searchPattern, tempLine) != None:
-                                    ### matching pattern found, increment the count 
-                                    logStats[key][logStatsKeyValueIndexEven] += 1
+                                else:
+                                    try:
+                                        if re.search(searchPattern, tempLine) != None:
+                                            ### matching pattern found, increment the count 
+                                            logStats[key][logStatsKeyValueIndexEven] += 1
 
-                                    if debugLevel > 3:
-                                        print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}'.format(
-                                                key, values[index], logStats[key][logStatsKeyValueIndexEven] ))
-                                    ### get out of the loop
-                                    patternMatched = True
+                                            if debugLevel > 3:
+                                                print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}'.format(
+                                                        key, values[index], logStats[key][logStatsKeyValueIndexEven] ))
+                                            ### get out of the loop
+                                            patternMatched = True
+                                    except re.error as err:
+                                        errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
+                                        print(errorMsg)
+                                        LogMsg(errorMsg)
+                                        continue
                             
                             ## if both log pattern and stats pattern matched, get out of the while loop
                             if patternMatched == True and patternLogMatched == True:
