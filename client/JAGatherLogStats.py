@@ -1472,7 +1472,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                             except re.error as err:
                                 errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(variablePrefixSearchPattern,err)
                                 print(errorMsg)
-                                LogMsg(errorMsg)
+                                LogMsg(errorMsg, statsLogFileName, True)
                                 continue
                         ### if patternLabel is defined for current service, 
                         ###   see whether the label  pattern is present in current line
@@ -1501,7 +1501,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                             except re.error as err:
                                 errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(patternLabelSearchPattern,err)
                                 print(errorMsg)
-                                LogMsg(errorMsg)
+                                LogMsg(errorMsg, statsLogFileName, True)
                                 continue
                             
                         ### values is indexed from 0 to patternIndexForPatternSum / patternIndexForPatternAverage / patternIndexForPatternDelta
@@ -1528,7 +1528,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 except re.error as err:
                                     errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
                                     print(errorMsg)
-                                    LogMsg(errorMsg)
+                                    LogMsg(errorMsg, statsLogFileName, True)
                                     continue
 
                             elif patternMatched != True:
@@ -1543,7 +1543,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                     except re.error as err:
                                         errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
                                         print(errorMsg)
-                                        LogMsg(errorMsg)
+                                        LogMsg(errorMsg, statsLogFileName, True)
                                         continue
                                     patternMatchCount =  len(myResults)
                                     if myResults != None and patternMatchCount > 0 :
@@ -1695,7 +1695,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                     except re.error as err:
                                         errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
                                         print(errorMsg)
-                                        LogMsg(errorMsg)
+                                        LogMsg(errorMsg, statsLogFileName, True)
                                         continue
                             
                             ## if both log pattern and stats pattern matched, get out of the while loop
