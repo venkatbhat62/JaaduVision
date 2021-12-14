@@ -1473,6 +1473,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(variablePrefixSearchPattern,err)
                                 print(errorMsg)
                                 LogMsg(errorMsg, statsLogFileName, True)
+                                ### discard this pattern so that no need to check this again
+                                values[patternIndexForVariablePrefix] = None
                                 continue
                         ### if patternLabel is defined for current service, 
                         ###   see whether the label  pattern is present in current line
@@ -1502,6 +1504,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(patternLabelSearchPattern,err)
                                 print(errorMsg)
                                 LogMsg(errorMsg, statsLogFileName, True)
+                                ### discard this pattern so that no need to check this again
+                                values[patternIndexForLabel] = None
                                 continue
                             
                         ### values is indexed from 0 to patternIndexForPatternSum / patternIndexForPatternAverage / patternIndexForPatternDelta
@@ -1529,6 +1533,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                     errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
                                     print(errorMsg)
                                     LogMsg(errorMsg, statsLogFileName, True)
+                                    ### discard this pattern so that no need to check this again
+                                    values[index] = None
                                     continue
 
                             elif patternMatched != True:
@@ -1544,6 +1550,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
                                         print(errorMsg)
                                         LogMsg(errorMsg, statsLogFileName, True)
+                                        ### discard this pattern so that no need to check this again
+                                        values[index] = None
                                         continue
                                     patternMatchCount =  len(myResults)
                                     if myResults != None and patternMatchCount > 0 :
@@ -1696,6 +1704,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
                                         print(errorMsg)
                                         LogMsg(errorMsg, statsLogFileName, True)
+                                        ### discard this pattern so that no need to check this again
+                                        values[index] = None
                                         continue
                             
                             ## if both log pattern and stats pattern matched, get out of the while loop
