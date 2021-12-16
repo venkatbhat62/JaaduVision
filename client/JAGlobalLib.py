@@ -298,7 +298,7 @@ def JAGetOSInfo(pythonVersion, debugLevel):
                         tempLine = re.sub('\n$','',tempLine)
                         ### line is of the form: red hat enterprise linux server release 6.8 (santiago)
                         ###                                                             \d.\d <-- OSVersion
-                        myResults = re.search( r'Red Hat (.*) \d.\d (.*)', tempLine)
+                        myResults = re.search( r'Red Hat (.*) (\d.\d) (.*)', tempLine)
                         if myResults != None:
                             tempOSVersion = myResults.group(2)
                             OSName = 'rhel'
@@ -413,7 +413,7 @@ def JAWriteTimeStamp(fileName, currentTime=None):
     
     try:
         with open (fileName, "w") as file:
-            file.write( '{:.2f}\n'.format( currentTime) )
+            file.write( '{0:.2f}\n'.format( currentTime) )
             file.close()
             return True
 
@@ -426,11 +426,14 @@ def JAReadTimeStamp( fileName):
     """
     This function reads the time stamp from a given file
     """
+    prevTime = 0
     try:
         if os.path.exists(fileName) == False:
             return 0
         with open (fileName, "r") as file:
-            prevTime = float( file.readline().strip() )
+            tempLine = file.readline().strip()
+            if len(tempLine) > 0:
+                prevTime = float( tempLine )
             file.close()
             return prevTime
 
