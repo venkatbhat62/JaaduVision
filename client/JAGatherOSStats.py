@@ -1063,9 +1063,12 @@ sleepTimeInSec = dataPostIntervalInSec
 ###   and post the stats per post interval
 while loopStartTimeInSec  <= statsEndTimeInSec :
   if debugLevel > 0:
-    if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
-        myProcessingTime = time.process_time()
-    else:
+    try:
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
+            myProcessingTime = time.process_time()
+        else:
+            myProcessingTime = 0
+    except:
         myProcessingTime = 0
     print('DEBUG-1 processing time: {0}, Sleeping for: {1} sec'.format( myProcessingTime, sleepTimeInSec ))
   time.sleep( sleepTimeInSec)
@@ -1263,12 +1266,13 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
 
   ### take curren time so that processing will start from current time
   loopStartTimeInSec = logFileProcessingStartTime
-
-if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
-    myProcessingTime = time.process_time()
-else:
+try:
+    if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
+        myProcessingTime = time.process_time()
+    else:
+        myProcessingTime = 'N/A'
+except:
     myProcessingTime = 'N/A'
-
 programEndTime = time.time()
 programExecTime = programEndTime - programStartTime
 JAOSStatsExit( 'PASS  Processing time this program: {0}, programExecTime: {1}'.format( myProcessingTime, programExecTime ))

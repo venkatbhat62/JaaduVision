@@ -436,25 +436,29 @@ def JAGatherEnvironmentSpecs(key, values):
 # check whether yaml module is present
 yamlModulePresent = False
 
-if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
-    import importlib
-    from importlib import util
-    try: 
-        if util.find_spec("yaml") != None:
-            yamlModulePresent = True
-        else:
+try:
+    if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
+        import importlib
+        from importlib import util
+        try: 
+            if util.find_spec("yaml") != None:
+                yamlModulePresent = True
+            else:
+                yamlModulePresent = False
+        except ImportError:
             yamlModulePresent = False
-    except ImportError:
-        yamlModulePresent = False
 
-    try:
-        if util.find_spec("psutil") != None:
-            psutilModulePresent = True
-        else:
+        try:
+            if util.find_spec("psutil") != None:
+                psutilModulePresent = True
+            else:
+                psutilModulePresent = False
+        except ImportError:
             psutilModulePresent = False
-    except ImportError:
+    else:
+        yamlModulePresent = False
         psutilModulePresent = False
-else:
+except:
     yamlModulePresent = False
     psutilModulePresent = False
 
@@ -818,20 +822,23 @@ if saveLogsOnWebServer == True:
 
 headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
 
-if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
-    import importlib
-    import importlib.util
-    try:
-        if importlib.util.find_spec("requests") != None:
-            useRequests = True
-        else:
-            useRequests = False
+try:
+    if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
+        import importlib
+        import importlib.util
+        try:
+            if importlib.util.find_spec("requests") != None:
+                useRequests = True
+            else:
+                useRequests = False
 
-        importlib.util.find_spec("json")
-        
-    except ImportError:
+            importlib.util.find_spec("json")
+            
+        except ImportError:
+            useRequests = False
+    else:
         useRequests = False
-else:
+except:
     useRequests = False
 
 def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
@@ -1863,9 +1870,12 @@ for logFileName in sorted(JAStatsSpec.keys()):
 # and post the stats per post interval
 while loopStartTimeInSec <= statsEndTimeInSec:
     if debugLevel > 0:
-        if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
-            myProcessingTime = time.process_time()
-        else:
+        try:
+            if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
+                myProcessingTime = time.process_time()
+            else:
+                myProcessingTime = 0
+        except:
             myProcessingTime = 0
         print('DEBUG-1 log file(s) processing time: {0}, Sleeping for: {1} sec'.format(
             myProcessingTime, sleepTimeInSec))
@@ -1921,9 +1931,12 @@ while loopStartTimeInSec <= statsEndTimeInSec:
 if retryLogStatsFileHandleCurrent != None :
     retryLogStatsFileHandleCurrent.close()
 
-if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
-    myProcessingTime = time.process_time()
-else:
+try:
+    if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
+        myProcessingTime = time.process_time()
+    else:
+        myProcessingTime = 'N/A'
+except:
     myProcessingTime = 'N/A'
 
 programEndTime = time.time()
