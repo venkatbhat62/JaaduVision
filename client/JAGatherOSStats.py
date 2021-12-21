@@ -6,13 +6,13 @@ Posts <key> {metric1=value1, metric2=value2...} one line per key type as data
 
 Parameters passed are:
 -c    configFile - yaml file containing stats to be collected
-        default - get it from JAGlobalVars.yml 
+        default -  JAGatherOSStats[<OSType>].yml
 -U    webServerURL - post the data collected to web server 
-        default - get it from JAGlobalVars.yml
+        default - get it from config file
 -i    dataPostIntervalInSec - sample data at this periodicity, in seconds
-        default - get it from JAGlobalVars.yml
+        default - get it from config file
 -d    dataCollectDurationInSec - post data for this duration, in seconds
-        default - get it from JAGlobalVars.yml
+        default - get it from config file
             if dataPostIntervalInSec is one min, and dataCollectDurationInSec is 10 min,  
                 it will post 10 samples
 -D    debugLevel - 0, 1, 2, 3
@@ -29,6 +29,13 @@ Author: havembha@gmail.com, 2021-07-04
 2021-08-15 Added capability to collect file system usage percentage for given filesystem name(s)
     Added capability use sar data if present instead of collecting data fresh
 
+2021-12-20 When config file is not passed, used OS specific config file if present with the name
+    JAGatherOSStats<OSType>.yml where OSType can be Windows, Linux, ...
+    Else, generic config file JAGatherOSStats.yml is used.
+
+    If multiple process instances are present with the same process name, the stats are
+      aggregated for all those process instances.
+
 """
 import os, sys, re
 import datetime
@@ -36,9 +43,10 @@ import JAGlobalLib
 import time
 import subprocess
 import signal
+from collections import defaultdict
 
-### MAJOR 1, minor 00, buildId 01
-JAVersion = "01.00.01"
+### MAJOR 1, minor 10, buildId 01
+JAVersion = "01.10.01"
 
 ## global default parameters
 ### config file containing OS Stats to be collected, intervals, and WebServer info
@@ -141,9 +149,6 @@ def JAOSStatsExit(reason):
     JAGlobalLib.JAWriteTimeStamp("JAGatherOSStats.PrevStartTime", 0)
     sys.exit()
 
-### use default config file, expect this file in home directory where this script is placed
-if configFile == '':
-    configFile = "JAGatherOSStats.yml"
 
 ### OS stats spec dictionary
 ### contains keys like cpu_times, cpu_percent, virtual_memory etc that match to the 
@@ -163,6 +168,14 @@ thisHostName = hostNameParts[0]
 ### get OSType, OSName, and OSVersion. These are used to execute different python
 ###  functions based on compatibility to the environment
 OSType, OSName, OSVersion = JAGlobalLib.JAGetOSInfo( sys.version_info, debugLevel)
+
+### use default config file, expect this file in home directory where this script is placed
+if configFile == '':
+    ### depending on OSType, use different default config file if present
+    configFile = "JAGatherOSStats" + OSType + ".yml"
+    if os.path.exists( configFile) != True:
+        ### use a file name without OSType
+        configFile = "JAGatherOSStats.yml"
 
 ### show warnings by default, used while posting data to Web Server
 disableWarnings = None
@@ -255,6 +268,7 @@ if sys.version_info >= (3,3):
         from importlib import util
         if util.find_spec("psutil") != None:
             psutilModulePresent = True
+            import psutil
         else:
             psutilModulePresent = False
     except ImportError:
@@ -469,6 +483,7 @@ def JAGetProcessStats( processNames, fields ):
     Returns stats in the form
         process_Name_field=fieldValue,process_Name_field=fieldValue,...
     """
+    global psutilModulePresent
     myStats = ''
     comma = ''
     global configFile
@@ -482,9 +497,55 @@ def JAGetProcessStats( processNames, fields ):
     ### if in CSV format, separate the process names 
     tempProcessNames = processNames.split(',')
 
+    # contains current process stats in name=value list
+    # key - processNameField, value = fieldValue
+    procStats = {}
+
     if OSType == 'Windows':
-        print("ERROR JAGetProcessStats() not supported on Windows yet")
-        return None
+        if psutilModulePresent == True :
+            for proc in psutil.process_iter():
+                try:
+                    # Get process name & pid from process object.
+                    processName = proc.name()
+                    processName = processName.replace(".exe","",1)
+                    if processName in tempProcessNames:
+                        pInfoDict = proc.as_dict(attrs=[ 'cpu_percent','memory_percent', 'memory_info'])
+                        dummy = pInfoDict['memory_info']
+                        # print("VSZ:{0} RSS:{1}".format(dummy.rss, dummy.vms))
+                        # print( pInfoDict)
+
+                        ### collect data if the field name is enabled for collection
+                        for field in fieldNames:
+                            if field == 'CPU':
+                                fieldValue = pInfoDict['cpu_percent']
+                            elif field == 'MEM':
+                                fieldValue = pInfoDict['memory_percent']
+                            elif field == 'VSZ' :
+                                fieldValue = dummy.vms
+                            elif field == 'RSS' :
+                                fieldValue = dummy.rss
+                            else:
+                                errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, check Fields definition in Process section of config file:{1}\n'.format(field, configFile)
+                                print( errorMsg )
+                                JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                                continue
+
+                            procNameField = '{0}_{1}'.format(processName,field)
+                            if procNameField not in procStats:
+                                procStats[procNameField] = float(fieldValue)
+                            else:
+                                ### sum the values if current processNameField is already present
+                                procStats[procNameField] += float(fieldValue)
+
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, check Fields definition in Process section of config file:{1}\n'.format(field, configFile)
+                    print( errorMsg )
+                    JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                    continue
+                    
+        else:
+            print("ERROR JAGetProcessStats() install psutil module to use this feature")
+            return None
 
     else:
       ### get process stats for all processes
@@ -533,8 +594,13 @@ def JAGetProcessStats( processNames, fields ):
                             JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
                             continue
 
-                        myStats = myStats + '{0}{1}_{2}={3}'.format(comma,shortProcessName,field, fieldValue ) 
-                        comma = ','
+                        procNameField = '{0}_{1}'.format(shortProcessName,field)
+                        if procNameField not in procStats:
+                            procStats[procNameField] = float(fieldValue)
+                        else:
+                            ### sum the values if current processNameField is already present
+                            procStats[procNameField] += float(fieldValue)
+
         except:
             ## ignore error
             if debugLevel > 0:
@@ -542,6 +608,11 @@ def JAGetProcessStats( processNames, fields ):
                 print( errorMsg )
                 JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
 
+    ### now prepare procStats in single line in CSV format
+    comma=''
+    for procNameField, fieldValue in procStats.items():
+        myStats = myStats + '{0}{1}={2}'.format(comma,procNameField, fieldValue)
+        comma=','
     return myStats
 
 def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
@@ -569,8 +640,43 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
     tempFileSystemNames = fileSystemNames.split(',')
 
     if OSType == 'Windows':
-        print("ERROR JAGetFileSystemUsage() not supported on Windows yet")
-        return None
+        import shutil
+        for fs in tempFileSystemNames:
+            if os.path.isdir(  fs ) != True:
+                ### diff hosts may have diff file systems, it is allowed to list file system spec to include
+                ###  file system of all host types, even though each host does not have all file systems.
+                ### this is NOT an error condition
+                if debugLevel > 0:
+                    print("WARN JAGetFileSystemUsage.py() drive {0} not present, can't gather stats for it".format(fs) )
+                continue
+            
+            stats = shutil.disk_usage(fs)
+            ### remove : from name so that this fs name can be sent as file system name to grafana
+            fs = fs.strip(":")
+
+            # print(stats)
+            ### collect data if the field name is enabled for collection
+            for field in fieldNames:
+
+                if field == 'percent_used' :
+                    if stats.total > 0:
+                        percent = stats.used / stats.total
+                    else:
+                        percent = 0
+                    ### print as integer, to  skip % value to be printed
+                    myStats = myStats + '{0}{1}_{2}={3}'.format(comma,fs, field, percent ) 
+                    comma = ','
+                elif field == 'size_used' :
+                    if stats.total > 0:
+                        usedGB = stats.used / 1000000000
+                    myStats = myStats + '{0}{1}_{2}={3}'.format(comma,fs, field, usedGB) 
+                    comma = ','
+                else:
+                    errorMsg = 'ERROR JAGetFileSystemUsage() Unsupported field name:{0}, check Fields definition in FileSystem section of config file:{1}\n'.format(field, configFile)
+                    print( errorMsg )
+                    JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+
+
     else:
       for fs in tempFileSystemNames:
         if os.path.isdir(  fs ) != True:
@@ -654,7 +760,7 @@ def JAGetSocketStats(fields, recursive=False):
     socketTotal = 0
 
     for line in lines:
-        if re.match(r'^tcp|^udp', line) == None:
+        if re.match(r'^tcp|^udp|^  TCP|^  UDP', line) == None:
             ### skip this line, not a TCP or UDP connection line
             continue
         if len(line) < 5:
@@ -662,12 +768,13 @@ def JAGetSocketStats(fields, recursive=False):
 
         for field in fieldNames:
             if field == 'established':
-                if re.search( 'ESTA', line) != None:
+                if re.search( 'ESTABLISHED', line) != None:
                     socketEstablished += 1
-
+                    
             elif field == 'time_wait':
                 if re.search ('TIME_WAIT', line) != None:
                     socketTimeWait += 1
+                    
             elif field == 'total':
                 socketTotal += 1
 
@@ -701,6 +808,7 @@ def JAGetCPUTimesPercent(fields, recursive=False):
     If OSType is Windows,
         print error, return error
     """
+    global psutilModulePresent
     myStats = '' 
     comma = ''
     global OSType, OSName, OSVersion, debugLevel
@@ -710,11 +818,21 @@ def JAGetCPUTimesPercent(fields, recursive=False):
         if OSName == 'rhel' or OSName == 'ubuntu':
             result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-u'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
-            print("ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats")
+            if psutilModulePresent == True :
+                myStats = "cpu_percent_used={1:f}".format( psutil.cpu_percent() )
+            else:
+                errorMsg = "ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats"
+                print(errorMsg)
+                JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
             return myStats
 
     elif OSType == 'Windows' :
-        print("ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats")
+        if psutilModulePresent == True :
+            myStats = "cpu_percent_used={1:f}".format( psutil.cpu_percent() )
+        else:
+            errorMsg = "ERROR JAGetCPUTimesPercent() install psutils on this server to get OS stats"
+            print(errorMsg)
+            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
         return myStats
 
     lines = result.stdout.decode('utf-8').split('\n')

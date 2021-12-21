@@ -1,0 +1,78 @@
+# Default OS stats collection spec for Windows host
+# Author: havembha@gmail.com,  2021/12/20
+# 
+---
+### specify this including path name, .YYYYMMDD will appended to this name to create per day file
+LogFileName: JAGatherOSStats.log
+SysStatPathName: ''
+Environment:
+    Dev:
+        HostName: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T|havembha|penguin)
+    Test:
+        HostName: (...)(t)(...)([0-9][0-9])
+    UAT:
+        HostName: (...)(u)(...)([0-9][0-9])
+        WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+    Prod:
+        HostName: (...)(p)(...)([0-9][0-9])
+        WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+    All:
+        # post data to web server per this interval. if sampling interval is 10, post interval is 60,
+        #    it will post 6 samples in one post. This is to optimize data post operation.
+        DataPostIntervalInSec: 60
+        # once the job is started, run until this time. This is to allow job running from crontab at certain periodicity
+        DataCollectDurationInSec: 600
+        ### while posting data to web server, defaults to False
+        DisableWarnings: True
+        ### do not verify web server certificate, defaults to True
+        VerifyCertificate: False
+        # post stats to below web server
+        WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+
+### format
+### - Name: psutil.<functionName>
+###   Fields: values that can be read using that psutil function
+### Refer to Python documentation https://psutil.readthedocs.io/en/latest/
+OSStats:
+  CPUTimes:
+    Name: cpu_times_percent
+    ### while using sar data on Unix hosts, field names to match output of sar -u
+    Fields: user, system, idle, iowait
+  CPUPercent:
+    Name: cpu_percent
+    Fields: percent
+  MemoryVirtual:
+    Name: virtual_memory
+    ### while using sar data on Unix hosts, field names to match output of sar -r
+    Fields: total,available,kbavail,memused,commit,kbmemfree
+  MemorySwap:
+    Name: swap_memory
+    ### while using sar data on Unix hosts, field names to match output of sar -S
+    Fields: total,free,percent,kbswpfree,kbswpused,swpused
+  Process:
+    Name: process
+    ### process name, as it appears at 11th (last) column of ps aux command
+    ### can specify in CSV format
+    ProcessNames: GitHubDesktop,chrome,msedge
+    Fields: CPU,MEM,VSZ,RSS
+  DiskIO:
+    Name: disk_io_counters
+    ### while using sar data on Unix hosts, field names to match output of sar -b
+    Fields: read_count,write_count,read_bytes,write_bytes,tps,rtps,wtps
+  FSUsage:
+    Name: filesystem
+    ### file system name, as it appears at last column of df -h command
+    ### can specify in CSV format
+    ###  any space will be compared as is
+    ### can include file system of many host types, if file system is not present, 
+    ###   it will be skipped from a host while collecting data.
+    FileSystemNames: C:,D:,E:,F:,H:
+    Fields: percent_used,size_used
+  NetworkIO:
+    Name: net_io_counters
+    ### while using sar data on Unix hosts, field names to match output of sar -n EDEV
+    Fields: bytes_sent,bytes_recv,packets_sent,packets_recv,errin,errout,dropin,dropout
+  NetworkSockets: 
+    Name: socket_stats
+    # netstat -an command used to get this stat
+    Fields: total,established,time_wait 
