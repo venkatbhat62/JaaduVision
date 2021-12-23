@@ -869,26 +869,27 @@ def JAGetCPUTimesPercent(fields, recursive=False):
                                 time_doing_nothing = idle_time + iowait_time
                                 total_time = time_doing_things + time_doing_nothing
 
-                                # Calculate a percentage of change since last run:
-                                #
-                                cpu_percentage = 100.0 * time_doing_things/total_time 
+                                if total_time > 0 :
+                                    # Calculate a percentage of change since last run:
+                                    #
+                                    cpu_percentage = 100.0 * time_doing_things/total_time 
 
-                                comma = ''
-                                if 'cpu_percent_used' in fields:
-                                    myStats = myStats +  "{0}cpu_percent_used={1:f}".format(comma, cpu_percentage )
-                                    comma = ','
-                                if 'user' in fields:
-                                    myStats = myStats + "{0}user={1:f}".format(comma, 100 *(user_time/total_time) )
-                                    comma = ','
-                                if 'system' in fields:
-                                    myStats = myStats + "{0}system={1:f}".format(comma, 100 * (system_time/total_time) )
-                                    comma = ','
-                                if 'idle' in fields:
-                                    myStats = myStats + "{0}idle={1:f}".format(comma, 100 * (idle_time/total_time) )
-                                    comma = ','
-                                if 'iowait' in fields:
-                                    myStats = myStats + "{0}iowait={1:f}".format(comma, 100 * (iowait_time/total_time) )
-                                    comma = ','
+                                    comma = ''
+                                    if 'cpu_percent_used' in fields:
+                                        myStats = myStats +  "{0}cpu_percent_used={1:f}".format(comma, cpu_percentage )
+                                        comma = ','
+                                    if 'user' in fields:
+                                        myStats = myStats + "{0}user={1:f}".format(comma, 100 *(user_time/total_time) )
+                                        comma = ','
+                                    if 'system' in fields:
+                                        myStats = myStats + "{0}system={1:f}".format(comma, 100 * (system_time/total_time) )
+                                        comma = ','
+                                    if 'idle' in fields:
+                                        myStats = myStats + "{0}idle={1:f}".format(comma, 100 * (idle_time/total_time) )
+                                        comma = ','
+                                    if 'iowait' in fields:
+                                        myStats = myStats + "{0}iowait={1:f}".format(comma, 100 * (iowait_time/total_time) )
+                                        comma = ','
 
                             prevCPUStats[0] = cpustats[0]
                             prevCPUStats[1] = float(cpustats[1])
@@ -1052,12 +1053,12 @@ def JAGetVirtualMemory(fields, recursive=False):
                             
                         if tempFields[0] == 'MemTotal:':
                             if 'total' in fields:
-                                memTotal = value = int(tempFields[1])/divideByToConvertToGB
+                                memTotal = value = (int(tempFields[1]))/divideByToConvertToGB
                                 myStats = myStats + '{0}total={1}'.format(comma, value)     
                                 comma = ','
                         elif tempFields[0] == 'MemAvailable:':
                             if 'available' in fields:
-                                value = int(tempFields[1])/divideByToConvertToGB
+                                value = (int(tempFields[1]))/divideByToConvertToGB
                                 myStats = myStats + '{0}available={1}'.format(comma, value)
                                 comma = ','
                             if 'kbavail' in fields:
@@ -1078,10 +1079,10 @@ def JAGetVirtualMemory(fields, recursive=False):
 
                     if 'memused' in fields:
                         if memTotal != None and memFree != None:
-                            myStats = myStats + '{0}memused={1}'.format(comma, int(memTotal - memFree))      
+                            myStats = myStats + '{0}memused={1}'.format(comma, (memTotal - memFree))      
 
-            except OSError:
-                errorMsg = "ERROR JAGetSwapMemory() can't read /proc/meminfo"
+            except OSError as err:
+                errorMsg = "ERROR JAGetSwapMemory() error reading/parsing contents of /proc/meminfo {0}".format(err)
                 print(errorMsg)
                 JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
 
