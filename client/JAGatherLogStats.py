@@ -290,6 +290,10 @@ thisHostName = hostNameParts[0]
 OSType, OSName, OSVersion = JAGlobalLib.JAGetOSInfo(
     sys.version_info, debugLevel)
 
+errorMsg  = "JAGatherOSStats.py Version:{0}, OSType: {1}, OSName: {2}, OSVersion: {3}".format(JAVersion, OSType, OSName, OSVersion)
+print(errorMsg)
+LogMsg(errorMsg,statsLogFileName, True)
+
 # based on current hostName, this variable will be set to Dev, Test, Uat, Prod etc
 myEnvironment = None
 
@@ -855,6 +859,7 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
             requests.packages.urllib3.disable_warnings()
 
     data = json.dumps(tempLogStatsToPost)
+    
     if useRequests == True:
         # post interval elapsed, post the data to web server
         returnResult = requests.post(
