@@ -5,6 +5,7 @@ Preferred Prerequisites
 Preferred - Import modules apart that may not be installed with base Python3
    yaml
    requests
+   psutil
 
 Tools works with python 2.7.5 and without yaml, requests modules also local code to handle equivalent functions.
 
@@ -22,15 +23,21 @@ Customization for OS stats collection
     and any other desired parameters
  Suggest to keep one spec file per OS type like linux, windows so that same file can be deployed
     platform wide, or even on all servers of interest.
-
+    If process names, file system names vary among different platforms, can maintain separate spec file
+       per platform in platform specific directories.
+       
 Cutomization for log stats collection
   Edit client/JAGatherLogStats.yml to customize
      WebServerURL, hostname spec for each environment, log file name, service name and associated 
        text patterns to search.
   Since service name is to be maintained unique within a host type or within a component type,
-    suggest to prepare the client/JAGatherLogStats file on web server and deploy those files to
-    all hosts from where log stats are to be collected. Thus, all hosts will have uniform spec.
-
+    suggest to prepare the client/JAGatherLogStats<componentType>.yml file on web server and deploy those files to
+    all hosts of a platform from where log stats are to be collected. Thus, all hosts of same platform will have uniform spec.
+  For large installations with many platforms and thousands of servvers, 
+     suggest to keep separate spec files per platform where component types vary. This is to keep the number of service definitions
+      small so that real time overhead of regular expression matching will be limited to the component of the platform.
+      This apporach will also allow use of different grafana/ webserver/influxdb/prometheus gateway setup per platform or group of platforms.
+      
 Installation at host being monitored
   Install the scripts under client directory under a service account that can access all log files
     to be parsed, whose stats are to be uploaded to web server
@@ -38,14 +45,18 @@ Installation at host being monitored
      DataPostIntervalInSec: 60
      DataCollectDurationInSec: 3580
   Add a crontab to run JAGatherOSStats.py every hour
-   1 * * * * cd <path>;python3 JAGatherOSStats.py -c <OSSpecificConfigFile>  
-
+   1 * * * * cd <path>;python3 JAGatherOSStats.py -c <OSSpecificConfigFile> -C <componentName> -S <siteName> -P <platformName>
+     <componentName>, <siteName>, <platformName> are posted to prometheus, influxdb, Loki as labels so that dashboard variables can be
+        defined to select specific values and customize dashboards per component/per platform basis.
+        
   To gather and post Log stats every minute and continue the task for one hour, set below parameters in JAGatherLogStats.yml
      DataPostIntervalInSec: 60
      DataCollectDurationInSec: 3580
 
   Add a crontab to run JAGatherLogStats.py every hour
-   1 * * * * cd <path>;python3 JAGatherLogStats.py -c <ComponentSpecificConfigFile>
+   1 * * * * cd <path>;python3 JAGatherLogStats.py -c <ComponentSpecificConfigFile> -C <componentName> -S <siteName> -P <platformName>
+     <componentName>, <siteName>, <platformName> are posted to prometheus, influxdb, Loki as labels so that dashboard variables can be
+        defined to select specific values and customize dashboards per component/per platform basis.
   
 Installation of python3 scripts on web server
    Place all files from cgi-bin of distribution folder under cgi-bin of web server
