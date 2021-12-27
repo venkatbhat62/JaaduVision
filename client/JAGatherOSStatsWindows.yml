@@ -19,7 +19,7 @@ Environment:
     All:
         # post data to web server per this interval. if sampling interval is 10, post interval is 60,
         #    it will post 6 samples in one post. This is to optimize data post operation.
-        DataPostIntervalInSec: 60
+        DataPostIntervalInSec: 30
         # once the job is started, run until this time. This is to allow job running from crontab at certain periodicity
         DataCollectDurationInSec: 600
         ### while posting data to web server, defaults to False
@@ -48,7 +48,7 @@ OSStats:
   MemorySwap:
     Name: swap_memory
     ### while using sar data on Unix hosts, field names to match output of sar -S
-    Fields: total,free,percent,kbswpfree,kbswpused,swpused
+    Fields: total,free,kbswpfree,kbswpused,swpused
   Process:
     Name: process
     ### process name, as it appears at 11th (last) column of ps aux command

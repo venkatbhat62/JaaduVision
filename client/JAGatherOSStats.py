@@ -159,7 +159,12 @@ def JAOSStatsExit(reason):
 JAOSStatsSpec = {}
 
 ### CPU usage history
-prevCPUStats = [None, None, None, None, None, None, None, None]
+prevStatsSample = [None] * 12
+prevStatsSampleTime = 0
+prevStats = None
+prevCPUPercentage = "used=0"
+prevNetworkStats = defaultdict(dict)
+prevDiskIOStats = [0] * 10
 
 ### get current hostname
 import platform
@@ -497,8 +502,7 @@ def JAGetProcessStats( processNames, fields ):
         process_Name_field=fieldValue,process_Name_field=fieldValue,...
     """
     global psutilModulePresent
-    myStats = ''
-    comma = ''
+    errorMsg = myStats = comma = ''
     global configFile
     if processNames == None:
         print('ERROR JAGetProcessStats() NO process name passed')
@@ -557,75 +561,74 @@ def JAGetProcessStats( processNames, fields ):
                     continue
                     
         else:
-            print("ERROR JAGetProcessStats() install psutil module to use this feature")
-            return None
+            errorMsg = "ERROR JAGetProcessStats() install psutil module to use this feature"
 
     else:
-      ### get process stats for all processes
-      result = subprocess.run( ['ps', 'aux'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-      index = 0
-      lines = result.stdout.decode('utf-8').split('\n')
-      for line in lines:
-        line = re.sub('\s+', ' ', line)
-        if len(line) < 5:
-            continue
-        try:
-            ### line is of the form with 11 columns total
-            ### USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
-            parent, pid, CPUPercent, MEMPercent, VSZ, RSS, TTY, STAT, START, TIME, COMMAND = line.split(' ', 10)
+        ### get process stats for all processes
+        result = subprocess.run( ['ps', 'aux'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        lines = result.stdout.decode('utf-8').split('\n')
+        for line in lines:
+            line = re.sub('\s+', ' ', line)
+            if len(line) < 5:
+                continue
+            try:
+                ### line is of the form with 11 columns total
+                ### USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+                parent, pid, CPUPercent, MEMPercent, VSZ, RSS, TTY, STAT, START, TIME, COMMAND = line.split(' ', 10)
 
-            tempCommand = '{0}'.format(COMMAND)
+                tempCommand = '{0}'.format(COMMAND)
 
-            for processName in tempProcessNames:
-                ### if current process name is at starting position of the command
-                ###   gather stats 
-                if re.match( processName, tempCommand) != None :
+                for processName in tempProcessNames:
+                    ### if current process name is at starting position of the command
+                    ###   gather stats 
+                    if re.match( processName, tempCommand) != None :
 
-                    processNameParts = processName.split('/')
-                    if processNameParts[-1] != None :
-                        shortProcessName = processNameParts[-1]
-                    else:
-                        shortProcessName = processName
-                    ### replace ., - with _
-                    shortProcessName = re.sub(r'[\.\-]', '_', shortProcessName)
-                    ### remove space from process name
-                    shortProcessName = re.sub('\s+','',shortProcessName)
-
-                    ### collect data if the field name is enabled for collection
-                    for field in fieldNames:
-                        if field == 'CPU':
-                            fieldValue = CPUPercent
-                        elif field == 'MEM':
-                            fieldValue = MEMPercent
-                        elif field == 'VSZ' :
-                            fieldValue = VSZ
-                        elif field == 'RSS' :
-                            fieldValue = RSS
+                        processNameParts = processName.split('/')
+                        if processNameParts[-1] != None :
+                            shortProcessName = processNameParts[-1]
                         else:
-                            errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, check Fields definition in Process section of config file:{1}\n'.format(field, configFile)
-                            print( errorMsg )
-                            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
-                            continue
+                            shortProcessName = processName
+                        ### replace ., - with _
+                        shortProcessName = re.sub(r'[\.\-]', '_', shortProcessName)
+                        ### remove space from process name
+                        shortProcessName = re.sub('\s+','',shortProcessName)
 
-                        procNameField = '{0}_{1}'.format(shortProcessName,field)
-                        if procNameField not in procStats:
-                            procStats[procNameField] = float(fieldValue)
-                        else:
-                            ### sum the values if current processNameField is already present
-                            procStats[procNameField] += float(fieldValue)
+                        ### collect data if the field name is enabled for collection
+                        for field in fieldNames:
+                            if field == 'CPU':
+                                fieldValue = CPUPercent
+                            elif field == 'MEM':
+                                fieldValue = MEMPercent
+                            elif field == 'VSZ' :
+                                fieldValue = VSZ
+                            elif field == 'RSS' :
+                                fieldValue = RSS
+                            else:
+                                errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, check Fields definition in Process section of config file:{1}\n'.format(field, configFile)
+                                print( errorMsg )
+                                JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                                continue
 
-        except:
-            ## ignore error
-            if debugLevel > 0:
-                errorMsg = 'ERROR JAGetProcessStats() Not enough params in line:{0}\n'.format(line)
-                print( errorMsg )
-                JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                            procNameField = '{0}_{1}'.format(shortProcessName,field)
+                            if procNameField not in procStats:
+                                procStats[procNameField] = float(fieldValue)
+                            else:
+                                ### sum the values if current processNameField is already present
+                                procStats[procNameField] += float(fieldValue)
+
+            except:
+                ## ignore error
+                if debugLevel > 0:
+                    errorMsg = 'ERROR JAGetProcessStats() Not enough params in line:{0}\n'.format(line)
+                    print( errorMsg )
+                    JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
 
     ### now prepare procStats in single line in CSV format
     comma=''
     for procNameField, fieldValue in procStats.items():
         myStats = myStats + '{0}{1}={2}'.format(comma,procNameField, fieldValue)
         comma=','
+    
     return myStats
 
 def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
@@ -639,12 +642,11 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
         fsName_fieldName=fieldValue,fsName_fieldName=fieldValue,...
         '/' is removed from file system name while printing above stats
     """
-    myStats = ''
-    comma = ''
+    errorMsg = myStats = comma = ''
     global configFile
     if fileSystemNames == None:
         print('ERROR JAGetFileSystemUsage() NO filesystem name passed')
-        return None
+        return myStats
 
     ### separate field names
     fieldNames = re.split(',', fields)
@@ -701,7 +703,6 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
             continue
 
         result = subprocess.run( ['df', '-h', fs], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        index = 0
         lines = result.stdout.decode('utf-8').split('\n')
         for line in lines:
             line = re.sub('\s+', ' ', line)
@@ -757,8 +758,7 @@ def JAGetSocketStats(fields, recursive=False):
        total, established, time_wait
 
     """
-    myStats = '' 
-    comma = '' 
+    myStats = comma = '' 
     ### separate field names
     fieldNames = re.split(',', fields)
    
@@ -773,7 +773,7 @@ def JAGetSocketStats(fields, recursive=False):
     socketTotal = 0
 
     for line in lines:
-        if re.match(r'^tcp|^udp|^  TCP|^  UDP', line) == None:
+        if re.match(r'^tcp|^tcp6|^udp|^udp6|^  TCP|^  UDP', line) == None:
             ### skip this line, not a TCP or UDP connection line
             continue
         if len(line) < 5:
@@ -816,8 +816,7 @@ def JAGetCPUTimesPercent(fields, recursive=False):
     If OSType is Linux,
         If SysStatPathName is defined, stats are derived using sar command
             This is to avoid additional overhead in collecting the stats
-        Else if psutil is not supported in current python version, and
-            sysstat or sa path is present, stats are derived using sar command
+        Else stats are derived using /proc/stat file contents
 
     If OSType is Windows,
         use psutil, if present, to get data
@@ -828,56 +827,144 @@ def JAGetCPUTimesPercent(fields, recursive=False):
 
     """
     global psutilModulePresent
-    myStats = '' 
-    comma = ''
-    global OSType, OSName, OSVersion, debugLevel, prevCPUStats
+    errorMsg = myStats = comma = ''
+    global OSType, OSName, OSVersion, debugLevel, prevStatsSample, prevStats, prevStatsSampleTime, prevCPUPercentage
     global JAFromTimeString, JAToTimeString, JADayOfMonth
 
     if OSType == 'Linux':
         if JASysStatFilePathName != None and JASysStatFilePathName != '':
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetCPUTimesPercent() OSType:{0}, using 'sar -u' to get data".format(OSType))
+
+            prevLine = tempHeadingFields = ''
             result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-u'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            lines = result.stdout.decode('utf-8').split('\n')
+            ### lines of the form
+            ###
+            ### Linux 5.11.0-25-generic (havembha)      08/22/2021      _x86_64_        (8 CPU)
+            ###
+            ### 05:20:15 PM     CPU     %user     %nice   %system   %iowait    %steal     %idle
+            ### 05:30:01 PM     all      0.12      0.00      0.06      0.11      0.00     99.71
+            ### Average:        all      0.12      0.00      0.06      0.11      0.00     99.71
+            if len( lines ) < 5:
+                ### if sar does not have sample between the given start and end time, single line output will be present
+                ### change the start time to -10 min and call this function again
+                if recursive == True :
+                    print("ERROR JAGetCPUTimesPercent() sar data NOT available, cmd:|sar -f {0}sa{1} -s {2} -e {3} -u".format( JASysStatFilePathName,JADayOfMonth,JAFromTimeString,JAToTimeString))
+                    return myStats
+
+                ### compute start time 10 times more than dataPostIntervalInSec
+                ### expect to see sar data collected in this duration
+                JAFromTimeString = JAGlobalLib.JAGetTime( dataPostIntervalInSec * 23 )
+                return JAGetCPUTimesPercent( fields, True )
+
+            idleTime = iowaitTime = 0
+
+            for line in lines:
+                ### remove extra space
+                line = re.sub('\s+', ' ', line)
+                if len(line) < 5:
+                    continue
+
+                if re.search('%user', line) != None:
+                    ### remove % sign from headings
+                    line = re.sub('%', '', line)
+
+                    ### heading line, separte the headings
+                    tempHeadingFields = line.split(' ')
+
+                elif re.search('Average', line) != None:
+                    ### Average line, parse prev line data
+                    tempDataFields = prevLine.split(' ')
+
+                    columnCount = 0
+                    for field in tempDataFields :
+                        if tempHeadingFields[ columnCount ] in fields:
+                            ### this column data is opted, store the data
+                            myStats = myStats + '{0}{1}={2}'.format( comma, tempHeadingFields[ columnCount ], field)
+                            comma = ','
+                                                        
+                        elif 'cpu_percent_used' in fields:
+                            ### total CPU usage is to be returned
+                            ### compute this as  100 - idle
+                            if tempHeadingFields[ columnCount ] == 'idle' :
+                                idleTime = float(field)
+                            elif tempHeadingFields[ columnCount ] == 'iowait' :
+                                iowaitTime = float(field)
+                        columnCount += 1
+                    
+                    if 'cpu_percent_used' in fields:
+                        myStats = myStats + "{0}used={1:f}".format( comma, 100 - (idleTime+iowaitTime))
+                        comma = ','
+
+                else:
+                    prevLine = line
+
         else:
-            if psutilModulePresent == True :
-                myStats = "cpu_percent_used={1:f}".format( psutil.cpu_percent() )
-            else:
-                try:
-                    # Read first line from /proc/stat. It should start with "cpu"
-                    # and contains times spent in various modes by all CPU's totalled.
-                    #
-                    with open("/proc/stat") as procfile:
-                        cpustats = procfile.readline().split()
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetCPUTimesPercent() OSType:{0}, using /proc/stat to get data for fields:{1}".format(OSType, fields))
 
-                        # ensure first line has cpu info
-                        if cpustats[0] == 'cpu':
-                            if prevCPUStats[1] != None:
+            try:
+                # Read first line from /proc/stat. It should start with "cpu"
+                # and contains times spent in various modes by all CPU's totalled.
+                #
+                with open("/proc/stat") as procfile:
+                    cpustats = procfile.readline().split()
 
+                    # ensure first line has cpu info
+                    if cpustats[0] == 'cpu':
+                        if prevStatsSample[1] != None:
+                            currentTime = time.time()
+                            if currentTime - prevStatsSampleTime < 5:
+                                if 'cpu_percent_used' in fields:
+                                    return prevCPUPercentage
+                                elif prevStats != None:
+                                    ### use stats stored last time
+                                    return prevStats
+                                   
+                            ### else continue processing
+                            prevStatsSampleTime = currentTime
+                            #
+                            # Refer to "man 5 proc" (search for /proc/stat) for information
+                            # about which field means what.
+                            #
+                            # Here we do calculation as simple as possible:
+                            # CPU% = 100 * time_doing_things / (time_doing_things + time_doing_nothing)
+                            #
+                            user_time = float(cpustats[1]) - prevStatsSample[1]  +  float(cpustats[2]) - prevStatsSample[2]     
+                            system_time = float(cpustats[3]) - prevStatsSample[3]
+
+                            idle_time = float(cpustats[4]) - prevStatsSample[4]   
+                            iowait_time = float(cpustats[5]) - prevStatsSample[5]   
+                            cpustatsLen = len(cpustats) 
+                            if cpustatsLen > 5:
+                                irqTime = float(cpustats[6]) - prevStatsSample[6]
+                                if cpustatsLen > 6:
+                                    softirqTime = float(cpustats[7]) - prevStatsSample[7]
+                                    if cpustatsLen > 7:
+                                        stealTime =  float(cpustats[8]) - prevStatsSample[8] 
+                                    else:
+                                        stealTime = 0                                      
+                                else:
+                                    softirqTime = 0
+                            else:
+                                irqTime = 0
+
+                            time_doing_things = user_time + system_time + irqTime + softirqTime + stealTime
+                            time_doing_nothing = idle_time + iowait_time
+                            total_time = time_doing_things + time_doing_nothing
+
+                            if total_time > 0 :
+                                # Calculate a percentage of change since last run:
                                 #
-                                # Refer to "man 5 proc" (search for /proc/stat) for information
-                                # about which field means what.
-                                #
-                                # Here we do calculation as simple as possible:
-                                # CPU% = 100 * time_doing_things / (time_doing_things + time_doing_nothing)
-                                #
-                                user_time = float(cpustats[1]) - prevCPUStats[1]   
-                                nice_time = float(cpustats[2]) - prevCPUStats[2]     
-                                system_time = float(cpustats[3]) - prevCPUStats[3]
+                                cpu_percentage = 100.0 - ((100 * time_doing_nothing)/total_time )
 
-                                idle_time = float(cpustats[4]) - prevCPUStats[4]   
-                                iowait_time = float(cpustats[5]) - prevCPUStats[5]    
-
-                                time_doing_things = user_time + nice_time + system_time
-                                time_doing_nothing = idle_time + iowait_time
-                                total_time = time_doing_things + time_doing_nothing
-
-                                if total_time > 0 :
-                                    # Calculate a percentage of change since last run:
-                                    #
-                                    cpu_percentage = 100.0 * time_doing_things/total_time 
-
-                                    comma = ''
-                                    if 'cpu_percent_used' in fields:
-                                        myStats = myStats +  "{0}cpu_percent_used={1:f}".format(comma, cpu_percentage )
-                                        comma = ','
+                                comma = ''
+                                if 'cpu_percent_used' in fields:
+                                    myStats = myStats +  "{0}used={1:f}".format(comma, cpu_percentage )
+                                    comma = ','
+                                    prevCPUPercentage = "used={0:f}".format(cpu_percentage )
+                                else:
                                     if 'user' in fields:
                                         myStats = myStats + "{0}user={1:f}".format(comma, 100 *(user_time/total_time) )
                                         comma = ','
@@ -890,81 +977,37 @@ def JAGetCPUTimesPercent(fields, recursive=False):
                                     if 'iowait' in fields:
                                         myStats = myStats + "{0}iowait={1:f}".format(comma, 100 * (iowait_time/total_time) )
                                         comma = ','
+                                    ### store for future
+                                    prevStats = myStats
 
-                            prevCPUStats[0] = cpustats[0]
-                            prevCPUStats[1] = float(cpustats[1])
-                            prevCPUStats[2] = float(cpustats[2])
-                            prevCPUStats[3] = float(cpustats[3])
-                            prevCPUStats[4] = float(cpustats[4])
-                            prevCPUStats[5] = float(cpustats[5])
-
-                except OSError:
-                    errorMsg = "ERROR JAGetCPUTimesPercent() fields:|{0}|,install psutils on this server to get OS stats".format(fields)
-                    print(errorMsg)
-                    JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
-            return myStats
-
+                        prevStatsSample[0] = cpustats[0]
+                        count = 1
+                        cpustatsLen = len(cpustats)
+                        while count < cpustatsLen:
+                            prevStatsSample[count] = float(cpustats[count])
+                            count = count + 1
+            except OSError as err:
+                errorMsg = "ERROR JAGetCPUTimesPercent() OSError:{0}, fields:|{1}|,install psutils on this server to get OS stats".format(err, fields)
+                print(errorMsg)
+                JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+    
     elif OSType == 'Windows' :
         if psutilModulePresent == True :
-            myStats = "cpu_percent_used={1:f}".format( psutil.cpu_percent() )
+            if 'cpu_percent_used' in fields:
+                ### psutil.cpu_present() returns value only, need to put it in field=value format
+                myStats = "used={0:f}".format( psutil.cpu_percent() )
+                if debugLevel > 1:
+                    print("DEBUG-2 JAGetCPUTimesPercent() OSType:{0}, using psutil.cpu_percent() to get data".format(OSType))
+            else:
+                myStats = psutil.cpu_times_percent()
+                if debugLevel > 1:
+                    print("DEBUG-2 JAGetCPUTimesPercent() OSType:{0}, using psutil.cpu_times_percent() to get data".format(OSType))
+
         else:
             errorMsg = "ERROR JAGetCPUTimesPercent() fields:|{0}|, install psutils on this server to get OS stats".format( fields)
             print(errorMsg)
             JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
-        return myStats
-
-    lines = result.stdout.decode('utf-8').split('\n')
-    ### lines of the form
-    ###
-    ### Linux 5.11.0-25-generic (havembha)      08/22/2021      _x86_64_        (8 CPU)
-    ###
-    ### 05:20:15 PM     CPU     %user     %nice   %system   %iowait    %steal     %idle
-    ### 05:30:01 PM     all      0.12      0.00      0.06      0.11      0.00     99.71
-    ### Average:        all      0.12      0.00      0.06      0.11      0.00     99.71
-    if len( lines ) < 5:
-        ### if sar does not have sample between the given start and end time, single line output will be present
-        ### change the start time to -10 min and call this function again
-        if recursive == True :
-            print("ERROR JAGetCPUTimesPercent() NO sar data available from {0} to {1}".format( JAFromTimeString, JAToTimeString))
-            return myStats
-
-        ### compute start time 10 times more than dataPostIntervalInSec
-        ### expect to see sar data collected in this duration
-        JAFromTimeString = JAGlobalLib.JAGetTime( dataPostIntervalInSec * 23 )
-        return JAGetCPUTimesPercent( fields, True )
-
-    for line in lines:
-        ### remove extra space
-        line = re.sub('\s+', ' ', line)
-
-        if re.search('%user', line) != None:
-            ### remove % sign from headings
-            line = re.sub('%', '', line)
-
-            ### heading line, separte the headings
-            tempHeadingFields = line.split(' ')
-
-        elif re.search('Average', line) != None:
-            ### Average line, parse prev line data
-            tempDataFields = prevLine.split(' ')
-
-            columnCount = 0
-            for field in tempDataFields :
-                if tempHeadingFields[ columnCount ] in fields:
-                    ### this column data is opted, store the data
-                    myStats = myStats + '{0}{1}={2}'.format( comma, tempHeadingFields[ columnCount ], field)
-                    comma = ','
-                elif 'cpu_percent_used' in fields:
-                    ### total CPU usage is to be returned
-                    ### compute this as  100 - idle
-                    if tempHeadingFields[ columnCount ] == 'idle' :
-                        myStats = myStats + "{0}cpu_percent_used={1:f}".format( comma, 100 - float( field ))
-
-                columnCount += 1
-
-        else:
-            prevLine = line
-
+    
     return myStats
 
 def JAGetCPUPercent():
@@ -978,13 +1021,15 @@ def JAGetCPUPercent():
     return myStats
 
 def JAGetVirtualMemory(fields, recursive=False):
-    myStats = ''
-    comma = ''
+    errorMsg = myStats = comma = ''
     global OSType, OSName, OSVersion, debugLevel
     global JAFromTimeString, JAToTimeString, JADayOfMonth
 
     if OSType == 'Linux':
         if JASysStatFilePathName != None and JASysStatFilePathName != '':
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetVirtualMemory() OSType:{0}, using 'sar -r' to get data".format(OSType))
+
             result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-r'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             lines = result.stdout.decode('utf-8').split('\n')
@@ -1000,7 +1045,7 @@ def JAGetVirtualMemory(fields, recursive=False):
                 ### if sar does not have sample between the given start and end time, single line output will be present
                 ### change the start time to -10 min and call this function again
                 if recursive == True :
-                    print("ERROR JAGetVirtualMemory() NO sar data available from {0} to {1}".format( JAFromTimeString, JAToTimeString))
+                    print("ERROR JAGetVirtualMemory() sar data NOT available, cmd:|sar -f {0}sa{1} -s {2} -e {3} -r".format( JASysStatFilePathName,JADayOfMonth,JAFromTimeString,JAToTimeString))
                     return myStats
 
                 ### compute start time 10 times more than dataPostIntervalInSec
@@ -1010,6 +1055,8 @@ def JAGetVirtualMemory(fields, recursive=False):
             for line in lines:
                 ### remove extra space
                 line = re.sub('\s+', ' ', line)
+                if len(line) < 5:
+                    continue
 
                 if re.search('kbmemfree', line) != None:
                     ### remove % sign from headings
@@ -1031,7 +1078,14 @@ def JAGetVirtualMemory(fields, recursive=False):
                         columnCount += 1
                 else:
                     prevLine = line
+
+        elif psutilModulePresent == True: 
+            myStats = psutil.virtual_memory()
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetVirtualMemory() OSType:{0}, using psutil.virtual_memory() to get data".format(OSType))
         else:
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetVirtualMemory() OSType:{0}, using /proc/meminfo to get data".format(OSType))
             ###  get total, free, percent used using /proc/meminfo
             try:
                 with open("/proc/meminfo") as procfile:
@@ -1044,21 +1098,15 @@ def JAGetVirtualMemory(fields, recursive=False):
                             break
                         tempLine = re.sub(r'\s+', ' ', tempLine)
                         tempFields = tempLine.split(' ')
-                        divideByToConvertToGB = 1000000
-                        if tempFields[2] != None:
-                            if tempFields[2] == 'kB':
-                                divideByToConvertToGB = 1000000
-                            elif tempFields[2] == 'mB':
-                                divideByToConvertToGB = 1000
                             
                         if tempFields[0] == 'MemTotal:':
                             if 'total' in fields:
-                                memTotal = value = (int(tempFields[1]))/divideByToConvertToGB
+                                memTotal = value = int(tempFields[1])
                                 myStats = myStats + '{0}total={1}'.format(comma, value)     
                                 comma = ','
                         elif tempFields[0] == 'MemAvailable:':
                             if 'available' in fields:
-                                value = (int(tempFields[1]))/divideByToConvertToGB
+                                value = int(tempFields[1])
                                 myStats = myStats + '{0}available={1}'.format(comma, value)
                                 comma = ','
                             if 'kbavail' in fields:
@@ -1070,7 +1118,7 @@ def JAGetVirtualMemory(fields, recursive=False):
                                 value = int(tempFields[1])
                                 myStats = myStats + '{0}kbmemfree={1}'.format(comma, value)
                                 comma = ','
-                                memFree = value /divideByToConvertToGB 
+                                memFree = value  
                         elif tempFields[0] == 'Committed_AS:':
                             if 'commit' in fields:
                                 value = int(tempFields[1])
@@ -1087,19 +1135,27 @@ def JAGetVirtualMemory(fields, recursive=False):
                 JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
 
     elif OSType == 'Windows' :
-        print("ERROR JAGetVirtualMemory() fields:|{0}|, install psutils on this server to get OS stats".format(fields))
-        return myStats
+        if psutilModulePresent == True: 
+            myStats = psutil.virtual_memory()
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetVirtualMemory() OSType:{0}, using psutil.virtual_memory() to get data".format(OSType))
+
+        else:
+            errorMsg = "ERROR JAGetVirtualMemory() fields:|{0}|, install psutils on this server to get OS stats".format(fields)
+            print(errorMsg)
+            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
 
     return myStats
 
 def JAGetSwapMemory(fields, recursive=False):
-    myStats = ''
-    comma = ''
+    errorMsg = myStats = comma = ''
     global OSType, OSName, OSVersion, debugLevel
     global JAFromTimeString, JAToTimeString, JADayOfMonth
 
     if OSType == 'Linux':
         if JASysStatFilePathName != None and JASysStatFilePathName != '':
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetSwapMemory() OSType:{0}, using 'sar -S' to get data".format(OSType))
             result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-S'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             lines = result.stdout.decode('utf-8').split('\n')
             ### lines of the form
@@ -1114,7 +1170,7 @@ def JAGetSwapMemory(fields, recursive=False):
                 ### if sar does not have sample between the given start and end time, single line output will be present
                 ### change the start time to -10 min and call this function again
                 if recursive == True :
-                    print("ERROR JAGetSwapMemory() NO sar data available from {0} to {1}".format( JAFromTimeString, JAToTimeString))
+                    print("ERROR JAGetSwapMemory() sar data NOT available, cmd:|sar -f {0}sa{1} -s {2} -e {3} -S".format( JASysStatFilePathName,JADayOfMonth,JAFromTimeString,JAToTimeString))
                     return myStats
 
                 ### compute start time 10 times more than dataPostIntervalInSec
@@ -1124,6 +1180,8 @@ def JAGetSwapMemory(fields, recursive=False):
             for line in lines:
                 ### remove extra space
                 line = re.sub('\s+', ' ', line)
+                if len(line) < 5:
+                    continue
 
                 if re.search('kbswpfree', line) != None:
                     ### remove % sign from headings
@@ -1145,187 +1203,512 @@ def JAGetSwapMemory(fields, recursive=False):
                         columnCount += 1
                 else:
                     prevLine = line
-        else:
-            ### add logic to get values directly if possible
-            myStats = ''
         
-        ### now get total, free, percent used using /proc/meminfo
-        try:
-            with open("/proc/meminfo") as procfile:
-                swapTotal = None
-                swapFree = None
+            if debugLevel > 1:
+                    print("DEBUG-2 JAGetSwapMemory() OSType:{0}, using /proc/meminfo to get total and free data".format(OSType))
 
-                while True:
-                    tempLine = procfile.readline()
-                    if not tempLine:
-                        break
-                    tempLine = re.sub(r'\s+', ' ', tempLine)
-                    tempFields = tempLine.split(' ')
-                    divideByToConvertToGB = 1000000
-                    if tempFields[2] != None:
-                        if tempFields[2] == 'kB':
-                            divideByToConvertToGB = 1000000
-                        elif tempFields[2] == 'mB':
-                            divideByToConvertToGB = 1000
-                        
-                    if tempFields[0] == 'SwapTotal:':
-                        if 'total' in fields:
-                            swapTotal = int(tempFields[1])/divideByToConvertToGB
-                            myStats = myStats + '{0}total={1}'.format(comma, swapTotal)     
-                            comma = ','
-                    elif tempFields[0] == 'SwapFree:':
-                        if 'free' in fields:
-                            swapFree = int(tempFields[1])/divideByToConvertToGB
-                            myStats = myStats + '{0}free={1}'.format(comma, swapFree)
-                            comma = ','
-                    if swapTotal != None and swapFree != None:
-                        if swapTotal > 0 and 'percent' in fields:
-                            myStats = myStats + '{0}percent={1}'.format(comma, 100 * swapFree/swapTotal) 
-                        break
+            ### now get total, free, percent used using /proc/meminfo
+            try:
+                with open("/proc/meminfo") as procfile:
+                    swapTotal = None
+                    swapFree = None
 
-        except OSError:
-            errorMsg = "ERROR JAGetSwapMemory() can't read /proc/meminfo"
-            print(errorMsg)
-            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                    while True:
+                        tempLine = procfile.readline()
+                        if not tempLine:
+                            break
+                        tempLine = re.sub(r'\s+', ' ', tempLine)
+                        tempFields = tempLine.split(' ')
+                            
+                        if tempFields[0] == 'SwapTotal:':
+                            if 'total' in fields:
+                                swapTotal = int(tempFields[1])
+                                myStats = myStats + '{0}total={1}'.format(comma, swapTotal)     
+                                comma = ','
+                        elif tempFields[0] == 'SwapFree:':
+                            if 'free' in fields:
+                                swapFree = int(tempFields[1])
+                                myStats = myStats + '{0}free={1}'.format(comma, swapFree)
+                                comma = ','
+                        if swapTotal != None and swapFree != None:
+                            break
+
+            except OSError:
+                errorMsg = "ERROR JAGetSwapMemory() can't read /proc/meminfo"
+                print(errorMsg)
+                JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+        elif psutilModulePresent == True :
+            myStats = psutil.swap_memory()
+            if debugLevel > 1:
+                    print("DEBUG-2 JAGetSwapMemory() OSType:{0}, using psutil.swap_memory() to get data".format(OSType))
+
+        else:
+            if debugLevel > 1:
+                    print("DEBUG-2 JAGetSwapMemory() OSType:{0}, using /proc/meminfo to get total and free data".format(OSType))
+            ### collect basic info
+            ### now get total, free, percent used using /proc/meminfo
+            try:
+                with open("/proc/meminfo") as procfile:
+                    swapTotal = None
+                    swapFree = None
+
+                    while True:
+                        tempLine = procfile.readline()
+                        if not tempLine:
+                            break
+                        tempLine = re.sub(r'\s+', ' ', tempLine)
+                        tempFields = tempLine.split(' ')
+                            
+                        if tempFields[0] == 'SwapTotal:':
+                            if 'total' in fields:
+                                swapTotal = int(tempFields[1])
+                                myStats = myStats + '{0}total={1}'.format(comma, swapTotal)     
+                                comma = ','
+                        elif tempFields[0] == 'SwapFree:':
+                            if 'free' in fields:
+                                swapFree = int(tempFields[1])
+                                myStats = myStats + '{0}free={1}'.format(comma, swapFree)
+                                comma = ','
+                        if swapTotal != None and swapFree != None:
+                            break
+
+            except OSError as err:
+                errorMsg = "ERROR JAGetSwapMemory() can't read /proc/meminfo, OSError:{0}".format(err)
+                print(errorMsg)
+                JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
 
     elif OSType == 'Windows' :
-        myStats = ''
+        if psutilModulePresent == True :
+            myStats = psutil.swap_memory()
+        if debugLevel > 1:
+                print("DEBUG-2 JAGetSwapMemory() OSType:{0}, using psutil.swap_memory() to get data".format(OSType))
 
     if myStats == '':
-        print("ERROR JAGetSwapMemory() fields:|{0}|, install psutils on this server to get OS stats".format(fields))
+        errorMsg = "ERROR JAGetSwapMemory() fields:|{0}|, install psutils on this server to get OS stats".format(fields)
+        print(errorMsg)
+        JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
 
     return myStats
 
 def JAGetDiskIOCounters(fields, recursive=False):
-    myStats = ''
-    comma = ''
-    global OSType, OSName, OSVersion, debugLevel
+    errorMsg = myStats = comma = ''
+    global OSType, OSName, OSVersion, debugLevel, prevDiskIOStats
     global JAFromTimeString, JAToTimeString, JADayOfMonth
 
     if OSType == 'Linux':
-        if OSName == 'rhel' or OSName == 'ubuntu':
+        if JASysStatFilePathName != None and JASysStatFilePathName != '':
             result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-b'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            lines = result.stdout.decode('utf-8').split('\n')
+            ### lines of the form
+            ###
+            ### Linux 5.11.0-25-generic (havembha)      08/22/2021      _x86_64_        (8 CPU)
+            ###
+            ### 07:40:15 PM       tps      rtps      wtps      dtps   bread/s   bwrtn/s   bdscd/s
+            ### 07:50:04 PM      1.01      0.01      1.00      0.00      0.01     14.87      0.00
+            ### Average:         1.01      0.01      1.00      0.00      0.01     14.87      0.00
+
+            if len( lines ) < 5:
+                ### if sar does not have sample between the given start and end time, single line output will be present
+                ### change the start time to -10 min and call this function again
+                if recursive == True :
+                    print("ERROR JAGetDiskIOCounters() sar data NOT available, cmd:|sar -f {0}sa{1} -s {2} -e {3} -b".format( JASysStatFilePathName,JADayOfMonth,JAFromTimeString,JAToTimeString))
+                    return myStats
+
+                ### compute start time 10 times more than dataPostIntervalInSec
+                ### expect to see sar data collected in this duration
+                JAFromTimeString = JAGlobalLib.JAGetTime( dataPostIntervalInSec * 23 )
+            
+            for line in lines:
+                ### remove extra space
+                line = re.sub('\s+', ' ', line)
+
+                if len(line) < 5:
+                    continue
+
+                if re.search('rtps', line) != None:
+                    ### remove % sign from headings
+                    line = re.sub('%', '', line)
+
+                    ### heading line, separte the headings
+                    tempHeadingFields = line.split(' ')
+
+                elif re.search('Average', line) != None:
+                    ### Average line, parse prev line data
+                    tempDataFields = prevLine.split(' ')
+
+                    if debugLevel > 1:
+                        print("DEBUG-2 JAGetDiskIOCounters(), used 'sar -b' to get data:{1}".format(OSType, prevLine))
+
+                    columnCount = 0
+                    for field in tempDataFields :
+                        tempHeading = tempHeadingFields[ columnCount ] 
+                        if tempHeading in fields:
+                            ### replace / with _
+                            tempHeading = re.sub(r'/', '_', tempHeading)
+                            ### this column data is opted, store the data
+                            myStats = myStats + '{0}{1}={2}'.format( comma, tempHeading, field)
+                            comma = ','
+                        columnCount += 1
+                else:
+                    prevLine = line
+
+        elif psutilModulePresent == True:
+            tempStats = psutil.disk_io_counters()
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetDiskIOCounters() OSType:{0}, used psutil.disk_io_counters() to get data:{1}".format(OSType, tempStats))
+            havePrevData = prevDiskIOStats[0]
+            count = 0
+            tempStatsLen = len(tempStats)
+            while count < tempStatsLen:
+                fieldName = tempStats._fields[count]
+                fieldValue = tempStats[count]
+                if havePrevData > 0:
+                    fieldValue = fieldValue - prevDiskIOStats[count]
+                prevDiskIOStats[count] = tempStats[count]
+                myStats = myStats + "{0}{1}={2}".format(comma,fieldName,fieldValue) 
+                comma = ','
+                count = count + 1
         else:
-            print("ERROR JAGetDiskIOCounters() fields:|{0}|, install psutils on this server to get OS stats".format(fields))
-            return myStats
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetDiskIOCounters() OSType:{0}, used 'vmstat -D' to get total and free data".format(OSType))
 
-    elif OSType == 'Windows' :
-        print("ERROR JAGetDiskIOCounters() fields:|{0}|, install psutils on this server to get OS stats".format(fields))
-        return myStats
+            try:
+                ### run 'vmstat -D' to get disk stats
+                result = subprocess.run( ['vmstat','-D'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                lines = result.stdout.decode('utf-8').split('\n')
+                ### lines of the form
+                """
+                    27 disks
+                        0 partitions
+                    2232 total reads
+                    3561 merged reads
+                196006 read sectors
+                    1064 milli reading
+                    9563 writes
+                    2010 merged writes
+                8421616 written sectors
+                    11293 milli writing
+                        0 inprogress IO
+                    25 milli spent IO
+                """
+                readCount = writeCount = 0
 
-    lines = result.stdout.decode('utf-8').split('\n')
-    ### lines of the form
-    ###
-    ### Linux 5.11.0-25-generic (havembha)      08/22/2021      _x86_64_        (8 CPU)
-    ###
-    ### 07:40:15 PM       tps      rtps      wtps      dtps   bread/s   bwrtn/s   bdscd/s
-    ### 07:50:04 PM      1.01      0.01      1.00      0.00      0.01     14.87      0.00
-    ### Average:         1.01      0.01      1.00      0.00      0.01     14.87      0.00
+                if debugLevel > 1:
+                    print("DEBUG-2 JAGetDiskIOCounters(), used 'vmstat -D' to get data:{0}".format(lines))
 
-    if len( lines ) < 5:
-        ### if sar does not have sample between the given start and end time, single line output will be present
-        ### change the start time to -10 min and call this function again
-        if recursive == True :
-            print("ERROR JAGetDiskIOCounters() NO sar data available from {0} to {1}".format( JAFromTimeString, JAToTimeString))
-            return myStats
+                for line in lines:
+                    ### remove extra space
+                    line = re.sub('\s+', ' ', line)
+                    words = re.split(' ', line)
 
-        ### compute start time 10 times more than dataPostIntervalInSec
-        ### expect to see sar data collected in this duration
-        JAFromTimeString = JAGlobalLib.JAGetTime( dataPostIntervalInSec * 23 )
-    
-    for line in lines:
-        ### remove extra space
-        line = re.sub('\s+', ' ', line)
+                    if len( words ) >= 2:
+                        if words[2] == 'total' and words[3] == 'reads':
+                            readCount = int(words[1])  
+                        elif words[2] == 'writes':
+                            writeCount = int(words[1])  
 
-        if re.search('rtps', line) != None:
-            ### remove % sign from headings
-            line = re.sub('%', '', line)
-
-            ### heading line, separte the headings
-            tempHeadingFields = line.split(' ')
-
-        elif re.search('Average', line) != None:
-            ### Average line, parse prev line data
-            tempDataFields = prevLine.split(' ')
-
-            columnCount = 0
-            for field in tempDataFields :
-                if tempHeadingFields[ columnCount ] in fields:
-                    ### this column data is opted, store the data
-                    myStats = myStats + '{0}{1}={2}'.format( comma, tempHeadingFields[ columnCount ], field)
+                ### if prev sample is present, compute delta
+                ### read_count,write_count,read_bytes,write_bytes,tps,rtps,wtps
+                if 'read_count' in fields:
+                    myStats = myStats + "{0}read_count={1}".format(comma, readCount - prevDiskIOStats[0])
                     comma = ','
-                columnCount += 1
+                if 'rtps' in fields:
+                    myStats = myStats + "{0}rtps={1}".format(comma, (readCount - prevDiskIOStats[0])/dataPostIntervalInSec)
+                    comma = ','
+                prevDiskIOStats[0] = readCount
+                if 'write_count' in fields:
+                    myStats = myStats + "{0}write_count={1}".format(comma, writeCount - prevDiskIOStats[1])
+                    comma = ','
+                if 'wtps' in fields:
+                    myStats = myStats + "{0}wtps={1}".format(comma, (writeCount - prevDiskIOStats[1])/dataPostIntervalInSec)
+                    comma = ','
+
+                prevDiskIOStats[1] = writeCount
+                
+            except OSError as err:                           
+                errorMsg = "ERROR JAGetDiskIOCounters() OSError:{0}, fields:|{1}|, install psutils on this server to get OS stats".format(err, fields)
+                print(errorMsg)
+                JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+               
+    elif OSType == 'Windows' :
+        if psutilModulePresent == True:
+            tempStats = psutil.disk_io_counters()
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetDiskIOCounters() OSType:{0}, used psutil.disk_io_counters() to get data:{1}".format(OSType, tempStats))
+            havePrevData = prevDiskIOStats[0]
+            count = 0
+            tempStatsLen = len(tempStats)
+            while count < tempStatsLen:
+                fieldName = tempStats._fields[count]
+                fieldValue = tempStats[count]
+                if havePrevData > 0:
+                    fieldValue = fieldValue - prevDiskIOStats[count]
+                prevDiskIOStats[count] = tempStats[count]
+                myStats = myStats + "{0}{1}={2}".format(comma,fieldName,fieldValue) 
+                comma = ','
+                count = count + 1
+
         else:
-            prevLine = line
+            errorMsg = "ERROR JAGetDiskIOCounters() fields:|{0}|, install psutils on this server to get OS stats".format(fields)
+            print(errorMsg)
+            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
 
     return myStats
 
-def JAGetNetworkIOCounters(fields, recursive=False):
-    myStats = ''
-    comma = ''
+def JAGetNetworkIOCounters(networkIOFields, recursive=False):
+    errorMsg = myStats = comma = ''
     global OSType, OSName, OSVersion, debugLevel
     global JAFromTimeString, JAToTimeString, JADayOfMonth
+    errorMsg = ''
 
     if OSType == 'Linux':
-        if OSName == 'rhel' or OSName == 'ubuntu':
-            result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-n', 'EDEV'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if JASysStatFilePathName != None and JASysStatFilePathName != '':
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetNetworkIOCounters() OSType:{0}, using 'sar -n DEV' to get data".format(OSType))
+
+            result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-n', 'DEV'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            lines = result.stdout.decode('utf-8').split('\n')
+            ### lines of the form
+            ###
+            ### Linux 5.11.0-25-generic (havembha)      08/22/2021      _x86_64_        (8 CPU)
+            ###
+            ### 07:00:01 PM     IFACE   rxpck/s   txpck/s    rxkB/s    txkB/s   rxcmp/s   txcmp/s  rxmcst/s   %ifutil
+            ### 07:10:01 PM        lo     29.85     29.85     34.08     34.08      0.00      0.00      0.00      0.00
+            ### 07:10:01 PM    enp3s0      6.21      6.15      1.79      2.02      0.00      0.00      0.14      0.02
+            ### 07:10:01 PM    wlp2s0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+            ### ....
+            ### Average:           lo      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+            ### Average:       enp3s0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+            ### Average:       wlp2s0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+
+            if len( lines ) < 5:
+                ### if sar does not have sample between the given start and end time, single line output will be present
+                ### change the start time to -10 min and call this function again
+                if recursive == True :
+                    print("ERROR JAGetNetworkIOCounters() sar data NOT available, cmd:|sar -f {0}sa{1} -s {2} -e {3} -n DEV".format( JASysStatFilePathName,JADayOfMonth,JAFromTimeString,JAToTimeString))
+                    return myStats
+
+                ### compute start time 10 times more than dataPostIntervalInSec
+                ### expect to see sar data collected in this duration
+                JAFromTimeString = JAGlobalLib.JAGetTime( dataPostIntervalInSec * 23 )
+
+            ### store prev lines using interface as key
+            prevLines = defaultdict(dict)
+            storeLines = False
+            for line in lines:
+                ### remove extra space
+                line = re.sub('\s+', ' ', line)
+                
+                if len(line) < 5:
+                    continue
+
+                if re.search('IFACE', line) != None:
+                    ### remove % sign from headings
+                    line = re.sub('%', '', line)
+
+                    ### heading line, separte the headings
+                    tempHeadingFields = line.split(' ')
+                    storeLines = True
+                elif re.search('Average', line) != None:
+                    ### Average line, parse prev line data for each interface
+                    for iface, line in prevLines.items():
+                        tempDataFields = line.split(' ')
+
+                        if debugLevel > 1:
+                            print("DEBUG-2 JAGetNetworkIOCounters() using interface line data:{0}".format(line))
+
+                        columnCount = 0
+                        for field in tempDataFields :
+                            tempHeading = tempHeadingFields[ columnCount ]
+                            if tempHeading in networkIOFields:
+                                ### replace / with _
+                                tempHeading = re.sub(r'/', '_', tempHeading)
+                                ### this column data is opted, store the data in the form fieldName_iface=value
+                                myStats = myStats + '{0}{1}_{2}={3}'.format( comma, tempHeading, iface, field)
+                                comma = ','
+                            columnCount += 1
+                    break
+
+                else:
+                    if storeLines == True:
+                        ### store data per interface
+                        ### words[2] has interface name in each data line
+                        ### 07:10:01 PM        lo     29.85     29.85     34.08     34.08      0.00      0.00      0.00      0.00
+                        ###                  ^^^^ <-- key for prevLines
+                        words = line.split(' ')
+                        prevLines[ words[2] ] = line
+
+        elif psutilModulePresent == True:
+            tempStats = psutil.net_io_counters()
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetNetworkIOCounters() OSType:{0}, used psutil.net_io_counters() to get data:{1}".format(OSType, tempStats))
+            havePrevData = len(prevNetworkStats)
+            count = 0
+            tempStatsLen = len(tempStats)
+            while count < tempStatsLen:
+                fieldName = tempStats._fields[count]
+                fieldValue = tempStats[count]
+                if havePrevData > 0:
+                    fieldValue = fieldValue - prevNetworkStats['all'][count]
+                prevNetworkStats['all'][count]  = tempStats[count]
+                myStats = myStats + "{0}{1}={2}".format(comma,fieldName,fieldValue) 
+                comma = ','
+                count = count + 1
         else:
-            print("ERROR JAGetNetworkIOCounters() fields:|{0}|, install psutils on this server to get OS stats".format(fields))
-            return myStats
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetNetworkIOCounters() OSType:{0}, used 'ifconfig -a' to get data".format(OSType))
+            
+            try:
+                ### run 'ifconfig -a' to get network stats
+                result = subprocess.run( ['ifconfig','-a'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                lines = result.stdout.decode('utf-8').split('\n')
+                ### lines of the form
+                """
+enp3s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.221  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::f2de:f1ff:fe93:cbc2  prefixlen 64  scopeid 0x20<link>
+        ether f0:de:f1:93:cb:c2  txqueuelen 1000  (Ethernet)
+        RX packets 7728787  bytes 2574472711 (2.5 GB)
+        RX errors 0  dropped 1468  overruns 0  frame 0
+        TX packets 2513225  bytes 705897965 (705.8 MB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 12838688  bytes 25578760128 (25.5 GB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 12838688  bytes 25578760128 (25.5 GB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+                """
+                interface = ''
+                ### process lines starting with RX and TX
+                for line in lines:
+                    ### remove extra space
+                    line = re.sub('\s+', ' ', line)
+                    fields = re.split(' ', line)
+
+                    if len( fields ) >= 5 and interface != '':
+                        if fields[1] == 'RX' and fields[2] == 'packets':
+                            ### RX packets 12838688  bytes 25578760128 (25.5 GB)
+                            ### 1       2         3      4   5
+                            rxPackets = int(fields[3])
+                            rxBytes = int(fields[5])
+                            havePrevData = len(prevNetworkStats[interface])
+                            if havePrevData > 0:
+                                if 'packets_recv' in networkIOFields:
+                                    myStats = myStats + "{0}packets_recv_{1}={2}".format(comma,interface, rxPackets - prevNetworkStats[interface][0])
+                                    comma = ','
+                                if 'bytes_recv' in networkIOFields:
+                                    myStats = myStats + "{0}bytes_recv_{1}={2}".format(comma,interface, rxBytes - prevNetworkStats[interface][1])
+                                    comma = ','
+                            prevNetworkStats[interface][0] = rxPackets
+                            prevNetworkStats[interface][1] = rxBytes
+
+                        elif fields[1] == 'RX' and fields[2] == 'errors':
+                            ### RX errors 0  dropped 0  overruns 0  frame 0
+                            ### 0    1    2     3    4    5      6   7    8
+                            rxErrors =  int(fields[3])
+                            rxDropped =  int(fields[5]) 
+                            rxOverrun =  int(fields[7])
+                            rxFrame =   int(fields[9])
+
+                            if havePrevData > 0:
+                                if 'errin' in networkIOFields:
+                                    myStats = myStats + "{0}errin_{1}={2}".format(comma,interface, rxErrors - prevNetworkStats[interface][2])
+                                    comma = ','
+                                if 'dropin' in networkIOFields:
+                                    myStats = myStats + "{0}dropin_{1}={2}".format(comma,interface, rxDropped - prevNetworkStats[interface][3])
+                                    comma = ','
+                                if 'overrunin' in networkIOFields:
+                                    myStats = myStats + "{0}overrunin_{1}={2}".format(comma,interface, rxOverrun - prevNetworkStats[interface][4])
+                                    comma = ','
+                                if 'framein' in networkIOFields:
+                                    myStats = myStats + "{0}framein_{1}={2}".format(comma,interface, rxFrame - prevNetworkStats[interface][5])
+                                    comma = ','
+
+                            prevNetworkStats[interface][2] = rxErrors
+                            prevNetworkStats[interface][3] = rxDropped
+                            prevNetworkStats[interface][4] = rxOverrun
+                            prevNetworkStats[interface][5] = rxFrame
+                            
+                        elif fields[1] == 'TX' and fields[2] == 'packets':
+                            ### RX packets 12838688  bytes 25578760128 (25.5 GB)
+                            ### 1       2         3      4  5
+                            txPackets =  int(fields[3])
+                            txBytes =  int(fields[5])
+                            if havePrevData > 0:
+                                if 'bytes_sent' in networkIOFields:
+                                    myStats = myStats + "{0}bytes_sent_{1}={2}".format(comma,interface, txBytes - prevNetworkStats[interface][6])
+                                    comma = ','
+                                if 'packets_sent' in networkIOFields:
+                                    myStats = myStats + "{0}packets_sent_{1}={2}".format(comma,interface, txPackets - prevNetworkStats[interface][7])
+                                    comma = ','
+                            prevNetworkStats[interface][6] = txBytes
+                            prevNetworkStats[interface][7] = txPackets
+
+                        elif fields[1] == 'TX' and fields[2] == 'errors':
+                            ### RX errors 0  dropped 0  overruns 0  frame 0
+                            ### 1    2     3    4    5      6   7    8    9
+                            txErrors =  int(fields[3])
+                            txDropped =  int(fields[5] )
+                            txOverrun =  int(fields[7])
+                            txFrame =   int(fields[9])
+                            if havePrevData > 0:
+                                if 'errout' in networkIOFields:
+                                    myStats = myStats + "{0}errout_{1}={2}".format(comma,interface, txErrors - prevNetworkStats[interface][8])
+                                    comma = ','
+                                if 'dropout' in networkIOFields:
+                                    myStats = myStats + "{0}dropout_{1}={2}".format(comma,interface, txDropped - prevNetworkStats[interface][9])
+                                    comma = ','
+                                if 'overrunout' in networkIOFields:
+                                    myStats = myStats + "{0}errout_{1}={2}".format(comma,interface, txOverrun - prevNetworkStats[interface][10])
+                                    comma = ','
+                                if 'frameout' in networkIOFields:
+                                    myStats = myStats + "{0}errout_{1}={2}".format(comma,interface, txFrame - prevNetworkStats[interface][11])
+                                    comma = ','
+
+                            prevNetworkStats[interface][8] = txErrors
+                            prevNetworkStats[interface][9] = txDropped
+                            prevNetworkStats[interface][10] = txOverrun
+                            prevNetworkStats[interface][11] = txFrame
+                            
+                    elif re.search(r'RUNNING', line) != None:
+                        ### store interface values
+                        interface = re.sub(r':','', fields[0])
+                        if debugLevel > 2:
+                            print("DEBUG-3 JAGetNetworkIOCounters() Interface:{0}, line:{1}".format(interface, line))
+
+                return myStats
+
+            except OSError as err:
+                errorMsg= "ERROR JAGetNetworkIOCounters() OSError:{0}, fields:|{1}|, install psutils on this server to get OS stats".format(err, networkIOFields)
 
     elif OSType == 'Windows' :
-        print("ERROR JAGetNetworkIOCounters() fields:|{0}|, install psutils on this server to get OS stats".format(fields))
-        return myStats
-
-    lines = result.stdout.decode('utf-8').split('\n')
-    ### lines of the form
-    ###
-    ### Linux 5.11.0-25-generic (havembha)      08/22/2021      _x86_64_        (8 CPU)
-    ###
-    ### 07:40:15 PM     IFACE   rxerr/s   txerr/s    coll/s  rxdrop/s  txdrop/s  txcarr/s  rxfram/s  rxfifo/s  txfifo/s
-    ### 07:50:04 PM        lo      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-    ### 07:50:04 PM    enp3s0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-    ### 07:50:04 PM    wlp2s0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-    ### Average:           lo      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-    ### Average:       enp3s0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-    ### Average:       wlp2s0      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-
-    if len( lines ) < 5:
-        ### if sar does not have sample between the given start and end time, single line output will be present
-        ### change the start time to -10 min and call this function again
-        if recursive == True :
-            print("ERROR JAGetNetworkIOCounters() NO sar data available from {0} to {1}".format( JAFromTimeString, JAToTimeString))
-            return myStats
-
-        ### compute start time 10 times more than dataPostIntervalInSec
-        ### expect to see sar data collected in this duration
-        JAFromTimeString = JAGlobalLib.JAGetTime( dataPostIntervalInSec * 23 )
-    
-    for line in lines:
-        ### remove extra space
-        line = re.sub('\s+', ' ', line)
-
-        if re.search('IFACE', line) != None:
-            ### remove % sign from headings
-            line = re.sub('%', '', line)
-
-            ### heading line, separte the headings
-            tempHeadingFields = line.split(' ')
-
-        elif re.search('Average', line) != None:
-            ### Average line, parse prev line data
-            tempDataFields = prevLine.split(' ')
-
-            columnCount = 0
-            for field in tempDataFields :
-                if tempHeadingFields[ columnCount ] in fields:
-                    ### this column data is opted, store the data
-                    myStats = myStats + '{0}{1}={2}'.format( comma, tempHeadingFields[ columnCount ], field)
-                    comma = ','
-                columnCount += 1
+        if psutilModulePresent == True:
+            tempStats = psutil.net_io_counters()
+            if debugLevel > 1:
+                print("DEBUG-2 JAGetNetworkIOCounters() OSType:{0}, used psutil.net_io_counters() to get data:{1}".format(OSType, tempStats))
+            havePrevData = len(prevNetworkStats)
+            count = 0
+            tempStatsLen = len(tempStats)
+            while count < tempStatsLen:
+                fieldName = tempStats._fields[count]
+                fieldValue = tempStats[count]
+                if havePrevData > 0:
+                    fieldValue = fieldValue - prevNetworkStats['all'][count]
+                prevNetworkStats['all'][count]  = tempStats[count]
+                myStats = myStats + "{0}{1}={2}".format(comma,fieldName,fieldValue) 
+                comma = ','
+                count = count + 1
         else:
-            ### TBD enhance this to select a line with desired interface
-            prevLine = line
+            errorMsg= "ERROR JAGetNetworkIOCounters() fields:|{0}|, install psutils on this server to get OS stats".format(networkIOFields)
+
+    if myStats == '':
+        print(errorMsg)
+        JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
 
     return myStats
 
@@ -1346,6 +1729,25 @@ else:
 
 ### first time, sleep for dataCollectDurationInSec so that log file can be processed and posted after waking up
 sleepTimeInSec = dataPostIntervalInSec
+
+### get variables so that these can be used in sar first time
+JAFromTimeString = JAGlobalLib.JAGetTime( dataPostIntervalInSec * 2 ) 
+JAToTimeString =  JAGlobalLib.JAGetTime( 0 )
+JADayOfMonth = JAGlobalLib.JAGetDayOfMonth(0)
+
+### this is to call the first time and ignore the return values
+if psutilModulePresent == True :
+    psutil.cpu_times_percent()
+    psutil.cpu_percent()
+else:
+    ### this is to get /proc/stat and store as prev value so that next time, sample will be done after sample interval
+    JAGetCPUPercent()
+
+### this is to get first disk io sample so that delta can be computed later
+JAGetDiskIOCounters('', False)
+
+### this is to get first network sample so that delta can be computed later
+JAGetNetworkIOCounters('',False)
 
 ### until the end time, keep checking the log file for presence of patterns
 ###   and post the stats per post interval
@@ -1372,117 +1774,74 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
 
   ### Now gather OS stats
   for key, spec in JAOSStatsSpec.items():
-     fields = spec[0]
+    fields = spec[0]
 
-     ### remove space from fieds
-     fields = re.sub('\s+','',fields)
+    ### remove space from fieds
+    fields = re.sub('\s+','',fields)
 
-     tempPostData = False
+    tempPostData = False
 
-     if debugLevel > 0:
-        print('DEBUG-1 Collecting {0} OS stats for fields: {1}'.format(key, fields))
+    if debugLevel > 0:
+        print('DEBUG-1 Collecting {0} OS stats for fields: {1}, using psutilModule:{2}'.format(key, fields, psutilModulePresent))
 
-     if psutilModulePresent == True :
-        if key == 'cpu_times_percent':
-            stats = psutil.cpu_times_percent()
+    if key == 'cpu_times_percent':
+        stats = JAGetCPUTimesPercent(fields)
+        if stats != '' and stats != None: 
+                tempPostData = True
+
+    elif key == 'cpu_percent':
+        stats = JAGetCPUPercent()
+        if stats != '' and stats != None: 
             tempPostData = True
-
-        elif key == 'cpu_percent':
-            stats = psutil.cpu_percent(interval=1)
-            tempPostData = True
-
-            ## stats is of the form stats <value>
-            value = '{:.2f}'.format(stats)
+            ## stats is of the form stats=<value>
+            label, value = re.split('=', '{0}'.format( stats) )
             ### write current CPU usage to history
             JAGlobalLib.JAWriteCPUUsageHistory( value )
 
-        elif key == 'virtual_memory':
-            stats = psutil.virtual_memory()
+    elif key == 'virtual_memory':
+        stats = JAGetVirtualMemory(fields)
+        if stats != '' and stats != None: 
             tempPostData = True
 
-        elif key == 'swap_memory':
-            stats = psutil.swap_memory()
+    elif key == 'swap_memory':
+        stats = JAGetSwapMemory(fields)
+        if stats != '' and stats != None: 
             tempPostData = True
 
-        elif key == 'process':
-            stats = JAGetProcessStats( spec[1], fields )
+    elif key == 'process':
+        stats = JAGetProcessStats( spec[1], fields )
+        if stats != '' and stats != None: 
             tempPostData = True
 
-        elif key == 'disk_io_counters':
-            stats = psutil.disk_io_counters()
+    elif key == 'disk_io_counters':
+        ## psutil.disk_io_counters() gives cumulative value. Delta value is more useful in this case.
+        stats = JAGetDiskIOCounters(fields)
+        if stats != '' and stats != None: 
             tempPostData = True
 
-        elif key == 'net_io_counters':
-            stats = psutil.net_io_counters()
+    elif key == 'net_io_counters':
+        ## psutil.net_io_counters() gives cumulative value. Delta value is more useful in this case.
+        stats = JAGetNetworkIOCounters(fields)
+        if stats != '' and stats != None: 
             tempPostData = True
 
-        elif key == 'filesystem':
-            ### fsNames in index 1 of spec[]
-            stats = JAGetFileSystemUsage( spec[1], fields)
+    elif key == 'filesystem':
+        stats = JAGetFileSystemUsage( spec[1], fields)
+        if stats != '' and stats != None: 
             tempPostData = True
 
-        elif key == 'socket_stats':
-            stats = JAGetSocketStats(fields)
+    elif key == 'socket_stats':
+        stats = JAGetSocketStats(fields)
+        if stats != '' and stats != None: 
             tempPostData = True
 
-        else:
-            print('ERROR Invaid psutil function name:|{0}| in configFile:|{1}|'.format(key, configFile))
+    else:
+        print('ERROR Invaid psutil function name:|{0}| in configFile:|{1}|'.format(key, configFile))
 
-     else:
-        ### get stats from sar data
-        if key == 'cpu_times_percent':
-            stats = JAGetCPUTimesPercent(fields)
-            if stats != '' and stats != None: 
-                tempPostData = True
+    if debugLevel > 0:
+        print('DEBUG-1 Collected data:{0}'.format(stats))
 
-        elif key == 'cpu_percent':
-            stats = JAGetCPUPercent()
-            if stats != '' and stats != None: 
-                tempPostData = True
-                ## stats is of the form stats=<value>
-                label, value = re.split('=', '{0}'.format( stats) )
-                ### write current CPU usage to history
-                JAGlobalLib.JAWriteCPUUsageHistory( value )
-
-        elif key == 'virtual_memory':
-            stats = JAGetVirtualMemory(fields)
-            if stats != '' and stats != None: 
-                tempPostData = True
-
-        elif key == 'swap_memory':
-            stats = JAGetSwapMemory(fields)
-            if stats != '' and stats != None: 
-                tempPostData = True
-        
-        elif key == 'process':
-            stats = JAGetProcessStats( spec[1], fields )
-            if stats != '' and stats != None: 
-                tempPostData = True
-
-        elif key == 'disk_io_counters':
-            stats = JAGetDiskIOCounters(fields)
-            if stats != '' and stats != None: 
-                tempPostData = True
-
-        elif key == 'net_io_counters':
-            stats = JAGetNetworkIOCounters(fields)
-            if stats != '' and stats != None: 
-                tempPostData = True
-
-        elif key == 'filesystem':
-            stats = JAGetFileSystemUsage( spec[1], fields)
-            if stats != '' and stats != None: 
-                tempPostData = True
-
-        elif key == 'socket_stats':
-            stats = JAGetSocketStats(fields)
-            if stats != '' and stats != None: 
-                tempPostData = True
-
-        else:
-            print('ERROR Invaid psutil function name:|{0}| in configFile:|{1}|'.format(key, configFile))
-
-     if tempPostData == True :
+    if tempPostData == True :
         ### remove leading word and brakets from stats
         ### <skipWord>(metric1=value1, metric2=value2....)
         ### svmem(total=9855512576, available=9557807104, percent=3.0, used=105254912, free=9648640000, active=77885440, inactive=28102656, buffers=16416768, cached=85200896, shared=307200, slab=41705472)
@@ -1502,21 +1861,11 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
                 tempValue2 = '{0}'.format(stats).split(',')
             else:
                 tempValue2=tempValue1
-    
+        comma = ''    
         for item in tempValue2:
             if item != '':
-                if valuePairs == '': 
-                    if key == 'cpu_percent':
-                        if re.search('cpu_percent_used', item) == None:
-                            ### this has the value in the form cpu_percent 3.0
-                            valuePairs = '{0}_used={1}'.format(key,item)
-                        else:
-                            ### this has the value in the form cpu_percent_used=3.0
-                            valuePairs = '{0}'.format(item)
-                    else:
-                        valuePairs = '{0}_{1}'.format(key,item) 
-                else:
-                    valuePairs = '{0},{1}_{2}'.format(valuePairs, key, item)
+                valuePairs = valuePairs + '{0}{1}_{2}'.format(comma, key, item)
+                comma = ','
         if valuePairs != '':
             timeStamp = JAGlobalLib.UTCDateTime() 
             tempOSStatsToPost[key] = 'timeStamp={0},{1}'.format(timeStamp, valuePairs)
@@ -1529,6 +1878,8 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
     try:
           importlib.util.find_spec("requests")
           importlib.util.find_spec("json")
+          import requests
+          import json
           useRequests = True
     except ImportError:
           useRequests = False

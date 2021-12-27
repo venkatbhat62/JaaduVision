@@ -386,7 +386,8 @@ def JAReadCPUUsageHistory( logFileName=None, debugLevel=0):
                     tempLine = file.readline()
                     if not tempLine:
                         break
-                    CPUUsage.append( float( tempLine.strip() ) )
+                    if tempLine != '\n':
+                        CPUUsage.append( float( tempLine.strip() ) )
                 file.close()
                 return CPUUsage, average 
             else:
