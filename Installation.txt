@@ -20,7 +20,7 @@ Downloading project artifacts
 
 Customization for OS stats collection
  Edit client/JAGatherOSStats.yml to customize WebServerURL, hostname spec for each environment 
-    and any other desired parameters
+    and any other desired parameters. Refer to the sample file for more information.
  Suggest to keep one spec file per OS type like linux, windows so that same file can be deployed
     platform wide, or even on all servers of interest.
     If process names, file system names vary among different platforms, can maintain separate spec file
@@ -29,7 +29,7 @@ Customization for OS stats collection
 Cutomization for log stats collection
   Edit client/JAGatherLogStats.yml to customize
      WebServerURL, hostname spec for each environment, log file name, service name and associated 
-       text patterns to search.
+       text patterns to search. Refer to the sample file for more information.
   Since service name is to be maintained unique within a host type or within a component type,
     suggest to prepare the client/JAGatherLogStats<componentType>.yml file on web server and deploy those files to
     all hosts of a platform from where log stats are to be collected. Thus, all hosts of same platform will have uniform spec.
