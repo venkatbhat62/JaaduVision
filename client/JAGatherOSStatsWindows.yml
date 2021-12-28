@@ -5,18 +5,27 @@
 ### specify this including path name, .YYYYMMDD will appended to this name to create per day file
 LogFileName: JAGatherOSStats.log
 SysStatPathName: ''
+### environment specific definitions for the host being monitored
+### if variables like WebServerURL, DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
+###   can be specified for each environment separately.
+### if these variables are not defined under host specific environment, the values specified under "All" environment will be used.
 Environment:
     Dev:
+        # specify hostname in regular expression 
         HostName: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T|havembha|penguin)
     Test:
+        ## test environment uses the values defined under "All" environment for the variables WebServerURL, DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
         HostName: (...)(t)(...)([0-9][0-9])
     UAT:
+        ## UAT environment uses the values defined under "All" environment for the variables DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
         HostName: (...)(u)(...)([0-9][0-9])
         WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
     Prod:
+        ## UAT environment uses the values defined under "All" environment for the variables DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
         HostName: (...)(p)(...)([0-9][0-9])
         WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
     All:
+        # values defined here will be used for other environments if local definition is not available.
         # post data to web server per this interval. if sampling interval is 10, post interval is 60,
         #    it will post 6 samples in one post. This is to optimize data post operation.
         DataPostIntervalInSec: 30
@@ -35,17 +44,21 @@ Environment:
 ### Refer to Python documentation https://psutil.readthedocs.io/en/latest/
 OSStats:
   CPUTimes:
+    ### On grafana, the variable name will be like cpu_times_percent_<fieldName> like cpu_times_percent_user, cpu_times_percent_system
     Name: cpu_times_percent
     ### while using sar data on Unix hosts, field names to match output of sar -u
-    Fields: user, system, idle, iowait
+    Fields: user, system, idle, iowait, used
   CPUPercent:
+    ### On grafana, the variable name will be cpu_percent_used
     Name: cpu_percent
-    Fields: percent
+    Fields: used
   MemoryVirtual:
+    ### On grafana, the variable name will be virtual_memory_<field> like virtual_memory_total, virtual_memory_available,...
     Name: virtual_memory
     ### while using sar data on Unix hosts, field names to match output of sar -r
     Fields: total,available,kbavail,memused,commit,kbmemfree
   MemorySwap:
+    ### On grafana, the variable name will be swap_memory_<field> like swap_memory_total, swap_memory_free,...
     Name: swap_memory
     ### while using sar data on Unix hosts, field names to match output of sar -S
     Fields: total,free,kbswpfree,kbswpused,swpused
@@ -56,23 +69,29 @@ OSStats:
     ProcessNames: GitHubDesktop,chrome,msedge
     Fields: CPU,MEM,VSZ,RSS
   DiskIO:
+    ### On grafana, the variable name will be disk_io_counters_<field> like disk_io_counters_read_count, disk_io_counters_write_count,...
     Name: disk_io_counters
     ### while using sar data on Unix hosts, field names to match output of sar -b
     Fields: read_count,write_count,read_bytes,write_bytes,tps,rtps,wtps
   FSUsage:
+    ### On grafana, the variable name will be filesystem_<fileSystemName>_<field> like filesystem_C_percent_used, filesystem_C_size_used
     Name: filesystem
     ### file system name, as it appears at last column of df -h command
     ### can specify in CSV format
     ###  any space will be compared as is
     ### can include file system of many host types, if file system is not present, 
     ###   it will be skipped from a host while collecting data.
+    ###   character ':' will be replaced with '' while posting the variable name to grafana
     FileSystemNames: C:,D:,E:,F:,H:
+    ###   size_used in GB
     Fields: percent_used,size_used
   NetworkIO:
+    ### On grafana, the variable name will be net_io_counters_<field> like net_io_counters_bytes_sent, net_io_counters_bytes_recv
     Name: net_io_counters
     ### while using sar data on Unix hosts, field names to match output of sar -n EDEV
     Fields: bytes_sent,bytes_recv,packets_sent,packets_recv,errin,errout,dropin,dropout
-  NetworkSockets: 
+  NetworkSockets:
+    ###  On grafana, the variable name will be socket_stats_<field> like socket_stats_total, socket_stats_established,... 
     Name: socket_stats
     # netstat -an command used to get this stat
     Fields: total,established,time_wait 

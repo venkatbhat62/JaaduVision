@@ -5,19 +5,32 @@
 ---
 ### specify this including path name, .YYYYMMDD will appended to this name to create per day file
 LogFileName: JAGatherOSStats.log
+### if sar is enabled on host being moniored, indicate the path where the sar files are stored
+### if not specified, default value of 
+###           /var/log/sa/ is used for redhat 
+###           /var/log/sysstat/ for ubuntu 
 SysStatPathName: ''
+### environment specific definitions for the host being monitored
+### if variables like WebServerURL, DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
+###   can be specified for each environment separately.
+### if these variables are not defined under host specific environment, the values specified under "All" environment will be used.
 Environment:
     Dev:
+        # specify hostname in regular expression 
         HostName: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T|havembha|penguin)
     Test:
+        ## test environment uses the values defined under "All" environment for the variables WebServerURL, DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
         HostName: (...)(t)(...)([0-9][0-9])
     UAT:
+        ## UAT environment uses the values defined under "All" environment for the variables DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
         HostName: (...)(u)(...)([0-9][0-9])
         WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
     Prod:
+        ## Prod environment uses the values defined under "All" environment for the variables DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
         HostName: (...)(p)(...)([0-9][0-9])
         WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
     All:
+        # values defined here will be used for other environments if local definition is not available.
         # post data to web server per this interval. if sampling interval is 10, post interval is 60,
         #    it will post 6 samples in one post. This is to optimize data post operation.
         DataPostIntervalInSec: 30
@@ -30,53 +43,72 @@ Environment:
         # post stats to below web server
         WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
 
-### format
-### - Name: psutil.<functionName>
+### if target host has psutil python module installed, use the field names as defined in python documentation
 ###   Fields: values that can be read using that psutil function
-### Refer to Python documentation https://psutil.readthedocs.io/en/latest/
+###   Refer to Python documentation https://psutil.readthedocs.io/en/latest/
+### If target host has sar installed, use the field names as seen in sar output on targt host
+###   column heading is matched to the field names listed below to identify the column whose value is to be extracted
+###   character '/' in field name will be matched as is to the column heading displayed by sar output,
+###      '/', '.', and ' ' will be replaced with '' while posting the variable name to grafana
 OSStats:
   CPUTimes:
+    ### On grafana, the variable name will be like cpu_times_percent_<fieldName> like cpu_times_percent_user, cpu_times_percent_system
     Name: cpu_times_percent
     ### while using sar data on Unix hosts, field names to match output of sar -u
-    Fields: user, system, idle, iowait
+    Fields: user, system, idle, iowait, used
   CPUPercent:
+    ### On grafana, the variable name will be cpu_percent_used
     Name: cpu_percent
-    Fields: percent
+    Fields: used
   MemoryVirtual:
+    ### On grafana, the variable name will be virtual_memory_<field> like virtual_memory_total, virtual_memory_available,...
     Name: virtual_memory
     ### while using sar data on Unix hosts, field names to match output of sar -r
     Fields: total,available,kbavail,memused,commit,kbmemfree
   MemorySwap:
+    ### On grafana, the variable name will be swap_memory_<field> like swap_memory_total, swap_memory_free,...
     Name: swap_memory
     ### while using sar data on Unix hosts, field names to match output of sar -S
     Fields: total,free,kbswpfree,kbswpused,swpused
   Process:
+    ### On grafana, the variable name will be process_<processName>_<field> like process_bash_CPU, process_psaux_CPU, process_psaux_MEM...
     Name: process
     ### process name, as it appears at 11th (last) column of ps aux command
     ### can specify in CSV format
+    ###  characters '-', '.', ' ' will be replaced with '', while posting the process name to grafana 
+    ###  leading /<name>/.. will be skipped, only the last word of process name be posted to grafana
     ProcessNames: -bash,ps aux,/bin/bash,python,python3
     Fields: CPU,MEM,VSZ,RSS
   DiskIO:
+    ### On grafana, the variable name will be disk_io_counters_<field> like disk_io_counters_read_count, disk_io_counters_write_count,...
+    ###   disk_io_counters_breads, disk_io_counters_bwrtns,..
     Name: disk_io_counters
     ### while using sar data on Unix hosts, field names to match output of sar -b
+    ###   character '/' will be replaced with '' while posting variable name to grafana
     Fields: read_count,write_count,read_bytes,write_bytes,tps,rtps,wtps,bread/s,bwrtn/s
   FSUsage:
+    ### On grafana, the variable name will be filesystem_<fileSystemName>_<field> like filesystem_init_percent_used, filesystem_init_size_used,
+    ###    filesystem_dev_percent_used,filesystem_dev_size_used,...
     Name: filesystem
     ### file system name, as it appears at last column of df -h command
     ### can specify in CSV format
     ###  any space will be compared as is
     ### can include file system of many host types, if file system is not present, 
     ###   it will be skipped from a host while collecting data.
+    ###   character '/' will be replaced with '' while posting the file system name to grafana
     FileSystemNames: /init,/dev,/run
+    ### size_used in GB
     Fields: percent_used,size_used
   NetworkIO:
+    ### On grafana, the variable name will be net_io_counters_<field>_<interface> like net_io_counters_bytes_sent_lo, net_io_counters_rxpcks_lo,...
     Name: net_io_counters
     ### while using sar data on Unix hosts, field names to match output of sar -n EDEV
     ### if not sar not used, "ifconfig -a" output is processed on Linux hosts to gather this data.
     ### on Windows, psutil.
-    ### note: / will be replaced with _ while posting variable name to web server
+    ###  character '/'' will be replaced with '' while posting variable name to web server
     Fields: bytes_sent,bytes_recv,packets_sent,packets_recv,errin,errout,dropin,dropout,rxpck/s,txpck/s,rxkB/s,txkB/s,rxcmp/s,txcmp/s,rxmcst/s,%ifutil
-  NetworkSockets: 
+  NetworkSockets:
+    ###  On grafana, the variable name will be socket_stats_<field> like socket_stats_total, socket_stats_established,...
     Name: socket_stats
     # netstat -an command used to get this stat
     Fields: total,established,time_wait 

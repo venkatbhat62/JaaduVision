@@ -70,6 +70,11 @@
 #           In order to optimize the processing time, it is recommended to put frequently occuring patterns
 #            at the beginning of a log file. Less frequently occuring patterns at the end of the list.
 #
+#     DBDetails: allows sending data to prometheus (default behavior) or to influxdb. For influxdb, can specify
+#               separate bucket, and org for each variable. This allows different bucket to be used for different
+#                component/platform thus, data retency can be managed separately
+#            Web server side configuration will have additional details related to influxdb in JAGlobalVars.yml
+#
 # NOTE - make no space after pattern strings
 #  Escape regular expression special characters in pattern spec like \/
 #   Non-special characters match themselves. Special characters don't match themselves −
@@ -106,18 +111,22 @@ GatherLogStatsLogFile: JAGatherLogStats.log
 GatherLogStatsCacheFile: JAGatherLogStats.cache
 Environment:
    Dev:
+     # specify hostname in regular expression 
      HostName: ((...)(d)(...)([0-9][0-9]))|(LAPTOP-QOCNVF0T)
      ### save logs on web server (local cache, in addition to sending to loki)
      SaveLogsOnWebServer: True
      #WebServerURL: https://192.168.1.221:443/cgi-bin/try6.py
    Test:
+     ## test environment uses the values defined under "All" environment for the variables WebServerURL, DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
      HostName: (...)(t)(...)([0-9][0-9])
      ### save logs on web server (local cache, in addition to sending to loki)
      SaveLogsOnWebServer: True
    UAT:
+     ## UAT environment uses the values defined under "All" environment for the variables DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
      HostName: (...)(u)(...)([0-9][0-9])
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
    Prod1:
+     ## prod1 environment uses the values defined under "All" environment for the variables DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
      HostName: (...)(p1)(...)([0-9][0-9])
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
      ### collect max 10 lines per service type within the sampling period
@@ -125,7 +134,7 @@ Environment:
    Prod2:
      HostName: (...)(p2)(...)([0-9][0-9])
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
-     ### set to 0 to disable log collection
+     ### set to 0 to disable log collection in prod2 environment
      MaxLogLines: 0
      
   ## Keep definition for 'All' environment at the end.
@@ -181,9 +190,8 @@ Environment:
      ###   if web server is not available, history stats older than this period will be discarded
      ###   
      RetryDurationInHours: 48
-     ### During retry, batch below number of stats lines together and send to web server
-     RetryLogStatsBatchSize: 1
-
+### commands in execute section are executed before processing log files so that
+###   any log file created by these execute commands can be processed properly.
 Execute:
     Health:
       ### execute below command to gather application stats, output to log file
@@ -236,6 +244,7 @@ LogFile:
       Priority: 1
 
     TestStats:
+      ### On grafana, variable name wil be TestStats_pass, TestStats_fail, TestStats_count
       LogFileName: client/JATest.log*
       ### tps = number of instances divided by sampling interval
       PatternPass: TestMsg Pass
@@ -248,6 +257,7 @@ LogFile:
       # value is summed over the sampling interval, tps is computed by diving sampling interval
       # line is of the form: 2021-09-18T14:57:07.088995 leading text key1 54 dummy1 key2 27.00 dummy2
       #                                                              kkkk vv        kkkk vvvvv
+      ### On grafana, variable name wil be TestStats_key1_sum, TestStats_key2_sum
       PatternSum: leading text (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy
       # PatternAverage: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
       # value is summed over the sampling interval, average value is computed by dividing number of samples in that sampling interval
@@ -259,6 +269,7 @@ LogFile:
       # these delta values are summed over the sampling interval and divided by sampling intervall to get tps
       # line is of the form: 2021-09-18T14:57:07.089993 total key1 9 dummy1 total key2 4.50 dummy2
       #                                                       kkkk v              kkkk vvvv
+      ### ### On grafana, variable name wil be TestStats_key1_delta, TestStats_key2_delta
       PatternDelta: tps (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy
 
     TestStatsWithVarPrefix:
@@ -268,6 +279,8 @@ LogFile:
       ###   serviceName_<variablePrefix>_<patterDelta>_delta
       PatternVariablePrefix: Stats MicroService(\d) total
       # 2021-10-05T01:09:03.249334 Stats MicroService1 total key1 9 dummy1 total key2 4.50 dummy2
+      #                                                      kkk vv              kkk  vvvv
+      ### On grafana, variable name wil be TestStatsWithVarPrefix_1_key1_average, TestStatsWithVarPrefix_1_key2_average
       PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
       Priority: 1
     TestStatsWithVarPrefixGroup:
@@ -280,10 +293,14 @@ LogFile:
       ###  use 2nd group value as variable prefix for the *_avrage metrics variable
       PatternVariablePrefixGroup: 2
       # 2021-10-05T01:09:03.249334 Stats MicroService25 total key1 9 dummy1 total key2 4.50 dummy2
+      #                                                       kkk vv              kkkk vvvv
+      ### On Grafana, variable will be TestStatsWithVarPrefixGroup_5_key1_average, TestStatsWithVarPrefixGroup_5_key2_average
       PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
       Priority: 1
 
     TestStatsWithLabel:
+      ### send this data to "test" bucket and "havembha" org in influxdb
+      ###   this allows use of separate bucket and org per component/platform, per service type or per variable 
       DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
       LogFileName: client/JATest.log*
       # 2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
@@ -302,6 +319,8 @@ LogFile:
       Priority: 1
 
     TestStatsRepeatFieldValueSpec:
+      ### send this data to "test" bucket and "havembha" org in influxdb
+      ###   this allows use of separate bucket and org per component/platform, per service type or per variable 
       DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
       LogFileName: client/JATest.log*
       # 2021-11-28T14:00:03.228652 ValuePair client11,key1=39,key2=100.00,key3=19.50

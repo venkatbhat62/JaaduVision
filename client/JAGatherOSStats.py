@@ -1,7 +1,7 @@
 
 """ 
 This script gathers and POSTs OS stats to remote web server
-Posts jobName=OSStats, hostName=<thisHostName>, fileName as parameter in URL
+Posts jobName=OSStats, hostName=<thisHostName>, fileName, component, platform, site, environment, debugLevel as parameter in URL
 Posts <key> {metric1=value1, metric2=value2...} one line per key type as data
 
 Parameters passed are:
@@ -15,8 +15,12 @@ Parameters passed are:
         default - get it from config file
             if dataPostIntervalInSec is one min, and dataCollectDurationInSec is 10 min,  
                 it will post 10 samples
+-C component Name or host type, this value can be used in grafana dashboard to select a host
+-S site name, this value can be used in grafana dashboard to select a host
+-E environment, like dev, test, prod. This value can be used in grafana dashboard to select a host
 -D    debugLevel - 0, 1, 2, 3
         default = 0
+-l logFileName, initial part of log file name
 
 returnResult
     Print result of operation to log file 
@@ -26,7 +30,27 @@ Note - did not add python interpreter location at the top intentionally so that
 
 Author: havembha@gmail.com, 2021-07-04
 
-2021-08-15 Added capability to collect file system usage percentage for given filesystem name(s)
+Execution flow
+   Get OSType, OSName, OSVersion
+   If config file not passed, use OSType specific config file name if present with the name JAGatherOSStats<OSType>.yml 
+   Else use default file JAGatherOSStats.yml
+   Based on python version, check for availability of yaml, psutil modules
+   Read config file, using current hostname, gather matching environment spec
+   If another instance of this program running, wait for that task to complete
+   Delete log file older than 7 days (not supported on windows yet)
+   Call below stats gathering functions to get initial snapshot. These values will be used later to find delta values between two sample intervals
+      psutil.cpu_times_percent(), psutil.cpu_percent()
+      JAGetCPUPercent(), JAGetDiskIOCounters(), JAGetNetworkIOCounters()
+   While current time less than data collection end time,
+     Sleep for the data post interval (in sec)
+     For each stats type enabled in config file,
+        Gather stats using appropriate method
+        Parse the stats to formulate the data in fieldNameX1=valueY1,fieldNameX1=valueY2,... format
+     Convert data to json string
+     If requests module is present, use that to post the data to web server
+     Else, use curl to post the data to web server
+
+ 2021-08-15 Added capability to collect file system usage percentage for given filesystem name(s)
     Added capability use sar data if present instead of collecting data fresh
 
 2021-12-20 When config file is not passed, used OS specific config file if present with the name
@@ -208,13 +232,13 @@ def JAGatherEnvironmentSpecs( key, values ):
     Return value
         Below global variables are updated with values parsed from values parameter
             global dataPostIntervalInSec, dataCollectDurationInSec
-            global webServerURL, disableWarnings, verifyCertificate, numSamplesToPost
+            global webServerURL, disableWarnings, verifyCertificate
 
     """
 
     ### declare global variables
     global dataPostIntervalInSec, dataCollectDurationInSec
-    global webServerURL, disableWarnings, verifyCertificate, numSamplesToPost
+    global webServerURL, disableWarnings, verifyCertificate
     
     for myKey, myValue in values.items():
         if debugLevel > 1 :
@@ -500,6 +524,22 @@ def JAGetProcessStats( processNames, fields ):
 
     Returns stats in the form
         process_Name_field=fieldValue,process_Name_field=fieldValue,...
+
+    On Windows, 
+        Use psutil.process_iter() to get a list of processes, 
+        For process whose name match to the process name passed,
+          Get cpu_percent, memory_percent, memory_info attributes
+          Prepare stats in the form  processName1_<field1>=<value1>,processName1_<field2>=<value2>,...
+    On Linux,
+        Use 'ps -aux' to get CPU, MEMORY, VSZ, RSS used by processes.
+        For process whose name match to the process name passed,
+          Parse line, extract CPU, MEM, VSZ, RSS values
+          Replace '-', '.', ' ' with '' in process name to meet variable name format accepted by prometheus/influxdb/grafana
+          Prepare stats in the form  processName1_<field1>=<value1>,processName1_<field2>=<value2>,...
+           
+    Return values in CSV format processName1_<field1>=<value1>,processName1_<field2>=<value2>,...
+      or empty string up on error
+
     """
     global psutilModulePresent
     errorMsg = myStats = comma = ''
@@ -588,8 +628,8 @@ def JAGetProcessStats( processNames, fields ):
                             shortProcessName = processNameParts[-1]
                         else:
                             shortProcessName = processName
-                        ### replace ., - with _
-                        shortProcessName = re.sub(r'[\.\-]', '_', shortProcessName)
+                        ### replace ., - with ''
+                        shortProcessName = re.sub(r'[\.\-]', '', shortProcessName)
                         ### remove space from process name
                         shortProcessName = re.sub('\s+','',shortProcessName)
 
@@ -641,6 +681,22 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
     Returns stats in the form
         fsName_fieldName=fieldValue,fsName_fieldName=fieldValue,...
         '/' is removed from file system name while printing above stats
+
+    On Windows,
+       Use shutil.disk_usage() to get disk usage data
+       Replace ':' with '' for drive name
+       Prepare variable names in the form <drive>_percent_used, <drive>_size_used (size in GB)
+
+    On Linux,
+        Use 'df- h' to get file system space info.
+        For each file system name in the output
+            If file system name match with desired file system name
+               replace '/' with '' in file system name
+               Prepare variable names in the form <fileSystemName>_percent_used, <fileSystemName>_size_used (size in GB)
+
+    Return the values in CSV format <fileSystemName>_percent_used,<fileSystemName>_size_used,...
+      or empty string upon error
+
     """
     errorMsg = myStats = comma = ''
     global configFile
@@ -750,12 +806,23 @@ def JAGetFileSystemUsage( fileSystemNames, fields, recursive=False ):
 
 def JAGetSocketStats(fields, recursive=False):
     """
-    This function gets socket counts on Linux hosts
+    This function gets socket counts
       Sockets in established, and time_wait state can be counted separately
       Can also count all sockets, in all states
 
     Fields supported are
        total, established, time_wait
+
+    On Windows and Linux,
+        Use 'netstat -an' to get a list of sockets
+        For the line starting with ^tcp|^tcp6|^udp|^udp6|^  TCP|^  UDP'
+           If the line contains ESTABLISHED word, increment established count
+           Else If the line contains TIME_WAIT word, increment timewait count
+           Else if total is opted, increment total count
+        Prepare the variables in the form established=<value>,time_wait=<value>,total=<value>
+
+    Return data in CSV format established=<value>,time_wait=<value>,total=<value> 
+       or empty string if can't be computed
 
     """
     myStats = comma = '' 
@@ -884,7 +951,7 @@ def JAGetCPUTimesPercent(fields, recursive=False):
                             myStats = myStats + '{0}{1}={2}'.format( comma, tempHeadingFields[ columnCount ], field)
                             comma = ','
                                                         
-                        elif 'cpu_percent_used' in fields:
+                        elif 'used' in fields:
                             ### total CPU usage is to be returned
                             ### compute this as  100 - idle
                             if tempHeadingFields[ columnCount ] == 'idle' :
@@ -893,7 +960,7 @@ def JAGetCPUTimesPercent(fields, recursive=False):
                                 iowaitTime = float(field)
                         columnCount += 1
                     
-                    if 'cpu_percent_used' in fields:
+                    if 'used' in fields:
                         myStats = myStats + "{0}used={1:f}".format( comma, 100 - (idleTime+iowaitTime))
                         comma = ','
 
@@ -916,7 +983,7 @@ def JAGetCPUTimesPercent(fields, recursive=False):
                         if prevStatsSample[1] != None:
                             currentTime = time.time()
                             if currentTime - prevStatsSampleTime < 5:
-                                if 'cpu_percent_used' in fields:
+                                if 'used' in fields:
                                     return prevCPUPercentage
                                 elif prevStats != None:
                                     ### use stats stored last time
@@ -960,7 +1027,7 @@ def JAGetCPUTimesPercent(fields, recursive=False):
                                 cpu_percentage = 100.0 - ((100 * time_doing_nothing)/total_time )
 
                                 comma = ''
-                                if 'cpu_percent_used' in fields:
+                                if 'used' in fields:
                                     myStats = myStats +  "{0}used={1:f}".format(comma, cpu_percentage )
                                     comma = ','
                                     prevCPUPercentage = "used={0:f}".format(cpu_percentage )
@@ -993,7 +1060,7 @@ def JAGetCPUTimesPercent(fields, recursive=False):
     
     elif OSType == 'Windows' :
         if psutilModulePresent == True :
-            if 'cpu_percent_used' in fields:
+            if 'used' in fields:
                 ### psutil.cpu_present() returns value only, need to put it in field=value format
                 myStats = "used={0:f}".format( psutil.cpu_percent() )
                 if debugLevel > 1:
@@ -1015,12 +1082,33 @@ def JAGetCPUPercent():
     Get total CPU usage that includes all types of use. This is computed as 100 - idle time.
 
     """
-    myFields = ['cpu_percent_used']
+    myFields = ['used']
     myStats = JAGetCPUTimesPercent( myFields )  
 
     return myStats
 
 def JAGetVirtualMemory(fields, recursive=False):
+    """
+    This function gets virtual memory at the system level
+    Fields supported depends on fields in sar output, or fields returned by psutil
+    
+    On Windows
+        If psutil is present, use that to get data
+
+    On Linux
+        If sar file path is passed,
+            Use 'sar -r' to get data
+            Parse each line, extract the column values based on desired fields passed
+            Prepare the return value in the form <field1>=<value1>,<field2>=<value2>,...
+        Else If psutil is present, use that to get data
+    
+        Else, use /proc/meminfo to extract data
+            Prepare the return value in the form <field1>=<value1>,<field2>=<value2>,...
+           
+    return data in CSV format (name1=value1,name2=value2,..) 
+       or empty string if can't be computed
+
+    """
     errorMsg = myStats = comma = ''
     global OSType, OSName, OSVersion, debugLevel
     global JAFromTimeString, JAToTimeString, JADayOfMonth
@@ -1148,6 +1236,28 @@ def JAGetVirtualMemory(fields, recursive=False):
     return myStats
 
 def JAGetSwapMemory(fields, recursive=False):
+    """
+    This function gets swap memory at the system level
+    Fields supported depends on fields in sar output, or fields returned by psutil
+    
+    On Windows
+        If psutil is present, use that to get data
+
+    On Linux
+        If sar file path is passed,
+            Use 'sar -S' to get data
+            Parse each line, extract the column values based on desired fields passed
+            Prepare the return value in the form <field1>=<value1>,<field2>=<value2>,...
+        Else If psutil is present, use that to get data
+    
+        Else, use /proc/meminfo to extract data
+            Prepare the return value in the form <field1>=<value1>,<field2>=<value2>,...
+           
+    return data in CSV format <field1>=<value1>,<field2>=<value2>,... 
+       or empty string if can't be computed
+
+    """
+
     errorMsg = myStats = comma = ''
     global OSType, OSName, OSVersion, debugLevel
     global JAFromTimeString, JAToTimeString, JADayOfMonth
@@ -1291,6 +1401,36 @@ def JAGetSwapMemory(fields, recursive=False):
     return myStats
 
 def JAGetDiskIOCounters(fields, recursive=False):
+    """
+    This function gets disk IO values for all disks combined.
+    The values returned are delta values from previous sample (not the total value from system start)
+    Fields supported depends on fields in sar output, or fields returned by psutil
+    
+    On Windows
+        If psutil is present, use that to get data
+        When called first time, sample is stored as previous value
+        When called subsequent time, previous sample value is subtracted from current value to derive delta value
+        Prepared the returned values in the form <field1>=<value1>,<field2>=<value2>,...
+
+    On Linux
+        If sar file path is passed,
+            Use 'sar -b' to get data. sar output is in delta format already.
+            Parse each line, extract the column values based on desired fields passed
+            Prepare the return value in the form <field1>=<value1>,<field2>=<value2>,...
+        Else If psutil is present, use that to get data
+            When called first time, sample is stored as previous value
+            When called subsequent time, previous sample value is subtracted from current value to derive delta value
+    
+        Else, use 'vmstat -D' to extract data
+            When called first time, sample is stored as previous value
+            When called subsequent time, previous sample value is subtracted from current value to derive delta value
+            Prepare the return value in the form <field1>=<value1>,<field2>=<value2>,...
+           
+    return data in CSV format <field1>=<value1>,<field2>=<value2>,... 
+       or empty string if can't be computed
+       
+    """
+
     errorMsg = myStats = comma = ''
     global OSType, OSName, OSVersion, debugLevel, prevDiskIOStats
     global JAFromTimeString, JAToTimeString, JADayOfMonth
@@ -1344,7 +1484,7 @@ def JAGetDiskIOCounters(fields, recursive=False):
                         tempHeading = tempHeadingFields[ columnCount ] 
                         if tempHeading in fields:
                             ### replace / with _
-                            tempHeading = re.sub(r'/', '_', tempHeading)
+                            tempHeading = re.sub(r'/', '', tempHeading)
                             ### this column data is opted, store the data
                             myStats = myStats + '{0}{1}={2}'.format( comma, tempHeading, field)
                             comma = ','
@@ -1456,6 +1596,40 @@ def JAGetDiskIOCounters(fields, recursive=False):
     return myStats
 
 def JAGetNetworkIOCounters(networkIOFields, recursive=False):
+    """
+    This function gets network IO values.
+    The values returned are delta values from previous sample (not the total value from system start)
+    Fields supported depends on fields in sar output, or fields returned by psutil
+    
+    On Windows 
+        If psutil is present, use that to get data
+        When called first time, sample is stored as previous value
+        When called subsequent time, previous sample value is subtracted from current value to derive delta value
+        Prepared the returned values in the form <field1>=<value1>,<field2>=<value2>,...
+        Aggregate values for all interface combined
+
+    On Linux
+        If sar file path is passed,
+            Use 'sar -b' to get data. sar output is in delta format already.
+            Parse each line, extract the column values based on desired fields passed
+            Prepare the return value in the form <interface>_<field1>=<value1>,<interface>_<field2>=<value2>,...
+            Values per interface are returned
+        Else If psutil is present, use that to get data
+            When called first time, sample is stored as previous value
+            When called subsequent time, previous sample value is subtracted from current value to derive delta value
+            Aggregate values for all interface combined
+
+        Else, use 'ifconfig -a' to extract data
+            When called first time, sample is stored as previous value
+            When called subsequent time, previous sample value is subtracted from current value to derive delta value
+            Prepare the return value in the form <interface>_<field1>=<value1>,<interface>_<field2>=<value2>,...
+            Values per interface are returned
+
+    return data in CSV format <interface>_<field1>=<value1>,<interface>_<field2>=<value2>,... 
+       or empty string if can't be computed
+       
+    """
+
     errorMsg = myStats = comma = ''
     global OSType, OSName, OSVersion, debugLevel
     global JAFromTimeString, JAToTimeString, JADayOfMonth
@@ -1521,8 +1695,8 @@ def JAGetNetworkIOCounters(networkIOFields, recursive=False):
                         for field in tempDataFields :
                             tempHeading = tempHeadingFields[ columnCount ]
                             if tempHeading in networkIOFields:
-                                ### replace / with _
-                                tempHeading = re.sub(r'/', '_', tempHeading)
+                                ### replace / with ''
+                                tempHeading = re.sub(r'/', '', tempHeading)
                                 ### this column data is opted, store the data in the form fieldName_iface=value
                                 myStats = myStats + '{0}{1}_{2}={3}'.format( comma, tempHeading, iface, field)
                                 comma = ','
