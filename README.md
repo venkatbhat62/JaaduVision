@@ -1,13 +1,13 @@
 # JaaduVision
- monitor network/site/host performance
+ Monitor network/site/host performance
 
 Setup on target host whose performance is to be monitored
 - Python script to collect OS stats and post to web server – OS stats to be collected can be customed via yml file per component or hosttype.  
 - Python script to collect application stats/alarm stats and post to web server. Log file scraping is customized using yml file. One can specify log file name, pass/fail/count patterns to search in regular expression format for each service type. Multiple service types can be specified for single log file. Stats of each service type are posted separately to web server so that further analysis or visualization can be done per service type or combination of service types. Along with stat collection, it also supports collection of log lines, based on matching regular expression syntax, and posting it to Loki. These log lines can be viewed along with stats in grafana in a single dashboard for the desired time period.
 - Stat sampling interval, post interval, web server to post can be customized per environment (like DEV, test, staging, prod each can have separate setup)
-- Log Stats collection can be  SKIPed when CPU usage average exceeds max limit over 10 sampling intervals. This is to avoid overloading the host at high CPU usage levels with monitoring tools
-- Data can be posted to prometheus gateway which can be scraped by prometheus for real time tracking. This is default behavior. It also supports posting to influxdb via configuration per service type of per statistics variable. While posting to influxdb, it supports guranteed delivery - if data can't be posted due to network issue, remote web server issue, influxdb issue, data will be cached locally and sent at later time when data can be posted successfully.
-- 
+- Log Stats collection can be  SKIPed when CPU usage average exceeds max limit over 10 sampling intervals. This is to avoid overloading the host at high CPU usage levels with monitoring tools. Log scraping can be disabled for 3 separate priority levels, thus, optimize load on host being monitored.
+- Log line collection can be limited to desired number of similar lines per sampling period per log pattern (to reduce clutter, improve visibility and reduce load) 
+- Data can be posted to prometheus gateway which can be scraped by prometheus for real time tracking. This is default behavior. It also supports posting to influxdb via configuration per service type of per statistics variable. While posting to influxdb, it supports guranteed delivery - if data can't be posted due to network issue, remote web server issue, influxdb issue, data will be cached locally on host being monitored and sent at later time when data can be posted successfully.
 - Both OS Stats collection and Log Stats collection scripts run at lowest priority (nice 19) level, thus, using system resources when available. 
 
 <br><br>Server side setup
