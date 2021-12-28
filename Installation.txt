@@ -80,23 +80,18 @@ Installing grafana OSS version on web server
 
    https://grafana.com/docs/grafana/latest/installation/rpm/ - for rpm based OS 
 
-   web access https://hostName:3000/
+   web access https://hostName:6443/
        admin  - admin first time
           change the password
 
-    ### grafana customize it to be behind apache proxy
+    ### grafana customize to use different port number 
     sudo vi /etc/grafana/grafana.ini
     [server]
-    http_addr = 127.0.0.1
-    http_port = 3000
-    root_url = https://hostName:443/grafana/
-    serve_from_sub_path = true
-
-    TBD - to be fixed later
-    As of now grafana live is not working behind apache proxy, see below error in apache access log.
-    If user is trying to get realtime update to browser, it will not work until this is fixed.
-     192.168.1.224 - - [18/Jul/2021:14:07:31 +0000] "GET /grafana/api/live/ws HTTP/1.1" 400 3102 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-
+    protocol = https
+    http_port = 6443
+    root_url = https://hostName:6443/
+    cert_file = <filename>
+    cert_key = <fileName>
 
 Installing prometheus on web server
   Below steps for Ubuntu server
@@ -196,8 +191,6 @@ Installing pushgateway on web server
     sudo grafana-cli plugins install jdbranham-diagram-panel
 
 
-Installing or customizing existing apache on web server
-
 Installing Loki and customing port
 
 =================== Loki install ==================
@@ -224,5 +217,5 @@ Change loki listen port from 3100 to 9081 or whatever port you desire in loki-lo
 Copy loki-linux-amd64 and loki-local-config.yaml to /var/www/JaaduAudit/cgi-bin and
 Add below crontab entry so that loki runs all the time.
 
-*/6 * * * * cd /var/www/JaaduAudit/cgi-bin;nohup ./loki-linux-amd64 -config.file=loki-local-config.yaml &
+*/6 * * * * cd <lokiDirectory>;nohup ./loki-linux-amd64 -config.file=loki-local-config.yaml &
 
