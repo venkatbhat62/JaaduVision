@@ -67,6 +67,7 @@ Cutomization for log stats collection
       small so that real time overhead of regular expression matching will be limited to the component of the platform.
       This apporach will also allow use of different grafana/ webserver/influxdb/prometheus gateway setup per platform or group of platforms.
 
+
 Installation of python3 scripts on web server
    Place all files from cgi-bin of distribution folder under cgi-bin of web server
    Change script permission to executable
@@ -80,6 +81,11 @@ Installation of python3 scripts on web server
       JATestLibs.py
       JATest.py
 
+Customization of server side setup
+  Edit cgi-bin/JAGlobalVars.yml to customize directory where log file is to be created, whether to save the stats in a file on web server,
+    directory to save the stats, prometheus gateway URL, loki gateway URL, influxdb URL, influxdb token,  default bucket and org for influxdb
+  Create log directory and stats directory if not present yet.  
+    
 Installing grafana OSS version on web server
    https://grafana.com/docs/grafana/latest/installation/debian/ - works on Ubuntu server
        sudo apt-get install -y apt-transport-https
@@ -293,3 +299,21 @@ ExecStart=/usr/bin/influxd $ARG1 $ARG2
 ##### python client for influxDB
 sudo pip3 install influxdb-client
 
+================= testing the setup ======================
+cd <baseDirectory>
+To test JAGatherOSStats.py
+  Run JAGatherOSStats.py in debug mode (-D <debugLevel 1, 2 or 3, 3 highest debug level>).
+    python3 JAGatherOSStats.py -C <component> -S <site> -P <platform> -D 3
+
+  If previous instance is already running or not enough time elapsed between consecutive runs, delete the file JAGatherOSStats.PrevStartTime and run JAGatherOSStats.py.
+
+To test JAGatherLogStats.py
+  On a host being monitored, run JATest.py to generate test log. client/JAGatherLogStats.yml has definitions to scrape the log
+  file (JATest.log.YYYYMMDD) and post the data to web server.
+   python3 JATest.py -d 3600  <-- to run for one hour
+
+  Now run JAGatherLogStats.py -c <configFile> -C <component> -S <site> -P <platform> -D 3
+    python3 JAGatherLogStats.py -c <configFile> -C <component> -S <site> -P <platform> -D 3
+  
+
+  
