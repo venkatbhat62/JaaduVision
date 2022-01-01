@@ -876,11 +876,16 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
 
     resultLength = len(resultText)
     if resultLength > 1 :
-        statusLine = resultText[resultLength-2]   
-        if re.search(r'\[2..\]', statusLine) == None :
-            ### see whether the pattern exists in entire string
-            if re.search(r'\[2..\]', resultText) == None :
-                logStatsPostSuccess = False
+        try:
+            statusLine = resultText[resultLength-2]   
+            if re.search(r'\[2..\]', statusLine) == None :
+                if re.search(r'\4..|\5..', statusLine) == True:
+                    logStatsPostSuccess = False    
+                ### see whether the pattern exists in entire string
+                elif re.search(r'\[2..\]', resultText) == None :
+                    logStatsPostSuccess = False
+        except :
+            logStatsPostSuccess = False
     else:
         logStatsPostSuccess = False
 
