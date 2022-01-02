@@ -70,7 +70,7 @@ import signal
 from collections import defaultdict
 
 ### MAJOR 1, minor 10, buildId 01
-JAVersion = "01.10.01"
+JAVersion = "01.11.01"
 
 ## global default parameters
 ### config file containing OS Stats to be collected, intervals, and WebServer info

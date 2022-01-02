@@ -56,7 +56,7 @@ import signal
 from JAGlobalLib import LogMsg
 
 # Major 01, minor 00, buildId 01
-JAVersion = "01.10.00"
+JAVersion = "01.11.00"
 
 ### number of patterns that can be searched in log line per Service
 patternIndexForPriority = 0
