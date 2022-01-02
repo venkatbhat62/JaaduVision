@@ -5,6 +5,7 @@ Preferred Prerequisites
 Preferred - Import modules apart that may not be installed with base Python3
    yaml
    requests
+   psutil
 
 Tools works with python 2.7.5 and without yaml, requests modules also local code to handle equivalent functions.
 
@@ -16,42 +17,75 @@ Downloading project artifacts
      git clone https://github.com/venkatbhat62/JaaduVision/
   To get updates, be in JaaduVision directory
      git pull https://github.com/venkatbhat62/JaaduVision/
-
-Customization for OS stats collection
- Edit client/JAGatherOSStats.yml to customize WebServerURL, hostname spec for each environment 
-    and any other desired parameters
- Suggest to keep one spec file per OS type like linux, windows so that same file can be deployed
-    platform wide, or even on all servers of interest.
-
-Cutomization for log stats collection
-  Edit client/JAGatherLogStats.yml to customize
-     WebServerURL, hostname spec for each environment, log file name, service name and associated 
-       text patterns to search.
-  Since service name is to be maintained unique within a host type or within a component type,
-    suggest to prepare the client/JAGatherLogStats file on web server and deploy those files to
-    all hosts from where log stats are to be collected. Thus, all hosts will have uniform spec.
-
+    
 Installation at host being monitored
   Install the scripts under client directory under a service account that can access all log files
     to be parsed, whose stats are to be uploaded to web server
+  Files to be placed - 
+      JAGatherLogStats.py
+      JAGatherLogStats.yml
+      JAGatherOSStats.py
+      JAGatherOSStatsWindows.yml
+      JAGatherOSStats.yml
+      JAGlobalLib.py
+      JATest.py
+
   To gather and post OS stats every minute and continue the task for one hour, set below parameters in JAGatherOSStats.yml
      DataPostIntervalInSec: 60
      DataCollectDurationInSec: 3580
   Add a crontab to run JAGatherOSStats.py every hour
-   1 * * * * cd <path>;python3 JAGatherOSStats.py -c <OSSpecificConfigFile>  
-
+   1 * * * * cd <path>;python3 JAGatherOSStats.py -c <OSSpecificConfigFile> -C <componentName> -S <siteName> -P <platformName>
+     <componentName>, <siteName>, <platformName> are posted to prometheus, influxdb, Loki as labels so that dashboard variables can be
+        defined to select specific values and customize dashboards per component/per platform basis.
+        
   To gather and post Log stats every minute and continue the task for one hour, set below parameters in JAGatherLogStats.yml
      DataPostIntervalInSec: 60
      DataCollectDurationInSec: 3580
 
   Add a crontab to run JAGatherLogStats.py every hour
-   1 * * * * cd <path>;python3 JAGatherLogStats.py -c <ComponentSpecificConfigFile>
-  
+   1 * * * * cd <path>;python3 JAGatherLogStats.py -c <ComponentSpecificConfigFile> -C <componentName> -S <siteName> -P <platformName>
+     <componentName>, <siteName>, <platformName> are posted to prometheus, influxdb, Loki as labels so that dashboard variables can be
+        defined to select specific values and customize dashboards per component/per platform basis.
+
+Customization for OS stats collection
+ Edit client/JAGatherOSStats.yml to customize WebServerURL, hostname spec for each environment 
+    and any other desired parameters. Refer to the sample file for more information.
+ Suggest to keep one spec file per OS type like linux, windows so that same file can be deployed
+    platform wide, or even on all servers of interest.
+    If process names, file system names vary among different platforms, can maintain separate spec file
+       per platform in platform specific directories.
+       
+Cutomization for log stats collection
+  Edit client/JAGatherLogStats.yml to customize
+     WebServerURL, hostname spec for each environment, log file name, service name and associated 
+       text patterns to search. Refer to the sample file for more information.
+  Since service name is to be maintained unique within a host type or within a component type,
+    suggest to prepare the client/JAGatherLogStats<componentType>.yml file on web server and deploy those files to
+    all hosts of a platform from where log stats are to be collected. Thus, all hosts of same platform will have uniform spec.
+  For large installations with many platforms and thousands of servers, 
+     suggest to keep separate spec files per platform where component types vary. This is to keep the number of service definitions
+      small so that real time overhead of regular expression matching will be limited to the component of the platform.
+      This apporach will also allow use of different grafana/ webserver/influxdb/prometheus gateway setup per platform or group of platforms.
+
+
 Installation of python3 scripts on web server
    Place all files from cgi-bin of distribution folder under cgi-bin of web server
    Change script permission to executable
      chmode 755 *.py
+  Files to be placed - 
+      JADataMaskSpec.yml
+      JAGlobalLib.py
+      JAGlobalVars.yml
+      JAInfluxdbLib.py
+      JASaveStats.py
+      JATestLibs.py
+      JATest.py
 
+Customization of server side setup
+  Edit cgi-bin/JAGlobalVars.yml to customize directory where log file is to be created, whether to save the stats in a file on web server,
+    directory to save the stats, prometheus gateway URL, loki gateway URL, influxdb URL, influxdb token,  default bucket and org for influxdb
+  Create log directory and stats directory if not present yet.  
+    
 Installing grafana OSS version on web server
    https://grafana.com/docs/grafana/latest/installation/debian/ - works on Ubuntu server
        sudo apt-get install -y apt-transport-https
@@ -69,23 +103,18 @@ Installing grafana OSS version on web server
 
    https://grafana.com/docs/grafana/latest/installation/rpm/ - for rpm based OS 
 
-   web access https://hostName:3000/
+   web access https://hostName:6443/
        admin  - admin first time
           change the password
 
-    ### grafana customize it to be behind apache proxy
+    ### grafana customize to use different port number 
     sudo vi /etc/grafana/grafana.ini
     [server]
-    http_addr = 127.0.0.1
-    http_port = 3000
-    root_url = https://hostName:443/grafana/
-    serve_from_sub_path = true
-
-    TBD - to be fixed later
-    As of now grafana live is not working behind apache proxy, see below error in apache access log.
-    If user is trying to get realtime update to browser, it will not work until this is fixed.
-     192.168.1.224 - - [18/Jul/2021:14:07:31 +0000] "GET /grafana/api/live/ws HTTP/1.1" 400 3102 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-
+    protocol = https
+    http_port = 6443
+    root_url = https://hostName:6443/
+    cert_file = <filename>
+    cert_key = <fileName>
 
 Installing prometheus on web server
   Below steps for Ubuntu server
@@ -185,8 +214,6 @@ Installing pushgateway on web server
     sudo grafana-cli plugins install jdbranham-diagram-panel
 
 
-Installing or customizing existing apache on web server
-
 Installing Loki and customing port
 
 =================== Loki install ==================
@@ -213,5 +240,80 @@ Change loki listen port from 3100 to 9081 or whatever port you desire in loki-lo
 Copy loki-linux-amd64 and loki-local-config.yaml to /var/www/JaaduAudit/cgi-bin and
 Add below crontab entry so that loki runs all the time.
 
-*/6 * * * * cd /var/www/JaaduAudit/cgi-bin;nohup ./loki-linux-amd64 -config.file=loki-local-config.yaml &
+*/6 * * * * cd <lokiDirectory>;nohup ./loki-linux-amd64 -config.file=loki-local-config.yaml &
 
+===================== influxdb install =======================
+https://portal.influxdata.com/downloads/
+
+install instructions at
+https://docs.influxdata.com/influxdb/v1.8/introduction/install/
+wget -qO- https://repos.influxdata.com/influxdb.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/influxdb.gpg > /dev/null
+export DISTRIB_ID=$(lsb_release -si); export DISTRIB_CODENAME=$(lsb_release -sc)
+echo "deb [signed-by=/etc/apt/trusted.gpg.d/influxdb.gpg] https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/influxdb.list > /dev/null
+
+sudo apt-get update && sudo apt-get install influxdb2
+sudo systemctl unmask influxdb.service
+sudo service influxdb start
+### disable data going to influxdb tool creater
+influxd --reporting-disabled
+
+## install infuxdb CLI
+https://docs.influxdata.com/influxdb/v2.1/tools/influx-cli/
+wget https://dl.influxdata.com/influxdb/releases/influxdb2-client-2.2.0-linux-amd64.tar.gz
+tar xvzf path/to/influxdb2-client-2.2.0-linux-amd64.tar.gz
+sudo cp influxdb2-client-2.2.0-linux-amd64/influx /usr/local/bin/
+# create auth config for CLI
+influx config create --config-name influxcli.cfg --host-url http://localhost:8086 --org <orgName> --token influxcli --active
+### to set password for the user <userId> using token (get token from influxdb ui)
+influx user password -n <userId> -t BPld2pkV0ts........DQStnA7eplWCMmCw==
+
+### create DB to retention policy mapping with bucket id
+### list bucket id
+influx bucket list
+ID                      Name            Retention       Shard group duration    Organization ID         Schema Type
+fede9b8a17000e00        _monitoring     168h0m0s        24h0m0s                 2df5db6cbcdfad29        implicit
+44dac8d381a8069b        _tasks          72h0m0s         24h0m0s                 2df5db6cbcdfad29        implicit
+74b77dbffdddfe9f        test            infinite        168h0m0s                2df5db6cbcdfad29        implicit
+^^^^^^^^^^^^^^^^ <-- use this id to map DB to retention policy
+###
+influx v1 dbrp create --db test --rp test --bucket-id 74b77dbffdddfe9f --default
+
+# load data to db
+influx write -b test -f example.csv
+
+When installed as a service, InfluxDB stores data in the following locations:
+
+Time series data: /var/lib/influxdb/engine/
+Key-value data: /var/lib/influxdb/influxd.bolt.
+influx CLI configurations: ~/.influxdbv2/configs (see influx config for more information) .
+
+Pass arguments to systemd
+Add one or more lines like the following containing arguments for influxd to /etc/default/influxdb2:
+
+ARG1="--http-bind-address :8087"
+ARG2="<another argument here>"
+Edit the /lib/systemd/system/influxdb.service file as follows:
+
+ExecStart=/usr/bin/influxd $ARG1 $ARG2
+
+##### python client for influxDB
+sudo pip3 install influxdb-client
+
+================= testing the setup ======================
+cd <baseDirectory>
+To test JAGatherOSStats.py
+  Run JAGatherOSStats.py in debug mode (-D <debugLevel 1, 2 or 3, 3 highest debug level>).
+    python3 JAGatherOSStats.py -C <component> -S <site> -P <platform> -D 3
+
+  If previous instance is already running or not enough time elapsed between consecutive runs, delete the file JAGatherOSStats.PrevStartTime and run JAGatherOSStats.py.
+
+To test JAGatherLogStats.py
+  On a host being monitored, run JATest.py to generate test log. client/JAGatherLogStats.yml has definitions to scrape the log
+  file (JATest.log.YYYYMMDD) and post the data to web server.
+   python3 JATest.py -d 3600  <-- to run for one hour
+
+  Now run JAGatherLogStats.py -c <configFile> -C <component> -S <site> -P <platform> -D 3
+    python3 JAGatherLogStats.py -c <configFile> -C <component> -S <site> -P <platform> -D 3
+  
+
+  

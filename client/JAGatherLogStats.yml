@@ -244,8 +244,7 @@ LogFile:
       Priority: 1
 
     TestStats:
-      ### On grafana, variable name wil be TestStats_pass, TestStats_fail, TestStats_count
-      LogFileName: client/JATest.log*
+      LogFileName: JATest.log*
       ### tps = number of instances divided by sampling interval
       PatternPass: TestMsg Pass
       ### tps = number of instances divided by sampling interval
@@ -273,7 +272,7 @@ LogFile:
       PatternDelta: tps (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy
 
     TestStatsWithVarPrefix:
-      LogFileName: client/JATest.log*
+      LogFileName: JATest.log*
       ### extract the regular expression value that matches to the variable prefix definition
       ###   prefix that to the variable to make unique value
       ###   serviceName_<variablePrefix>_<patterDelta>_delta
@@ -284,7 +283,7 @@ LogFile:
       PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
       Priority: 1
     TestStatsWithVarPrefixGroup:
-      LogFileName: client/JATest.log*
+      LogFileName: JATest.log*
       ### extract the regular expression value that matches to the variable prefix definition
       ###   prefix that to the variable to make unique value
       ###   serviceName_<variablePrefix>_<patterDelta>_delta
@@ -302,7 +301,7 @@ LogFile:
       ### send this data to "test" bucket and "havembha" org in influxdb
       ###   this allows use of separate bucket and org per component/platform, per service type or per variable 
       DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
-      LogFileName: client/JATest.log*
+      LogFileName: JATest.log*
       # 2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
       # 2021-10-31T19:11:12.096877 Stats client2 total key1 34 dummy1 total key2 200.00 key3 200.00 dummy3
       ### extract the regular expression value that matches to label definition
@@ -322,7 +321,7 @@ LogFile:
       ### send this data to "test" bucket and "havembha" org in influxdb
       ###   this allows use of separate bucket and org per component/platform, per service type or per variable 
       DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
-      LogFileName: client/JATest.log*
+      LogFileName: JATest.log*
       # 2021-11-28T14:00:03.228652 ValuePair client11,key1=39,key2=100.00,key3=19.50
       # 2021-11-28T14:00:03.228829 ValuePair client12,key1=69,key2=200.00,key3=34.50
       ### extract the regular expression value that matches to label definition
