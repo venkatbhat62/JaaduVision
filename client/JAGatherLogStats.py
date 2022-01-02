@@ -396,13 +396,18 @@ def JAGatherEnvironmentSpecs(key, values):
             if myValue != None:
                 tempDBDetailsArray = myValue.split(',')
                 if len(tempDBDetailsArray) == 0 :
-                    print("ERROR JAGatherEnvironmentSpecs() invalid format in DBDetails spec:|{1}|, expected format:DBType=influxdb,influxdbBucket=bucket,influxdbOrg=org".format(keyValuePair, myValue))
+                    errorMsg = "ERROR JAGatherEnvironmentSpecs() invalid format in DBDetails spec:|{1}|, expected format:DBType=influxdb,influxdbBucket=bucket,influxdbOrg=org".format(keyValuePair, myValue)
+                    print(errorMsg)
+                    LogMsg(errorMsg, statsLogFileName, True)
+
                 for keyValuePair in tempDBDetailsArray:
                     fieldArray = keyValuePair.split('=')
                     if len(fieldArray) > 0:
                         DBDetails[fieldArray[0]] = fieldArray[1]
                     else:
-                        print("ERROR JAGatherEnvironmentSpecs() invalid format in DB spec:|{0}|, DBDetails:|{1}|".format(keyValuePair, myValue))
+                        errorMsg = "ERROR JAGatherEnvironmentSpecs() invalid format in DB spec:|{0}|, DBDetails:|{1}|".format(keyValuePair, myValue)
+                        print(errorMsg)
+                        LogMsg(errorMsg, statsLogFileName, True)
 
         elif myKey == 'WebServerURL':
             if webServerURL == None:
@@ -635,14 +640,18 @@ try:
                 tempValue = str(value.get('DBDetails')).strip()
                 tempDBDetailsArray = tempValue.split(',')
                 if len(tempDBDetailsArray) == 0 :
-                    print("ERROR invalid format in DBDetails spec:|{1}|, expected format:DBType=influxdb,influxdbBucket=bucket,influxdbOrg=org".format(keyValuePair, tempValue))
+                    errorMsg = "ERROR invalid format in DBDetails spec:|{1}|, expected format:DBType=influxdb,influxdbBucket=bucket,influxdbOrg=org".format(keyValuePair, tempValue)
+                    print(errorMsg)
+                    LogMsg(errorMsg, statsLogFileName, True)
                     continue
                 for keyValuePair in tempDBDetailsArray:
                     fieldArray = keyValuePair.split('=')
                     if len(fieldArray) > 0:
                         tempPatternList[patternIndexForDBDetails][fieldArray[0]]= fieldArray[1]
                     else:
-                        print("ERROR invalid format in DB spec:|{0}|, DBDetails:|{1}|".format(keyValuePair, tempValue))
+                        errorMsg = "ERROR invalid format in DB spec:|{0}|, DBDetails:|{1}|".format(keyValuePair, tempValue)
+                        print(errorMsg)
+                        LogMsg(errorMsg, statsLogFileName, True)
                         continue
                 tempPatternPresent[patternIndexForDBDetails] = True
 
@@ -755,7 +764,7 @@ while waitTime > 0:
             if OSUptime > 0 and OSUptime < dataCollectDurationInSec:
                 break
 
-            errorMsg = "INFO - Another instance of this program still running, sleeping for 10 seconds"
+            errorMsg = "INFO - Another instance of this program still running, sleeping for 10 seconds\n"
             print(errorMsg)
             LogMsg(errorMsg, statsLogFileName, True)
 
@@ -859,31 +868,37 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
             requests.packages.urllib3.disable_warnings()
 
     data = json.dumps(tempLogStatsToPost)
-    
+    if debugLevel > 1:
+        print('DEBUG-2 JAPostDataToWebServer() logStatsToPost: {0}'.format(tempLogStatsToPost))
+
     if useRequests == True:
-        # post interval elapsed, post the data to web server
-        returnResult = requests.post(
-            webServerURL, data, verify=verifyCertificate, headers=headers)
-        if debugLevel > 1:
-            print('DEBUG-2 JAPostDataToWebServer() logStatsToPost: {0}'.format(tempLogStatsToPost))
-        resultText = returnResult.text
+        try:
+            # post interval elapsed, post the data to web server
+            returnResult = requests.post(
+                webServerURL, data, verify=verifyCertificate, headers=headers)
+            resultText = returnResult.text
+        except requests.exceptions.RequestException as err:
+            resultText = ["500 requests.post() Error posting data to web server {0}, exception raised","error:{1}".format(webServerURL, err)]
+
     else:
-        result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
-                                "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        resultText = result.stdout.decode('utf-8').split('\n')
-        
-    print('INFO JAPostDataToWebServer() Posted data to web server:|{0}|, with result:|{1}|'.format(webServerURL, resultText))
+        try:
+            result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
+                                    "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            resultText = result.stdout.decode('utf-8').split('\n')
+        except Exception as err:
+            resultText = ["500 subprocess.run(curl) Error posting data to web server {0}, exception raised","error:{1}".format(webServerURL, err)]
 
     resultLength = len(resultText)
     if resultLength > 1 :
         try:
             statusLine = resultText[resultLength-2]   
             if re.search(r'\[2..\]', statusLine) == None :
-                if re.search(r'\4..|\5..', statusLine) == True:
-                    logStatsPostSuccess = False    
-                ### see whether the pattern exists in entire string
-                elif re.search(r'\[2..\]', resultText) == None :
-                    logStatsPostSuccess = False
+                if re.search(r'4\d\d |5\d\d ', statusLine) != None:
+                    logStatsPostSuccess = False 
+                else:   
+                    matches = re.findall(r'Response \[2\d\d\]', resultText, re.MULTILINE)
+                    if len(matches) == 0:
+                        logStatsPostSuccess = False
         except :
             logStatsPostSuccess = False
     else:
@@ -891,6 +906,9 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
 
     
     if logStatsPostSuccess == False:
+        print(resultText)
+        if resultLength > 1 :
+            LogMsg(resultText[resultLength-1], statsLogFileName, True)
         if retryLogStatsFileHandleCurrent != None and storeUponFailure == True:
             if retryLogStatsFileHandleCurrent == None :
                 try:
@@ -905,9 +923,15 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
                     ### if DBType is influxdb and retryStatsFileHandle is not None, store current data to be sent later
                     retryLogStatsFileHandleCurrent.write( data + '\n')
                 except OSError as err:
-                    print("ERROR JAPostDataToWebServer() could not append data to retryStatsFile, error:{0}".format(err))
+                    errorMsg = "ERROR JAPostDataToWebServer() could not append data to retryStatsFile, error:{0}".format(err)
+                    print(errorMsg)
+                    LogMsg(errorMsg, statsLogFileName, True)
+
                 except Exception as err:
-                    print("ERROR Unknwon error:{0}".format( err ))
+                    errorMsg = "ERROR Unknwon error:{0}".format( err )
+                    print(errorMsg)
+                    LogMsg(errorMsg, statsLogFileName, True)
+
 
     return logStatsPostSuccess
 
@@ -928,7 +952,7 @@ def JAPostAllDataToWebServer():
     global webServerURL, verifyCertificate, logStatsToPost, logLinesToPost, logEventPriorityLevel
     timeStamp = JAGlobalLib.UTCDateTime()
     if debugLevel > 1:
-        print('DEBUG-2 JAPostDataToWebServer() ' +
+        print('DEBUG-2 JAPostAllDataToWebServer() ' +
               timeStamp + ' Posting the stats collected')
 
     numPostings = 0
@@ -970,6 +994,8 @@ def JAPostAllDataToWebServer():
                     if JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure) == True:
                         ### successful posting, increment count
                         numPostings += 1
+                        print('INFO JAPostAllDataToWebServer() DBType:|{0}|, posted data to web server:|{1}|'.format(prevDBType, webServerURL))
+
                     postData = False
                 ### prepare tempLogStatsToPost with fixed data for next posting
                 tempLogStatsToPost = logStatsToPost.copy()
@@ -1006,7 +1032,7 @@ def JAPostAllDataToWebServer():
             tempResults = list(values[patternIndexForPatternSum*2+1])
 
             if debugLevel > 3:
-                print("DEBUG-4 JAPostDataToWebServer() PatternSum:{0}".format(tempResults))
+                print("DEBUG-4 JAPostAllDataToWebServer() PatternSum:{0}".format(tempResults))
 
             ### tempResults is in the form: [ name1, value1, name, value2,....]
             ### divide the valueX with sampling interval to get tps value
@@ -1015,7 +1041,7 @@ def JAPostAllDataToWebServer():
             while index < len(tempResults):
                 tempResult = tempResults[index]
                 if debugLevel > 3:
-                    print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
+                    print("DEBUG-4 JAPostAllDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                 if index % 2 > 0:
                     try:
                         ### divide the valueX with sampling interval to get tps value
@@ -1037,7 +1063,7 @@ def JAPostAllDataToWebServer():
             tempResults = list(values[patternIndexForPatternDelta*2+1])
 
             if debugLevel > 3:
-                print("DEBUG-4 JAPostDataToWebServer() PatternDelta:{0}".format(tempResults))
+                print("DEBUG-4 JAPostAllDataToWebServer() PatternDelta:{0}".format(tempResults))
 
             ### tempResults is in the form: [ name1, value1, name, value2,....]
             # prev sample value is subracted from current sample to find the change or delta value.
@@ -1047,7 +1073,7 @@ def JAPostAllDataToWebServer():
             while index < len(tempResults):
                 tempResult = tempResults[index]
                 if debugLevel > 3:
-                    print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
+                    print("DEBUG-4 JAPostAllDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                 if index % 2 > 0:
                     ### current index has value
                     try:
@@ -1079,7 +1105,7 @@ def JAPostAllDataToWebServer():
             tempResults = list(values[patternIndexForPatternAverage*2+1])
 
             if debugLevel > 3:
-                print("DEBUG-4 JAPostDataToWebServer() PatternAverage:{0}, sampleCountList:{1}".format(tempResults, sampleCountList))
+                print("DEBUG-4 JAPostAllDataToWebServer() PatternAverage:{0}, sampleCountList:{1}".format(tempResults, sampleCountList))
 
             ### tempResults is in the form: [ name1, value1, name, value2,....]
             ### divide the valueX with sample count in sampleCountList to get average value
@@ -1088,7 +1114,7 @@ def JAPostAllDataToWebServer():
             while index < len(tempResults):
                 tempResult = tempResults[index]
                 if debugLevel > 3:
-                    print("DEBUG-4 JAPostDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
+                    print("DEBUG-4 JAPostAllDataToWebServer() tempResults[{0}]:|{1}|".format(index,tempResult))
                 if index % 2 > 0:
                     ### current index has value
                     try:
@@ -1117,16 +1143,20 @@ def JAPostAllDataToWebServer():
         if JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure) == True:
             ### successful posting, increment count
             numPostings += 1
+            print('INFO JAPostAllDataToWebServer() DBType:|{0}|, posted data to web server:|{1}|'.format(prevDBType, webServerURL))
+
     else:
         if debugLevel > 1:
             print(
-                'DEBUG-2 JAPostDataToWebServer() No data to post for the key:{0}\n'.format(key))
+                'DEBUG-2 JAPostAllDataToWebServer() No data to post for the key:{0}\n'.format(key))
 
-    LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp +
+    LogMsg('INFO JAPostAllDataToWebServer() timeStamp: ' + timeStamp +
                        ' Number of stats posted: ' + str(numPostings) + '\n', statsLogFileName, True)
 
     numPostings = 0
-    
+
+    logStatsPostSuccess = True
+
     if maxLogLines > 0:
         ### logs collection is enabled, post the logs collected
         # key - service name
@@ -1156,7 +1186,7 @@ def JAPostAllDataToWebServer():
             logLines[key] = []
 
             if debugLevel > 1:
-                print('DEBUG-2 JAPostDataToWebServer() logLinesToPost: {0}'.format(tempLogLinesToPost))
+                print('DEBUG-2 JAPostAllDataToWebServer() logLinesToPost: {0}'.format(tempLogLinesToPost))
 
             data = json.dumps(tempLogLinesToPost)
 
@@ -1166,23 +1196,54 @@ def JAPostAllDataToWebServer():
                 if disableWarnings == True:
                     requests.packages.urllib3.disable_warnings()
 
-                # post interval elapsed, post the data to web server
-                returnResult = requests.post(
-                    webServerURL, data, verify=verifyCertificate, headers=headers)
+                try:
+                    # post interval elapsed, post the data to web server
+                    returnResult = requests.post(webServerURL, data, verify=verifyCertificate, headers=headers)
+                    resultText = returnResult.text
                 
-                print('INFO JAPostDataToWebServer() Result of posting log lines to web server ' +
-                        webServerURL + ' :\n' + returnResult.text)
-                numPostings += 1
+                except requests.exceptions.RequestException as err:
+                    resultText = ["500 ERROR requests.post() Error posting logs to web server, exception raised","error:{0}".format(err)]
             else:
-                result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
-                                        "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                returnStatus = result.stdout.decode('utf-8').split('\n')
-                print('INFO JAPostDataToWebServer() result of posting log lines to web server:{0}\n{1}'.format(
-                    webServerURL, returnStatus))
-                numPostings += 1
+                try:
+                    result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
+                                            "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    resultText = result.stdout.decode('utf-8').split('\n')
+                    
+                except Exception as err:
+                    resultText = ["500 subprocess.run() Error posting logs to web server, exception raised","error:{0}".format(err)]
 
-        LogMsg('INFO  JAPostDataToWebServer() timeStamp: ' + timeStamp +
-                        ' Number of log lines posted: ' + str(numPostings) + '\n', statsLogFileName, True)
+            resultLength = len(resultText)
+            if resultLength > 1 :
+                try:
+                    statusLine = resultText[resultLength-2]   
+                    if re.search(r'\[2..\]', statusLine) == None :
+                        if re.search(r'4\d\d |5\d\d ', statusLine) != None:
+                            logStatsPostSuccess = False 
+                        else:   
+                            matches = re.findall(r'Response \[2\d\d\]', resultText, re.MULTILINE)
+                            if len(matches) == 0:
+                                logStatsPostSuccess = False
+                except :
+                    logStatsPostSuccess = False
+            else:
+                logStatsPostSuccess = False
+            
+            if logStatsPostSuccess == True:
+                numPostings += 1
+                if debugLevel > 0:
+                    print('DEBUG-1 JAPostAllDataToWebServer() Posted logs to web server:|{0}|, with result:|{1}|'.format(webServerURL, resultText))
+
+            else:
+                errorMsg = 'ERROR JAPostAllDataToWebServer() error posting logs to web server:|{0}|, with result|{1}|'.format(webServerURL, resultText)
+                print(errorMsg)
+                LogMsg(errorMsg, statsLogFileName, True)
+                break
+
+        ### print result
+        errorMsg = "INFO JAPostAllDataToWebServer() DBType:|Loki|, posted {0} log lines to web server: {1}\n".format(numPostings, webServerURL)
+        print(errorMsg)
+        LogMsg(errorMsg, statsLogFileName, True)
+
     return True
 
 
@@ -1315,6 +1376,10 @@ def JAProcessCommands( logFileProcessingStartTime, debugLevel):
                         values[indexForCommand], returnStatus))
                 
                 except (subprocess.CalledProcessError or FileNotFoundError) as err :
+                    errorMsg = "ERROR failed to execute command:{0}".format(values[indexForCommand], err)
+                    print( errorMsg)
+                    LogMsg(errorMsg, statsLogFileName, True)
+                except Exception as err:
                     errorMsg = "ERROR failed to execute command:{0}".format(values[indexForCommand], err)
                     print( errorMsg)
                     LogMsg(errorMsg, statsLogFileName, True)

@@ -2069,13 +2069,30 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
         print ('DEBUG-2 OSStatsToPost:{0}'.format( tempOSStatsToPost) )
     if disableWarnings == True:
         requests.packages.urllib3.disable_warnings()
-
-    returnResult = requests.post( webServerURL, data, verify=verifyCertificate, headers=headers)
-    print('INFO  - Result of posting data to web server {0} :\n{1}'.format(webServerURL, returnResult.text))
+    
+    try:
+        returnResult = requests.post( webServerURL, data, verify=verifyCertificate, headers=headers)
+        errorMsg = 'INFO requests.post() posted data to web server {0} with result:{1}'.format(webServerURL, returnResult.text)
+        print(errorMsg)
+        JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+     
+    except requests.exceptions.RequestException as err:
+        errorMsg = "500 ERROR requests.post() error posting data to web server {0}, exception raised, {1}".format(webServerURL, err)
+        print(errorMsg)
+        JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+        
   else:
-      result =  subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Content-Type: application/json", '-d', data],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-      returnStatus = result.stdout.decode('utf-8').split('\n')
-      print('INFO - Result of posting data to web server {0}'.format( returnStatus ))
+    try:
+        result =  subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Content-Type: application/json", '-d', data],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        returnStatus = result.stdout.decode('utf-8').split('\n')
+        errorMsg = 'INFO - subprocess.run(curl) posted data to web server {0} with result {1}'.format(webServerURL, returnStatus )
+        print(errorMsg)
+        JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+    except Exception as err:
+        errorMsg = "500 ERROR subprocess.run(curl) posting data to web server {0}, exception raised, {1}".format(webServerURL, err)
+        print(errorMsg)
+        JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+
 
   ### if elapsed time is less than post interval, sleep till post interval elapses
   elapsedTimeInSec = time.time() - logFileProcessingStartTime

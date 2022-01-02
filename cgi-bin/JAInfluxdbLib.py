@@ -7,8 +7,14 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 
 def JAInfluxdbWriteData( url, token, org, bucket, data, debugLevel=0):
 
-    returnStatus = "<Response [200]>"
-    _client = InfluxDBClient(url=url, token=token, org=org)
+    statusCode = False
+    returnStatus = ''
+    try:
+        _client = InfluxDBClient(url=url, token=token, org=org)
+    except Exception as err:
+        returnStatus = "ERROR {0}".format(err)
+        return statusCode, returnStatus
+
     """
     _write_client = _client.write_api(write_options=WriteOptions(batch_size=500,
                                       flush_interval=10_000,
@@ -18,16 +24,22 @@ def JAInfluxdbWriteData( url, token, org, bucket, data, debugLevel=0):
                                       max_retry_delay=30_000,
                                       exponential_base=2))
     """
-    _write_client = _client.write_api(write_options=SYNCHRONOUS)
-
+    try:
+        _write_client = _client.write_api(write_options=SYNCHRONOUS)
+    except Exception as err:
+        returnStatus = "ERROR {0}".format(err)
+        return statusCode, returnStatus
     try:
         result = _write_client.write(record=data,bucket=bucket, org=org,protocol='line')
+        if result != None:
+            returnStatus = "<Response [500]>" 
+        else:
+            statusCode = True
+
         if debugLevel > 0:
             print("_Status_PASS_ data written to influxdb:|{0}, status:{1}|".format( data, returnStatus ))
-        if result != None:
-            returnStatus = "<Response [500]>"    
     except Exception as err:
         print("_Status_ERROR_ JAInfluxdbWriteData() Could not insert record to influxdb, error:{0}".format(err ) )
         returnStatus = "<Response [500]>"
     _write_client.close()
-    return returnStatus
+    return statusCode, returnStatus

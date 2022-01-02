@@ -145,10 +145,10 @@ Environment:
    All:
      # max time allowed for log file processing during each sampling interval
      #  below 30 second value is half of 60 seconds specified for sampling interval
-     MaxProcessingTimeForAllEvents: 30
+     MaxProcessingTimeForAllEvents: 15
      # post data to web server per this interval. if sampling interval is 10, post interval is 60,
      #    it will post 6 samples in one post. This is to optimize data post operation.
-     DataPostIntervalInSec: 60
+     DataPostIntervalInSec: 30
      # once the job is started, run until this time. This is to allow job running from crontab at certain periodicity 
      DataCollectDurationInSec: 600
      ### SKIP gathering log stats when average CPU usage % exceeds below limit over previous
@@ -175,7 +175,7 @@ Environment:
      # post stats to below web server
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
      ### debug level 0, no debug, 1 to 4, 4 being max details
-     DebugLevel: 1
+     DebugLevel: 0
      ### DBDetails - optional, defaults to Prometheus, if present, applies to all service types or measurements 
      ###            where local DBDetails is not specified
      ###     DBType - influxdb, Prometheus

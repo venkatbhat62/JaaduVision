@@ -122,7 +122,7 @@ postedData = defaultdict(dict)
 postedData = json.loads(reqBody)
 print('Content-Type: text/html; charset=utf-8\n')
 
-returnResult='PASS - Saved data'
+returnResult=''
 
 ### prepare server side fileName to store data
 if JADirStats != None:
@@ -291,10 +291,14 @@ influxdbDataArrayToPost = []
 try:
     if fileName != None:
         if saveOnWebServer == 1:
-            ### save data locally if fileName is specified
-            fpo = open( fileName, 'a')
-            if debugLevel > 0:
-                print('DEBUG-1 JASaveStats.py fileName: {0}, postToLoki {1}'.format(fileName, postToLoki))
+            try:
+                ### save data locally if fileName is specified
+                fpo = open( fileName, 'a')
+                if debugLevel > 0:
+                    print('DEBUG-1 JASaveStats.py fileName: {0}, postToLoki {1}'.format(fileName, postToLoki))
+            except OSError as err:
+                fpo = None
+                print("507 {0}, ERROR opening file to save data on web server".format(err))
 
     ### while writing values to file and posting to pushgateway, skip below keys
     skipKeyList = ['DBType','InfluxdbBucket','InfluxdbOrg','jobName','debugLevel','fileName','environment','siteName','platformName','componentName','hostName','saveLogsOnWebServer']
@@ -305,6 +309,8 @@ try:
 
     metricsVariablesToBePosted = {}
 
+    errorPostingPrometheusGateway = errorPostingInfluxDB = errorPostingLoki = False
+    
     for key, value in postedData.items():
 
         if key not in skipKeyList:
@@ -317,14 +323,18 @@ try:
                 continue
 
             if fileName != None:
-                if saveOnWebServer == 1:   
-                    ### save this data with prefixParamsForFile that identifies statsType, environment, site, platform, component, host 
-                    fpo.write( '{0},{1},{2}\n'.format(prefixParamsForFile, key, value ) )
+                if saveOnWebServer == 1 and fpo != None:
+                    try:   
+                        ### save this data with prefixParamsForFile that identifies statsType, environment, site, platform, component, host 
+                        fpo.write( '{0},{1},{2}\n'.format(prefixParamsForFile, key, value ) )
 
-                    if debugLevel > 1:
-                        print('DEBUG-2 JASaveStats.py wrote data: {0},{1},{2} to file'.format(prefixParamsForFile,key, value))
+                        if debugLevel > 1:
+                            print('DEBUG-2 JASaveStats.py wrote data: {0},{1},{2} to file'.format(prefixParamsForFile,key, value))
+                    except OSError as err:
+                        print("500 ERROR {0}, not able to save the stats in file on web server".format(err))
+                        fpo = None
 
-            if postToLoki == True:
+            if postToLoki == True and errorPostingLoki == False:
                 ### need to post log lines to loki
                 ### data posted has lines with , separation
                 """
@@ -360,14 +370,16 @@ try:
                         print("DEBUG-3 JASaveStats.py payload:|{0}|, lokiGatewayURL:|{1}|\n".format(payload, lokiGatewayURL))
 
                     try:
-                        returnResult = requests.post( lokiGatewayURL, data=payload, headers=headersForLokiGateway)
-                        returnResult.raise_for_status()
+                        tempReturnResult = requests.post( lokiGatewayURL, data=payload, headers=headersForLokiGateway)
+                        tempReturnResult.raise_for_status()
                         
                         if debugLevel > 1:
-                            print('DEBUG-2 JASaveStats.py log line: {0} posted to loki with result:{1}\n'.format(line,returnResult.text))
-                    except requests.exceptions.HTTPError as err:
-                        print("ERROR JASaveStats.py " + err.response.text)
-                        raise SystemExit(err)
+                            print('DEBUG-2 JASaveStats.py log line: {0} posted to loki with result:{1}\n'.format(line,tempReturnResult.text))
+                    except requests.exceptions.RequestException as err:
+                        ### DO NOT abort here on error, continue to post data to other destinations 
+                        returnResult = returnResult + "ERROR posting logs to Loki, returnResult:{0}".format(err)
+                        errorPostingLoki = True
+                        break
 
                     lineCount += 1
             
@@ -494,12 +506,17 @@ try:
                         influxdbDataArrayToPost.append(influxdbRowData + " " + sampleTime)
 
                 else:
-                    for label, labelValue in statsToPostForLabel.items():
-                        returnResult = requests.post( pushGatewayURL + appendToURL + "/client/" + label, data=labelValue, headers=headersForPushGateway)
+                    if errorPostingPrometheusGateway == False:
+                        try:
+                            for label, labelValue in statsToPostForLabel.items():
+                                tempReturnResult = requests.post( pushGatewayURL + appendToURL + "/client/" + label, data=labelValue, headers=headersForPushGateway)
 
-                        if debugLevel > 0:
-                            print('DEBUG-1 JASaveStats.py label:|{0}| and data:|{1}| posted to prometheus push gateway with result:{2}\n\n'.format(label, labelValue,returnResult))
+                                if debugLevel > 0:
+                                    print('DEBUG-1 JASaveStats.py label:|{0}| and data:|{1}| posted to prometheus push gateway with result:{2}\n\n'.format(label, labelValue,tempReturnResult))
 
+                        except requests.exceptions.RequestException as err:
+                            returnResult = returnResult + "ERROR posting data to prometheus gateway, returnResult:{0}".format(err)
+                            errorPostingPrometheusGateway = True                        
 
         else:
             if debugLevel > 3:
@@ -507,22 +524,38 @@ try:
 
     if postData == True :
         if JADBTypeInfludb == True :
-            returnResult = JAInfluxdbLib.JAInfluxdbWriteData(JAInfluxdbURL,JAInfluxdbToken,JAInfluxdbOrg,JAInfluxdbBucket, influxdbDataArrayToPost, debugLevel)
-            if debugLevel > 0:
-                print("DEBUG-1 JASaveStats.py data: {0} posted to influxdb with returnStatus:|{1}|".format(influxdbDataArrayToPost, returnResult ))
-                fpo.write("influxDataArrayToPost:|{0}|, returnResult:|{1}|".format(influxdbDataArrayToPost, returnResult))
+            try:
+                tempStatus, tempReturnResult = JAInfluxdbLib.JAInfluxdbWriteData(JAInfluxdbURL,JAInfluxdbToken,JAInfluxdbOrg,JAInfluxdbBucket, influxdbDataArrayToPost, debugLevel)
+                if tempStatus == False:
+                    returnResult = returnResult + "ERROR posting data to influxDB, returnResult:{0}".format(tempReturnResult)
+                else:
+                    if debugLevel > 0:
+                        print("DEBUG-1 JASaveStats.py data: {0} posted to influxdb with returnStatus:|{1}|".format(influxdbDataArrayToPost, tempReturnResult ))
+                        if fpo != None:
+                            fpo.write("influxDataArrayToPost:|{0}|, returnResult:|{1}|".format(influxdbDataArrayToPost, tempReturnResult))
+                
+            except Exception as err:
+                returnResult = returnResult + "ERROR posting data to influxDB, returnResult:{0}".format(err)
+                errorPostingInfluxDB = True
         else:
-            returnResult = requests.post( pushGatewayURL + appendToURL, data=statsToPost, headers=headersForPushGateway)
-            if debugLevel > 0:
-                print('DEBUG-1 JASaveStats.py data: {0} posted to prometheus push gateway with result:{1}\n\n'.format(statsToPost,returnResult))
-
+            if errorPostingPrometheusGateway == False:
+                try:
+                    tempReturnResult = requests.post( pushGatewayURL + appendToURL, data=statsToPost, headers=headersForPushGateway)
+                    if debugLevel > 0:
+                        print('DEBUG-1 JASaveStats.py data: {0} posted to prometheus push gateway with result:{1}\n\n'.format(statsToPost,tempReturnResult))
+                except requests.exceptions.RequestException as err:
+                    returnResult = returnResult + "ERROR posting data to prometheus push gateway, returnResult:{0}".format(err)
+                    errorPostingPrometheusGateway = True
     if fileName != None:
         if saveOnWebServer == 1: 
-            fpo.close()
+            if fpo != None:
+                fpo.close()
 
 except OSError as err:
-    JASaveStatsError('JASaveStats.py Can not open file:|' + fileName + '|' + "OS error: {0}".format(err) )
+    JASaveStatsError("{0}".format(err) )
+
+if len(returnResult) == 0:
+    returnResult='PASS - Saved data'
 
 ### print status and get out
 JASaveStatsExit(str(returnResult))
-
