@@ -933,16 +933,24 @@ def JAGetCPUTimesPercent(fields, recursive=False):
                 if len(line) < 5:
                     continue
 
+                if debugLevel > 2:
+                    print("DEBUG-3 JAGetCPUTimesPercent() sar output line: {0}".format(line))
+
                 if re.search('%user', line) != None:
                     ### remove % sign from headings
                     line = re.sub('%', '', line)
 
                     ### heading line, separte the headings
                     tempHeadingFields = line.split(' ')
+                    if debugLevel > 2:
+                        print("DEBUG-3 JAGetCPUTimesPercent() sar output headings: {0}".format(tempHeadingFields))
 
                 elif re.search('Average', line) != None:
                     ### Average line, parse prev line data
                     tempDataFields = prevLine.split(' ')
+
+                    if debugLevel > 2:
+                        print("DEBUG-3 JAGetCPUTimesPercent() sar output data fields: {0}".format(tempDataFields))
 
                     columnCount = 0
                     for field in tempDataFields :
