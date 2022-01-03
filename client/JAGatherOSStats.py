@@ -959,18 +959,20 @@ def JAGetCPUTimesPercent(fields, recursive=False):
                             myStats = myStats + '{0}{1}={2}'.format( comma, tempHeadingFields[ columnCount ], field)
                             comma = ','
                                                         
-                        elif 'used' in fields:
-                            ### total CPU usage is to be returned
-                            ### compute this as  100 - idle
-                            if tempHeadingFields[ columnCount ] == 'idle' :
-                                idleTime = float(tempDataFields[columnCount])
-                            elif tempHeadingFields[ columnCount ] == 'iowait' :
-                                iowaitTime = float(tempDataFields[columnCount])
+                        ### total CPU usage is to be returned
+                        ### compute this as  100 - idle
+                        if tempHeadingFields[ columnCount ] == 'idle' :
+                            idleTime = float(tempDataFields[columnCount])
+                        elif tempHeadingFields[ columnCount ] == 'iowait' :
+                            iowaitTime = float(tempDataFields[columnCount])
+
                         columnCount += 1
-                    
+
                     if 'used' in fields:
                         myStats = myStats + "{0}used={1:f}".format( comma, 100 - (idleTime+iowaitTime))
                         comma = ','
+                        if debugLevel > 2:
+                            print("DEBUG-3 JAGetCPUTimesPercent() idleTime:{0}, iowaitTime:{1}".format(idleTime, iowaitTime))
 
                 else:
                     prevLine = line
