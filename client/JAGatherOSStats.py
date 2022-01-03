@@ -904,7 +904,7 @@ def JAGetCPUTimesPercent(fields, recursive=False):
                 print("DEBUG-2 JAGetCPUTimesPercent() OSType:{0}, using 'sar -u' to get data".format(OSType))
 
             prevLine = tempHeadingFields = ''
-            result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-u'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-u', '-i', dataPostIntervalInSec], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             lines = result.stdout.decode('utf-8').split('\n')
             ### lines of the form
             ###
@@ -1118,7 +1118,7 @@ def JAGetVirtualMemory(fields, recursive=False):
             if debugLevel > 1:
                 print("DEBUG-2 JAGetVirtualMemory() OSType:{0}, using 'sar -r' to get data".format(OSType))
 
-            result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-r'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-r', '-i', dataPostIntervalInSec], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             lines = result.stdout.decode('utf-8').split('\n')
             ### lines of the form
@@ -1266,7 +1266,7 @@ def JAGetSwapMemory(fields, recursive=False):
         if JASysStatFilePathName != None and JASysStatFilePathName != '':
             if debugLevel > 1:
                 print("DEBUG-2 JAGetSwapMemory() OSType:{0}, using 'sar -S' to get data".format(OSType))
-            result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-S'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-S', '-i', dataPostIntervalInSec], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             lines = result.stdout.decode('utf-8').split('\n')
             ### lines of the form
             ###
@@ -1437,7 +1437,7 @@ def JAGetDiskIOCounters(fields, recursive=False):
 
     if OSType == 'Linux':
         if JASysStatFilePathName != None and JASysStatFilePathName != '':
-            result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-b'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-b', '-i', dataPostIntervalInSec], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             lines = result.stdout.decode('utf-8').split('\n')
             ### lines of the form
             ###
@@ -1640,7 +1640,7 @@ def JAGetNetworkIOCounters(networkIOFields, recursive=False):
             if debugLevel > 1:
                 print("DEBUG-2 JAGetNetworkIOCounters() OSType:{0}, using 'sar -n DEV' to get data".format(OSType))
 
-            result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-n', 'DEV'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            result = subprocess.run( ['sar', '-f', JASysStatFilePathName + 'sa' + JADayOfMonth, '-s', JAFromTimeString, '-e', JAToTimeString, '-n', 'DEV', '-i', dataPostIntervalInSec], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             lines = result.stdout.decode('utf-8').split('\n')
             ### lines of the form
             ###
