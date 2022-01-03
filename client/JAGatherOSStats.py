@@ -963,9 +963,9 @@ def JAGetCPUTimesPercent(fields, recursive=False):
                             ### total CPU usage is to be returned
                             ### compute this as  100 - idle
                             if tempHeadingFields[ columnCount ] == 'idle' :
-                                idleTime = float(field)
+                                idleTime = float(tempDataFields[columnCount])
                             elif tempHeadingFields[ columnCount ] == 'iowait' :
-                                iowaitTime = float(field)
+                                iowaitTime = float(tempDataFields[columnCount])
                         columnCount += 1
                     
                     if 'used' in fields:
