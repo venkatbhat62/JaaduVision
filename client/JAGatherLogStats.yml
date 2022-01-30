@@ -43,9 +43,9 @@
 #
 #     PatternLabel: extract the regular expression value that matches to the variable PatternLabel,
 #                   post all stats extracted in that line with the format
-#                   label:param1=value1,param2=value2,...
+#                   <serviceName>_:<labelName>:_param1=value1,param2=value2,...
 #                   These param/value pair will be posted to prometheus gateway with associated label
-#
+#                   Web server script posts the data to DB with label like client=<labelName> paramName paramValue 
 #     PatternLabelGroup: While matching the label pattern, if the group to be used is not the first one,
 #                     use this to specify group number (see example below for more info)
 #  
@@ -233,6 +233,18 @@ LogFile:
       Priority: 2
 
     ApacheSaveStats:
+      # 192.168.1.182 - - [30/Jan/2022:15:25:04 +0000] "POST /cgi-bin/JASaveStats.py HTTP/1.1" 200 3343 "-" "curl/7.52.1"
+      ### extract the regular expression value that matches to label definition
+      PatternLabel: ^(\w+) - -
+      ###             ^^^ <-- extract IP address and post the data for this service name with that label
+      ### using separate label name for these stats allows aggregation of stats per label name in dashboard
+      ###  use 1st group value as variable prefix for the *_avrage metrics variable
+      PatternLabelGroup: 1
+      ### _pass variable is posted to web server is of the form:
+      ###  ApacheSaveStats_:<IPAddress>:_pass=<countPerCollectionInterval>
+      ###                   ^^^^^^^^^ <-- this will be separated by web service as label and 
+      ###                                  data gets posted to influxb with label client=client1 ApacheSaveStatsPass <count>
+      ###                                   This allows further filtering in grafana based on client IP address
       LogFileName: /var/log/apache2/access.log*
       PatternPass: /JASaveStats.py(.*)HTTP/\d.\d" [2..|3..]
       PatternFail: /JASaveStats.py(.*)HTTP/\d.\d" [4..|5..]
@@ -304,6 +316,7 @@ LogFile:
       LogFileName: JATest.log*
       # 2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
       # 2021-10-31T19:11:12.096877 Stats client2 total key1 34 dummy1 total key2 200.00 key3 200.00 dummy3
+      #                                  ^^^^^^^ <-- will be posted as client label value to DB
       ### extract the regular expression value that matches to label definition
       PatternLabel: Stats (\w+) total
       ###                  ^^^ <-- extract this and post the data for this service name with that label
@@ -315,6 +328,11 @@ LogFile:
       #                                                                    ^^^^^^^^ <-- SKIP posting this data
       PatternSkipGroups: 3,4
       PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) (\w+) (\d+.\d+) dummy3
+      ### variable and value posted to web server is of the form:
+      ###  TestStatsWithLabel_:client1:key1_average=34.67
+      ###                     ^^^^^^^^^ <-- this will be separated by web service as label and 
+      ###                                   data gets posted to influxb with label client=client1 varName varValue
+      ###                                   This allows further filtering in grafana based on client names
       Priority: 1
 
     TestStatsRepeatFieldValueSpec:

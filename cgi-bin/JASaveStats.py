@@ -444,7 +444,7 @@ try:
                                 ### if data posted has embeded label in the form <name>_:<label>:<name>_*,
                                 ###    extract <label> from that variable name, 
                                 ###    replace :<label>: for all the variable associated with current key
-                                ###    post the data with this label to prometheus gateway separately.
+                                ###    post the data with this label to prometheus gateway or influxb separately with client=<labelName>.
                                 ### timeStamp=2021-10-31T15:24:22.480140,TestStatsWithLabel_:client1:key1_average=32.50,TestStatsWithLabel_:client1:key2_average=16.25,TestStatsWithLabel_:client2:key1_average=32.50,TestStatsWithLabel_:client2:key2_average=16.25
                                 ###                                                         ^^^^^^^^^
                                 labelPrefix = myResults.group(1)
