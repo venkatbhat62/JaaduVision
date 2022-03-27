@@ -106,6 +106,9 @@
 #    <CommandSectionName> unique name to specify command information
 #    <IntervalInSec> - how often to execute this command
 #                     like 60 for every min, 600 for every 10 min
+###
+### you may use https://regex101.com/ to  test the regular expression definitions on log lines to parse
+###
 ---
 GatherLogStatsLogFile: JAGatherLogStats.log
 GatherLogStatsCacheFile: JAGatherLogStats.cache
@@ -233,9 +236,10 @@ LogFile:
       Priority: 2
 
     ApacheSaveStats:
+      LogFileName: /var/log/apache2/access.log*
       # 192.168.1.182 - - [30/Jan/2022:15:25:04 +0000] "POST /cgi-bin/JASaveStats.py HTTP/1.1" 200 3343 "-" "curl/7.52.1"
       ### extract the regular expression value that matches to label definition
-      PatternLabel: ^(\w+) - -
+      PatternLabel: ^(\d+\.\d+\.\d+\.\d+) - -
       ###             ^^^ <-- extract IP address and post the data for this service name with that label
       ### using separate label name for these stats allows aggregation of stats per label name in dashboard
       ###  use 1st group value as variable prefix for the *_avrage metrics variable
@@ -245,7 +249,6 @@ LogFile:
       ###                   ^^^^^^^^^ <-- this will be separated by web service as label and 
       ###                                  data gets posted to influxb with label client=client1 ApacheSaveStatsPass <count>
       ###                                   This allows further filtering in grafana based on client IP address
-      LogFileName: /var/log/apache2/access.log*
       PatternPass: /JASaveStats.py(.*)HTTP/\d.\d" [2..|3..]
       PatternFail: /JASaveStats.py(.*)HTTP/\d.\d" [4..|5..]
       Priority: 1
@@ -300,6 +303,7 @@ LogFile:
       ###   prefix that to the variable to make unique value
       ###   serviceName_<variablePrefix>_<patterDelta>_delta
       PatternVariablePrefix: Stats MicroService(\d)(\d) total
+      ###                                       1    2  <-- group numbers, using index starting from 1
       ###                                           ^^
       ###  use 2nd group value as variable prefix for the *_avrage metrics variable
       PatternVariablePrefixGroup: 2
@@ -307,6 +311,37 @@ LogFile:
       #                                                       kkk vv              kkkk vvvv
       ### On Grafana, variable will be TestStatsWithVarPrefixGroup_5_key1_average, TestStatsWithVarPrefixGroup_5_key2_average
       PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
+      Priority: 1
+
+    TestStatsCSV:
+      LogFileName: JATest.log*
+      ### NOTE - if regex spec does not have (), it will not be counted as group in regex.
+      ###   serviceName_:label:_varName_delta
+      PatternLabel: (CSV),(\w+),
+      ###              1    2   <-- group numbers, using index starting from 1
+      ###                  ^^^
+      ###  use 2nd group value as label so that variables can be tracked per client name,
+      ###       this allows to graph stats per client in grafana dashboard
+      PatternLabelGroup: 2
+      ### On Grafana, variable will be TestStatsCSV_key1_delta, TestStatsCSV_key2_delta,... along with client name as label
+      ### Stats client2 total key1 39 dummy1 total key2 200.00 key3 19.50 dummy3
+      ### 2022-03-26T23:15:05.308415 CSV,client2,39,9.00,19.50
+      ###                                        ^^^^^^^^^^^^^^ <-- post these 3 values 
+      ###                            ^^^,^^^^^^^ <-- skip posting these as values 
+      PatternCSVVariableNames: CSV,clientName,key1,key2,key3
+      PatternDelta: (CSV),(\w+),(\d+),(\d+.\d+),(\d+.\d+)
+      ###             1    2        3       4      5 <-- group numbers, using index starting from 1
+      ###  skip groups 1, and group 2 which is client name, use group 2 for label, post values of groups 3,4,5 to web
+      PatternSkipGroups: 1,2
+      ### 2022-03-26T23:15:05.308415 CSV,client2,39,9.00,19.50
+      ###                             1   2       3   4    5 <-- group numbers
+      ### variable and value posted to web server is of the form:
+      ###  TestStatsCSV_:client2:key1_delta=39   <-- group 3
+      ###                 ^^^^^ <-- this will be separated by web service as label and 
+      ###                                   data gets posted to prometheus with label client=client2 varName varValue
+      ###                                   This allows further filtering in grafana based on client names
+      ###  TestStatsCSV_:client2:key2_delta=<value like 9>    <-- group 4
+      ###  TestStatsCSV_:client2:key3_delta=<value like 19.5> <-- group 5
       Priority: 1
 
     TestStatsWithLabel:

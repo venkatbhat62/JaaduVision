@@ -56,7 +56,7 @@ import signal
 from JAGlobalLib import LogMsg
 
 # Major 01, minor 00, buildId 01
-JAVersion = "01.11.00"
+JAVersion = "01.12.00"
 
 ### number of patterns that can be searched in log line per Service
 patternIndexForPriority = 0
@@ -74,9 +74,10 @@ patternIndexForLabel = 10
 patternIndexForLabelGroup = 11
 patternIndexForSkipGroups = 12
 patternIndexForDBDetails = 13
+patternIndexForCSVVariableNames = 14
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
-maxPatternIndex = 14
+maxPatternIndex = 15
 
 ### index used while processing Execute command spec
 indexForCommand = 0
@@ -633,6 +634,12 @@ try:
                 tempPatternList[patternIndexForSkipGroups] = list(tempCSVString.split(","))
                 tempPatternPresent[patternIndexForSkipGroups] = True
 
+            if value.get('PatternCSVVariableNames') != None:
+                ## the value is in CSV format, with one or more values
+                tempCSVString = str(value.get('PatternCSVVariableNames')).strip()
+                tempPatternList[patternIndexForCSVVariableNames] = list(tempCSVString.split(","))
+                tempPatternPresent[patternIndexForCSVVariableNames] = True
+
             ### if DBDetails available per service definition, store that.
             if value.get('DBDetails') != None:
                 ### initialize it with default DBDetails. This is to inherit any value that is not specified locally.
@@ -686,7 +693,10 @@ try:
             logStats[key][patternIndexForPatternDelta*2] = 0
             ### for delta, data is posted if sample count is non=zero, no pattern present flag used
             logStats[key][patternIndexForPatternDelta*2+1] = []
-            
+
+            logStats[key][patternIndexForCSVVariableNames*2] = tempPatternList[patternIndexForCSVVariableNames]
+            logStats[key][patternIndexForCSVVariableNames*2+1] = tempPatternPresent[patternIndexForCSVVariableNames]
+
             ### set to None, it will be set to proper value later before posting to web server
             logStats[key][patternIndexForVariablePrefix*2] = None
             logStats[key][patternIndexForVariablePrefix*2+1] = tempPatternPresent[patternIndexForVariablePrefix]
@@ -936,6 +946,63 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
     return logStatsPostSuccess
 
 """
+   Params passed: serviceName, postFix, index to the logStats[key][] where value is present
+   Values are passed as tempValue, and tempValues
+   If tempValues (list) is present,
+      Take the name value pair in list like [ name1,value1,name2,value2,....]
+      Prepare the data in a format used to post them to web server in the form
+         <serviceName>_<nameN>_postFix=<valueX>
+         Here, nameN has : on either side like :nameN: so that web server can separate it later
+            and post it as label to database
+   else, 
+         <serviceName>_postFix=<value>
+
+"""
+def JAPrepareStatsToPost(key, indexToLogStats, postFix, tempValue, tempValues ):
+    global logStats, debugLevel, dataPostIntervalInSec
+    returnResult = ''
+
+    floatDataPostIntervalInSec = float(dataPostIntervalInSec)
+
+    ### list is NOT empty, process list values
+
+    if tempValues :
+        
+        index = 0
+        paramName = ''
+        while index < len(tempValues):
+            tempResult = tempValues[index]
+            if ( debugLevel > 3) :
+                print("DEBUG-4 JAPrepareVariableValue() listVarIndex:[{0}], listVar:{1}".format(index, tempResult+1))
+            if index % 2 > 0:
+                try:
+                    ### divide the valueX with sampling interval to get tps value
+                    tempResulttps = float(tempResult) / floatDataPostIntervalInSec
+                    ### Prepare the data in a format used to post them to web server in the form
+                    ###     <serviceName>_<nameN>_postFix=<valueX>
+                    ###     expect <nameN> to have : on either side
+                    ### resulting variable <serviceName>_:nameX:_postFix=<valueX>
+
+                    returnResult += ",{0}_{1}_{2}={3:.2f}".format( key, paramName, postFix, tempResulttps)                        
+                except:
+                    returnResult += ",{0}_{1}_{2}={3}".format( key, paramName, postFix, tempResult)
+            else:
+                ### current index has param name
+                paramName = tempResult
+            index += 1
+    else:
+        ### individual value, not a list
+        returnResult = ",{0}_{1}={2}".format( key, postFix, (float)(tempValue) / floatDataPostIntervalInSec ) 
+    ### reset count and param list
+    logStats[key][indexToLogStats*2] = 0
+    logStats[key][indexToLogStats*2+1] = []
+
+    if ( debugLevel > 2) :
+        print("DEBUG-4 JAPrepareVariableValue() key:{0}, postFix:{1}, tempValue:{2}, tempValues:{3}, returnResult:{4}".format(key,postFix,tempValue, tempValues,returnResult))
+
+    return returnResult
+
+"""
 def JAPostAllDataToWebServer()
 This function posts all data to web server
 Uses below global variables
@@ -1012,20 +1079,24 @@ def JAPostAllDataToWebServer():
                             print("DEBUG-1 Better to add other DBDetails for :|{0}|".format(logStats[key][patternIndexForDBDetails*2]))
 
         tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
-        
+
+        # 2022-03-27 JAPrepareStatsToPost() debug this later           
         if values[patternIndexForPatternPass*2+1] == True:
             tempLogStatsToPost[key] += ",{0}_pass={1:.2f}".format(key,float(values[patternIndexForPatternPass*2]) / floatDataPostIntervalInSec)
             logStats[key][patternIndexForPatternPass*2] = 0
+            # tempLogStatsToPost[key] += JAPrepareStatsToPost(key,patternIndexForPatternPass,"pass",values[patternIndexForPatternPass*2], values[patternIndexForPatternPass*2+1])
             postData = True
         if values[patternIndexForPatternFail*2+1] == True:
             tempLogStatsToPost[key] += ",{0}_fail={1:.2f}".format(key,float(values[patternIndexForPatternFail*2]) / floatDataPostIntervalInSec)
             logStats[key][patternIndexForPatternFail*2] = 0
+            # tempLogStatsToPost[key] += JAPrepareStatsToPost(key,patternIndexForPatternFail,"fail",values[patternIndexForPatternFail*2], values[patternIndexForPatternFail*2+1])
             postData = True
         if values[patternIndexForPatternCount*2+1] == True:
             tempLogStatsToPost[key] += ",{0}_count={1:.2f}".format(key, float(values[patternIndexForPatternCount*2])/ floatDataPostIntervalInSec)
             logStats[key][patternIndexForPatternCount*2] = 0
+            # tempLogStatsToPost[key] += JAPrepareStatsToPost(key,patternIndexForPatternCount,"count",values[patternIndexForPatternCount*2], values[patternIndexForPatternCount*2+1])
             postData = True
-            
+
         if values[patternIndexForPatternSum*2] > 0 :
             postData = True
             ### sample count is non-zero, stats has value to post
@@ -1650,11 +1721,12 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             sampleCountList = list(logStats[key][logStatsKeyValueIndexEven])
 
                                         if debugLevel > 3:
-                                            print("DEBUG-4 JAProcessLogFile() processing line with PatternDelta, PatternSum or PatternAverage, search result:{0}\n Previous values:{1}".format(tempResults, tempStats))
+                                            print("DEBUG-4 JAProcessLogFile() processing line with PatternDelta, PatternSum or PatternAverage, search result:{0}\n Previous values:{1}".format(myResults, tempStats))
                                         tempKey = ''
                                         appendCurrentValueToList = False
                                         indexToCurrentKeyInTempStats = 0
                                         groupNumber = 0
+
 
                                         ### if pattern matches to single instance in line, len(myResults) will be 1
                                         ###     myResults is of the form = [ (key1, value1, key2, value2....)]
@@ -1664,6 +1736,11 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
                                             tempResults = myResults.pop(0)
 
+                                            if values[patternIndexForCSVVariableNames] != None:
+                                                CSVVariableNames = list(logStats[key][patternIndexForCSVVariableNames*2])
+                                            else:
+                                                CSVVariableNames = None
+
                                             for tempResult in tempResults:
                                                 groupNumber += 1
                                                 if values[patternIndexForSkipGroups] != None:
@@ -1671,25 +1748,32 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                     if ( str(groupNumber) in values[patternIndexForSkipGroups]):
                                                         continue
                                                 
-                                                if numStats % 2 == 0:
-
-                                                    ### if current name has space, replace it with '_'
-                                                    tempResult = re.sub('\s','_',tempResult)
+                                                ### if line in CSV format, use the variable names defined in config file
+                                                if values[patternIndexForCSVVariableNames] != None:
+                                                    ### log line is in CSV format, each field contains data
+                                                    tempResultContainsValue = True
+                                                    try:
+                                                        if CSVVariableNames[groupNumber-1] != None:
+                                                            currentVariableName = CSVVariableNames[groupNumber-1]
+                                                        else:
+                                                            currentVariableName = 'GroupNumber{0}'.format(groupNumber-1)
+                                                    except:
+                                                        currentVariableName = 'GroupNumber{0}'.format(groupNumber)
 
                                                     ### if variable prefix is present, prefix that to current key
                                                     if variablePrefix != None :
-                                                        tempResult = '{0}_{1}'.format( variablePrefix, tempResult)
+                                                        currentVariableName = '{0}_{1}'.format( variablePrefix, currentVariableName)
 
                                                     ### if label is present, prefix that to updated current key
                                                     ### this format of :<label>: needs to match the pattern searched
                                                     ###  in JASaveStats.py
                                                     if labelPrefix != None:
-                                                        tempResult = ':{0}:{1}'.format( labelPrefix, tempResult)
+                                                        currentVariableName = ':{0}:{1}'.format( labelPrefix, currentVariableName)
 
                                                     ### if current key is NOT present in list, append it
                                                     # if len(tempStats) <= numStats :
                                                     try:
-                                                        tempIndexToCurrentKeyInTempStats = tempStats.index( tempResult)
+                                                        tempIndexToCurrentKeyInTempStats = tempStats.index( currentVariableName)
                                                         if tempIndexToCurrentKeyInTempStats >= 0 :
                                                             appendCurrentValueToList = False
                                                             ### in order to store key/value pair associated with variable prefefix
@@ -1700,13 +1784,53 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                         ### value is NOT present in tempStats list
                                                         appendCurrentValueToList = True
                                                         ### current tempResult is not yet in the list, append it
-                                                        tempStats.append(tempResult)
+                                                        tempStats.append(currentVariableName)
                                                         if index == patternIndexForPatternAverage :
                                                             sampleCountList.append(1)
 
                                                     ### save the key name, this is used to make a combined key later <serviceName>_<key>
-                                                    tempKey = tempResult
+                                                    tempKey = currentVariableName
+
                                                 else:
+                                                    if numStats % 2 == 0:
+                                                        tempResultContainsValue = False
+                                                        ### if current name has space, replace it with '_'
+                                                        currentVariableName = re.sub('\s','_',tempResult)
+                                                        ### if variable prefix is present, prefix that to current key
+                                                        if variablePrefix != None :
+                                                            currentVariableName = '{0}_{1}'.format( variablePrefix, currentVariableName)
+
+                                                        ### if label is present, prefix that to updated current key
+                                                        ### this format of :<label>: needs to match the pattern searched
+                                                        ###  in JASaveStats.py
+                                                        if labelPrefix != None:
+                                                            currentVariableName = ':{0}:{1}'.format( labelPrefix, currentVariableName)
+
+                                                        ### if current key is NOT present in list, append it
+                                                        # if len(tempStats) <= numStats :
+                                                        try:
+                                                            tempIndexToCurrentKeyInTempStats = tempStats.index( currentVariableName)
+                                                            if tempIndexToCurrentKeyInTempStats >= 0 :
+                                                                appendCurrentValueToList = False
+                                                                ### in order to store key/value pair associated with variable prefefix
+                                                                ###    need to find the index at which that variablePrefix_key is present
+                                                                ##     in the list and use that to aggregate the value
+                                                                indexToCurrentKeyInTempStats = tempIndexToCurrentKeyInTempStats                                                        
+                                                        except ValueError:
+                                                            ### value is NOT present in tempStats list
+                                                            appendCurrentValueToList = True
+                                                            ### current tempResult is not yet in the list, append it
+                                                            tempStats.append(currentVariableName)
+                                                            if index == patternIndexForPatternAverage :
+                                                                sampleCountList.append(1)
+
+                                                        ### save the key name, this is used to make a combined key later <serviceName>_<key>
+                                                        tempKey = currentVariableName
+
+                                                    else:
+                                                        tempResultContainsValue = True
+
+                                                if tempResultContainsValue == True:
                                                     ### find out the nature of the value, number or string
                                                     try:
                                                         float(tempResult)
@@ -1774,8 +1898,39 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 else:
                                     try:
                                         if re.search(searchPattern, tempLine) != None:
-                                            ### matching pattern found, increment the count 
-                                            logStats[key][logStatsKeyValueIndexEven] += 1
+                                            ### matching pattern found for pass, fail, count type of tracking
+
+                                            ### if PatternLabel is present, need to prepare variable name with lable value
+                                            ###  in the form <label> and track the values as list
+                                            ###  for the index logStats[key][logStatsKeyValueIndexEven]
+                                            if ( labelPrefix ) != None:
+                                                tempListVarName = ':{0}:'.format( labelPrefix)
+                                                ### prepare variable name to be used in list
+                                                numStats = 0
+                                                ### make a copy of current list values
+                                                tempListStats = list(logStats[key][logStatsKeyValueIndexOdd])
+                                                if debugLevel > 3:
+                                                    print("DEBUG-4 JAProcessLogFile() processing line with PatternLabel:{0}, tempListStats:{1}".format(tempListVarName, tempListStats))
+                                                
+                                                appendCurrentValueToList = False
+                                                indexToCurrentKeyInTempStats = 0
+
+                                                try:
+                                                    tempIndexToCurrentKeyInTempStats = tempListStats.index( tempListVarName )
+                                                    if tempIndexToCurrentKeyInTempStats >= 0 :
+                                                        ### this is the case of couting pass, fail, count
+                                                        ###   increment conut
+                                                        tempListStats[tempIndexToCurrentKeyInTempStats+1] += 1
+
+                                                except ValueError:
+                                                    ### value is NOT present in tempStats list, append it
+                                                    tempListStats.append(tempListVarName)
+                                                    ## start with stats value of 1 for this label
+                                                    tempListStats.append(1)
+
+                                            else:
+                                                ### matching pattern found without any label, increment the count 
+                                                logStats[key][logStatsKeyValueIndexEven] += 1
 
                                             if debugLevel > 3:
                                                 print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}'.format(
