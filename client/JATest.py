@@ -97,7 +97,9 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
             msg = "Stats client2 total key1 {0} dummy1 total key2 {1:.2f} key3 {2:.2f} dummy3\n".format( rampupCount+30, 200, (rampupCount+30)/2 )
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
-
+            msg = "CSV,client2,{0},{1:.2f},{2:.2f}\n".format( rampupCount+30, rampupCount, (rampupCount+30)/2 )
+            JAGlobalLib.LogMsg(msg, testLogFileName, True)
+            
         elif count % 3 > 0:
             JAGlobalLib.LogMsg('TestMsg Count\n', testLogFileName, True)
     
