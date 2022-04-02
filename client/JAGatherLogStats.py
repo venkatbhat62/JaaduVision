@@ -885,7 +885,7 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
         try:
             # post interval elapsed, post the data to web server
             returnResult = requests.post(
-                webServerURL, data, verify=verifyCertificate, headers=headers)
+                webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
             resultText = returnResult.text
         except requests.exceptions.RequestException as err:
             resultText = ["500 requests.post() Error posting data to web server {0}, exception raised","error:{1}".format(webServerURL, err)]
@@ -1269,7 +1269,7 @@ def JAPostAllDataToWebServer():
 
                 try:
                     # post interval elapsed, post the data to web server
-                    returnResult = requests.post(webServerURL, data, verify=verifyCertificate, headers=headers)
+                    returnResult = requests.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
                     resultText = returnResult.text
                 
                 except requests.exceptions.RequestException as err:
@@ -1838,6 +1838,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                     except:
                                                         tempResultIsNumber = False
 
+                                                    storeDeltaValue = True
+
                                                     ## value portion of key/ value pair
                                                     ## if index is patternIndexForPatternDelta, tempResult is cumulative value, need to subtract previous sample
                                                     ## value to get delta value and store it as current sample value.
@@ -1852,32 +1854,37 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                                 ### previous value present, subtract prev value from current value to get delta value for current sample
                                                                 tempResult = float(tempResult) - previousSampleValues[serviceNameSubKey]
                                                             ## if string, leave the value as is
+                                                        else:
+                                                            ### NO previous value, thus, delta value can't be computed for this sample. 
+                                                            ### dDO NOT store this sample value
+                                                            storeDeltaValue = False
 
                                                         ### store current sample value as is as previous sample
                                                         previousSampleValues[serviceNameSubKey] = tempResultToStore
                                                     
-                                                    if appendCurrentValueToList == True:
-                                                        if tempResultIsNumber == True:
-                                                            tempStats.append(float(tempResult))
+                                                    if storeDeltaValue == True:
+                                                        if appendCurrentValueToList == True:
+                                                            if tempResultIsNumber == True:
+                                                                tempStats.append(float(tempResult))
+                                                            else:
+                                                                ### vlaue is string type
+                                                                tempStats.append(tempResult)
+
+                                                            ### if working average type metrics, set sample count in the list corresponding to 
+                                                            ###     current key in key/value list
+                                                            if index == patternIndexForPatternAverage :
+                                                                sampleCountList.append(1)
+
                                                         else:
-                                                            ### vlaue is string type
-                                                            tempStats.append(tempResult)
+                                                            if tempResultIsNumber == True:
+                                                                ### add to existing value
+                                                                tempStats[indexToCurrentKeyInTempStats+1] += float(tempResult)
+                                                            ### if string type, leave it as is
 
-                                                        ### if working average type metrics, set sample count in the list corresponding to 
-                                                        ###     current key in key/value list
-                                                        if index == patternIndexForPatternAverage :
-                                                            sampleCountList.append(1)
-
-                                                    else:
-                                                        if tempResultIsNumber == True:
-                                                            ### add to existing value
-                                                            tempStats[indexToCurrentKeyInTempStats+1] += float(tempResult)
-                                                        ### if string type, leave it as is
-
-                                                        ### if working average type metrics, increment sample count in the list corresponding to 
-                                                        ###     current key in key/value list
-                                                        if index == patternIndexForPatternAverage :
-                                                            sampleCountList[indexToCurrentKeyInTempStats+1] += 1
+                                                            ### if working average type metrics, increment sample count in the list corresponding to 
+                                                            ###     current key in key/value list
+                                                            if index == patternIndexForPatternAverage :
+                                                                sampleCountList[indexToCurrentKeyInTempStats+1] += 1
                                                 numStats += 1
 
                                         ### for average type, sample count is incremented based for ecach prefix variable key values   
