@@ -810,6 +810,9 @@ logLinesToPost = defaultdict(dict)
 
 ### contains previous sample value of PatternDelta type, key is derived as <serviceName>_<paramName>_delta
 previousSampleValues = defaultdict(float)
+### first time, below will be None, aftr that will have value True
+previousSampleValuesPresent = defaultdict(dict)
+
 
 ### contains number of log lines collected per key, key is derived as <serviceName>
 logLinesCount = defaultdict(int)
@@ -1849,7 +1852,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                             tempResultToStore = float(tempResult)
                                                         else:
                                                             tempResultToStore = tempResult
-                                                        if previousSampleValues[serviceNameSubKey] != None:
+                                                        if previousSampleValuesPresent[serviceNameSubKey] == True :
                                                             if tempResultIsNumber == True:
                                                                 ### previous value present, subtract prev value from current value to get delta value for current sample
                                                                 tempResult = float(tempResult) - previousSampleValues[serviceNameSubKey]
@@ -1858,6 +1861,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                             ### NO previous value, thus, delta value can't be computed for this sample. 
                                                             ### dDO NOT store this sample value
                                                             storeDeltaValue = False
+                                                            previousSampleValuesPresent[serviceNameSubKey] = True
 
                                                         ### store current sample value as is as previous sample
                                                         previousSampleValues[serviceNameSubKey] = tempResultToStore
