@@ -1224,8 +1224,8 @@ def JAGetVirtualMemory(fields, recursive=False):
                                 comma = ','
 
                     if 'memused' in fields:
-                        if memTotal != None and memFree != None:
-                            myStats = myStats + '{0}memused={1}'.format(comma, (memTotal - memFree))      
+                        if memTotal != None and memFree != None and memTotal > 0 :
+                            myStats = myStats + '{0}memused={1:f}'.format(comma, (memTotal - memFree)/memTotal )       
 
             except OSError as err:
                 errorMsg = "ERROR JAGetSwapMemory() error reading/parsing contents of /proc/meminfo {0}".format(err)
