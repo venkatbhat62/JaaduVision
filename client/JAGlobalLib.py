@@ -304,8 +304,26 @@ def JAGetOSInfo(pythonVersion, debugLevel):
                             OSName = 'rhel'
 
             except:
-                print("ERROR JAGetOSInfo() Can't read file: /etc/os-release or /etc/system-release")
-                tempOSReease = ''
+                try:
+                    with open("/etc/redhat-release", "r") as file:
+                        while True:
+                            tempLine = file.readline()
+                            if not tempLine:
+                                break
+                            if len(tempLine)<5:
+                                continue
+                            tempLine = re.sub('\n$','',tempLine)
+                            ### line is of the form: red hat enterprise linux server release 6.8 (santiago)
+                            ###                                                             \d.\d <-- OSVersion
+                            myResults = re.search( r'Red Hat (.*) (\d.\d) (.*)', tempLine)
+                            if myResults != None:
+                                tempOSVersion = myResults.group(2)
+                                OSName = 'rhel'
+                except:
+                    tempOSVersion = ''
+                    OSName = ''
+                    print("ERROR JAGetOSInfo() Can't read file: /etc/os-release or /etc/system-release")
+                    tempOSReease = ''
 
     elif OSType == 'Windows' :
         if pythonVersion >= (3,7) :
