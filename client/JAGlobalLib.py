@@ -40,6 +40,7 @@ def JAGetDayOfMonth( deltaSeconds ):
 
 def LogMsg(logMsg, fileName, appendDate=True):
     if fileName == None:
+        print(logMsg)
         return 0
         
     if appendDate == True:
