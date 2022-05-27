@@ -7,6 +7,7 @@
     Author: havembha@gmail.com, 2021-06-28
 """
 import datetime, platform, re, sys, os
+import time
 
 JACPUUsageFileName = 'JACPUUsage.data'
 
@@ -24,6 +25,11 @@ def UTCDateForFileName():
 
 def UTCTime():
     return datetime.datetime.utcnow().strftime("%H:%M:%S")
+
+def JAConvertStringTimeToTime( dateTimeString, format):
+    datetime_obj = time.strptime(dateTimeString, format)
+    timeInSeconds = time.mktime(datetime_obj)
+    return timeInSeconds
 
 def JAGetTime( deltaSeconds ):
     tempTime = datetime.datetime.now()
