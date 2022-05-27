@@ -19,3 +19,5 @@ print("current time:{0}, one min back time:{1}".format( JAGlobalLib.JAGetTime(0)
 
 print("day of month:{0}".format( JAGlobalLib.JAGetDayOfMonth(0)))
 
+print("epochTime:{0}, tzinfo:{1}".format(time.gmtime(0), time.tzname))
+print( "time:{0}".format(JAGlobalLib.JAConvertStringTimeToTime("1970-01-01 00:00:00.100000-06:00", "%Y-%m-%d %H:%M:%S.%f%z" ) ) )
