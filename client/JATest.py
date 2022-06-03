@@ -51,6 +51,7 @@ def JATestExit(reason):
 startTimeInSec = time.time()
 # seed random number generator
 seed(1)
+traceId = 1
 
 while ( time.time() - startTimeInSec) < testDurationInSec:
     if simulationType == 'random':
@@ -69,6 +70,8 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
     time.sleep( sleepTimeInSec)
 
     rampupCount = 0
+    
+
     ### log messages to log file
     for count in range( int(sleepTimeInSec / 8) ):
         JAGlobalLib.LogMsg('TestMsg Pass\n', testLogFileName, True)
@@ -99,7 +102,11 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
             msg = "CSV,client2,{0},{1:.2f},{2:.2f}\n".format( rampupCount+30, rampupCount, (rampupCount+30)/2 )
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
-            
+            msg = "Trace {0:016x} Service1 test trace line {1}\n".format(traceId, count)
+            JAGlobalLib.LogMsg(msg, testLogFileName, True)
+            msg = "Trace {0:016x} Service2 account=1234 Name=JaaduVision test trace line {1}\n".format(traceId, count)
+            JAGlobalLib.LogMsg(msg, testLogFileName, True)
+            traceId += count
         elif count % 3 > 0:
             JAGlobalLib.LogMsg('TestMsg Count\n', testLogFileName, True)
     

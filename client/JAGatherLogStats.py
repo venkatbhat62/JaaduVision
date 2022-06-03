@@ -40,6 +40,10 @@ Author: havembha@gmail.com, 2021-07-18
      During the time retry is in progress, it will create a file JAGatherLogStats.RetryStartTime with time stamp
      If this file has time stamp is more recent than last 24 * dataCollectDurationInSec, retry will be skipped. (prev retry instance still running)
      
+2022-05-28 havembha@gmail.com 01.20.01
+    Added capability to post events to webserver with zipkin option so that the events are posted to zipkin
+      This data is to show the trace using tempo and grafana
+
 """
 import json
 import platform
@@ -55,8 +59,8 @@ import signal
 
 from JAGlobalLib import LogMsg
 
-# Major 01, minor 00, buildId 01
-JAVersion = "01.12.00"
+# Major 01, minor 20, buildId 01
+JAVersion = "01.20.01"
 
 ### number of patterns that can be searched in log line per Service
 patternIndexForPriority = 0
@@ -72,12 +76,36 @@ patternIndexForVariablePrefixGroup = 8
 patternIndexForPatternLog = 9
 patternIndexForLabel = 10
 patternIndexForLabelGroup = 11
+
+### skip posting stats or skip posting words in log line for below regex groups if dataMaskEnabled is set to True
 patternIndexForSkipGroups = 12
+
 patternIndexForDBDetails = 13
 patternIndexForCSVVariableNames = 14
+# below are used for trace feature
+patternIndexForTrace   = 15
+patternIndexForTraceId = 16
+patternIndexForDurationGroup = 17
+patternIndexForDurationMultiplier = 18
+patternIndexForTimeStampGroup = 19
+patternIndexForTimeStampFormat = 20
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
-maxPatternIndex = 15
+maxPatternIndex = 21
+
+### while processing log line, process each line when index match to below list item
+### this is to speed up the processing
+processPatternIndexsList = [
+    patternIndexForPatternPass,
+    patternIndexForPatternFail,
+    patternIndexForPatternCount,
+    patternIndexForPatternSum,
+    patternIndexForPatternAverage,
+    patternIndexForPatternDelta,
+    patternIndexForPatternLog,
+    patternIndexForTrace,
+    patternIndexForCSVVariableNames
+]
 
 ### index used while processing Execute command spec
 indexForCommand = 0
@@ -152,6 +180,7 @@ retryDurationInHours = None
 ### send 100 lines at a time to web serve while retrying
 retryLogStatsBatchSize = 100
 
+traceLocalId = 0
 
 ### YYYYMMDD will be appended to this name to make daily file where retry stats are kept
 retryLogStatsFileNamePartial = "JARetryLogStats."
@@ -170,6 +199,15 @@ DBDetails['DBType'] = "Prometheus"
 ###  when log lines exceed this count, from 11th line till last line withing the sampling interval,
 ###    lines will be counted and reported as "..... XXX more lines...."
 maxLogLines = None
+
+### by default, mask data in log lines while posting to web server
+dataMaskEnabled = None
+
+### max log traces per service, per sampling interval
+### this is to protect from faulty condition, to avoid overload.
+### set this to a high enough number to collect trace in normal operation
+maxLogTraces = None
+
 # list contains the max cpu usage levels for all events, priority 1,2,3 events
 # index 0 - for all events, index 1 for priority 1, index 3 for priority 3
 maxCPUUsageForEvents = [0, 0, 0, 0]
@@ -188,6 +226,11 @@ logStats = defaultdict(dict)
 # key1 = serviceName (similar to key1 of logStats)
 # key2 = logFileName
 logLines = defaultdict(dict)
+
+# contains trace info for important log lines
+# log lines are also added to logLines so that they get posted to Loki
+# in addition, the trace info is stored in logTraces so that it gets posted to zipkin
+logTraces = defaultdict(dict)
 
 # take current timestamp
 statsStartTimeInSec = statsEndTimeInSec = time.time()
@@ -322,7 +365,7 @@ def JAGatherEnvironmentSpecs(key, values):
     # declare global variables
     global dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageForEvents, maxProcessingTimeForAllEvents
     global webServerURL, disableWarnings, verifyCertificate, debugLevel, maxLogLines, saveLogsOnWebServer
-    global DBDetails, retryDurationInHours, retryLogStatsBatchSize
+    global DBDetails, retryDurationInHours, retryLogStatsBatchSize, maxLogTraces, dataMaskEnabled
 
     for myKey, myValue in values.items():
         if debugLevel > 1:
@@ -369,9 +412,20 @@ def JAGatherEnvironmentSpecs(key, values):
                     debugLevel = int(myValue)
 
         elif myKey == 'MaxLogLines':
-            if maxLogLines == 0:
+            if maxLogLines == 0 or maxLogLines == None :
                 if myValue != None:
                     maxLogLines = int(myValue)
+        elif myKey == 'maxLogTraces':
+            if maxLogTraces == 0 or maxLogTraces == None:
+                if myValue != None:
+                    maxLogTraces = int(myValue)
+        elif myKey == 'DataMaskEnabled':
+            if dataMaskEnabled == None:
+                if myValue != None:
+                    if myValue == 'False' or myValue == False:
+                        dataMaskEnabled = False
+                    if myValue == 'True' or myValue == True:
+                        dataMaskEnabled = True
 
         elif myKey == 'RetryDurationInHours':
             if retryDurationInHours == None:
@@ -546,7 +600,9 @@ try:
             maxCPUUsageForEvents[3] = 50
         if maxLogLines == None:
             maxLogLines = 10
-            
+        if maxLogTraces == None:
+            maxLogTraces = 100
+        
         if statsLogFileName == None:
             statsLogFileName = "JAGatherLogStats.log"
         if cacheLogFileName == None:
@@ -606,7 +662,7 @@ try:
                 tempPatternPresent[patternIndexForPatternDelta] = True
 
             if value.get('Priority') != None:
-                tempPatternList[patternIndexForPriority] = value.get('Priority')
+                tempPatternList[patternIndexForPriority] = int(value.get('Priority'))
 
             if value.get('PatternLog') != None:
                 tempPatternList[patternIndexForPatternLog] = str(value.get('PatternLog')).strip()
@@ -617,7 +673,7 @@ try:
                 tempPatternPresent[patternIndexForVariablePrefix] = True
 
             if value.get('PatternVariablePrefixGroup') != None:
-                tempPatternList[patternIndexForVariablePrefixGroup] = str(value.get('PatternVariablePrefixGroup')).strip()
+                tempPatternList[patternIndexForVariablePrefixGroup] = int(str(value.get('PatternVariablePrefixGroup')).strip())
                 tempPatternPresent[patternIndexForVariablePrefixGroup] = True
 
             if value.get('PatternLabel') != None:
@@ -625,11 +681,11 @@ try:
                 tempPatternPresent[patternIndexForLabel] = True
 
             if value.get('PatternLabelGroup') != None:
-                tempPatternList[patternIndexForLabelGroup] = str(value.get('PatternLabelGroup')).strip()
+                tempPatternList[patternIndexForLabelGroup] = int(str(value.get('PatternLabelGroup')).strip())
                 tempPatternPresent[patternIndexForLabelGroup] = True
 
             if value.get('PatternSkipGroups') != None:
-                ## the value is in CSV format, with one or more values
+                ## DO NOT post values of these regex groups
                 tempCSVString = str(value.get('PatternSkipGroups')).strip()
                 tempPatternList[patternIndexForSkipGroups] = list(tempCSVString.split(","))
                 tempPatternPresent[patternIndexForSkipGroups] = True
@@ -639,6 +695,36 @@ try:
                 tempCSVString = str(value.get('PatternCSVVariableNames')).strip()
                 tempPatternList[patternIndexForCSVVariableNames] = list(tempCSVString.split(","))
                 tempPatternPresent[patternIndexForCSVVariableNames] = True
+
+            if value.get('PatternTrace') != None:
+                ## need to send current log line with trace data
+                tempPatternList[patternIndexForTrace] = str(value.get('PatternTrace')).strip()
+                tempPatternPresent[patternIndexForTrace] = True
+
+            if value.get('PatternTraceIdGroup') != None:
+                ## need to send current log line with trace data
+                tempPatternList[patternIndexForTraceId] = int(str(value.get('PatternTraceIdGroup')).strip())
+                tempPatternPresent[patternIndexForTraceId] = True
+
+            if value.get('PatternDurationGroup') != None:
+                ## need to send current log line with trace data
+                tempPatternList[patternIndexForDurationGroup] = int(str(value.get('PatternDurationGroup')).strip())
+                tempPatternPresent[patternIndexForDurationGroup] = True
+
+            if value.get('PatternDurationMultiplier') != None:
+                ## need to send current log line with trace data
+                tempPatternList[patternIndexForDurationMultiplier] = int(str(value.get('PatternDurationMultiplier')).strip())
+                tempPatternPresent[patternIndexForDurationMultiplier] = True
+
+            if value.get('PatternTraceTimeGroup') != None:
+                ## need to send current log line with trace data
+                tempPatternList[patternIndexForTimeStampGroup] = int(str(value.get('PatternTraceTimeGroup')).strip())
+                tempPatternPresent[patternIndexForTimeStampGroup] = True
+
+            if value.get('TimeStampFormat') != None:
+                ## need to send current log line with trace data
+                tempPatternList[patternIndexForTimeStampFormat] = str(value.get('TimeStampFormat')).strip()
+                tempPatternPresent[patternIndexForTimeStampFormat] = True
 
             ### if DBDetails available per service definition, store that.
             if value.get('DBDetails') != None:
@@ -711,15 +797,35 @@ try:
             logStats[key][patternIndexForLabelGroup*2] = None
             logStats[key][patternIndexForLabelGroup*2+1] = tempPatternPresent[patternIndexForLabelGroup]
 
-            logStats[key][patternIndexForSkipGroups*2] = None
+            logStats[key][patternIndexForSkipGroups*2] = tempPatternList[patternIndexForSkipGroups]
             logStats[key][patternIndexForSkipGroups*2+1] = tempPatternPresent[patternIndexForSkipGroups]
 
             ### store DBDetails spec in logStats[key] so that it can be referred in JAPostAllDataToWebServer()
             logStats[key][patternIndexForDBDetails*2] = tempPatternList[patternIndexForDBDetails ]
             logStats[key][patternIndexForDBDetails*2+1] = tempPatternPresent[patternIndexForDBDetails]
 
+            logStats[key][patternIndexForTrace*2] = None
+            logStats[key][patternIndexForTrace*2+1] = tempPatternPresent[patternIndexForTrace]
+
+            logStats[key][patternIndexForTraceId*2] = None
+            logStats[key][patternIndexForTraceId*2+1] = tempPatternPresent[patternIndexForTraceId]
+
+            logStats[key][patternIndexForDurationGroup*2] = None
+            logStats[key][patternIndexForDurationGroup*2+1] = tempPatternPresent[patternIndexForDurationGroup]
+
+            logStats[key][patternIndexForDurationMultiplier*2] = None
+            logStats[key][patternIndexForDurationMultiplier*2+1] = tempPatternPresent[patternIndexForDurationMultiplier]
+
+            logStats[key][patternIndexForTimeStampGroup*2] = None
+            logStats[key][patternIndexForTimeStampGroup*2+1] = tempPatternPresent[patternIndexForTimeStampGroup]
+
+            logStats[key][patternIndexForTimeStampFormat*2] = None
+            logStats[key][patternIndexForTimeStampFormat*2+1] = tempPatternPresent[patternIndexForTimeStampFormat]
+
             ### initialize logLines[key] list to empty list
             logLines[key] = []
+            # initialize logTraces[key] list to empty list
+            logTraces[key] = []
 
         ### process execute command section
         ### Execute:
@@ -808,6 +914,9 @@ logStatsToPost = defaultdict(dict)
 ### has key, logline pairs of logs to be posted
 logLinesToPost = defaultdict(dict)
 
+### has key, logTrace pairs of logs to be posted
+logTracesToPost = defaultdict(dict)
+
 ### contains previous sample value of PatternDelta type, key is derived as <serviceName>_<paramName>_delta
 previousSampleValues = defaultdict(float)
 ### first time, below will be None, aftr that will have value True
@@ -816,6 +925,9 @@ previousSampleValuesPresent = defaultdict(dict)
 
 ### contains number of log lines collected per key, key is derived as <serviceName>
 logLinesCount = defaultdict(int)
+
+### contains number of log traces collected per key, key is derived as <serviceName>
+logTracesCount = defaultdict(int)
 
 # data to be posted to the web server
 # pass fileName containing thisHostName and current dateTime in YYYYMMDD form
@@ -840,6 +952,18 @@ logLinesToPost['componentName'] = componentName
 logLinesToPost['platformName'] = platformName
 logLinesToPost['siteName'] = siteName
 logLinesToPost['environment'] = environment
+
+# data to be posted to web server for trace
+logTracesToPost['jobName'] = 'zipkin'
+logTracesToPost['fileName'] = thisHostName + \
+    ".LogLines." + JAGlobalLib.UTCDateForFileName()
+logTracesToPost['hostName'] = thisHostName
+logTracesToPost['debugLevel'] = debugLevel
+logTracesToPost['componentName'] = componentName
+logTracesToPost['platformName'] = platformName
+logTracesToPost['siteName'] = siteName
+logTracesToPost['environment'] = environment
+
 
 ### if log lines are to be saved on web server, send that parameter as part of posting
 ### this allows saving controlld by client itself
@@ -1019,7 +1143,7 @@ Return values:
 
 def JAPostAllDataToWebServer():
     global logStats, debugLevel, useRequests
-    global webServerURL, verifyCertificate, logStatsToPost, logLinesToPost, logEventPriorityLevel
+    global webServerURL, verifyCertificate, logStatsToPost, logLinesToPost, logTracesToPost, logEventPriorityLevel
     timeStamp = JAGlobalLib.UTCDateTime()
     if debugLevel > 1:
         print('DEBUG-2 JAPostAllDataToWebServer() ' +
@@ -1243,8 +1367,9 @@ def JAPostAllDataToWebServer():
             # use temporary buffer for each posting
             tempLogLinesToPost = logLinesToPost.copy()
 
-            tempLogLinesToPost[key] = 'timeStamp=' + timeStamp
-
+            # tempLogLinesToPost[key] = 'timeStamp=' + timeStamp
+            tempLogLinesToPost[key] = ''
+            
             ### values has log files in list
             for line in lines:
                 # line = line.rstrip('\n')
@@ -1315,6 +1440,96 @@ def JAPostAllDataToWebServer():
 
         ### print result
         errorMsg = "INFO JAPostAllDataToWebServer() DBType:|Loki|, posted {0} log lines to web server: {1}\n".format(numPostings, webServerURL)
+        print(errorMsg)
+        LogMsg(errorMsg, statsLogFileName, True)
+
+
+    numPostings = 0
+    logStatsPostSuccess = True
+
+    if maxLogTraces > 0:
+        ### trace collection is enabled, post the traces collected
+        # key - service name
+        # list - log traces associated with that service name
+        for key, traces in logTraces.items():
+            ### if no value to post, skip it
+            if len(traces) == 0:
+                continue
+
+            # use temporary buffer for each posting
+            tempLogTracesToPost = logTracesToPost.copy()
+
+            tempLogTracesToPost[key] = ''
+
+            for trace in traces:
+                # line = line.rstrip('\n')
+                tempLogTracesToPost[key] += trace
+
+            if int(logTracesCount[key]) > maxLogTraces:
+                ### show total number of lines seen
+                ###  lines exceeding maxLogLines are not collected in logLines[]
+                tempLogTracesToPost[key] += ',' + "..... {0} total traces in this sampling interval .....".format( logTracesCount[key] )
+            logTracesCount[key] = 0
+
+            ### empty the list
+            logTraces[key] = []
+
+            if debugLevel > 1:
+                print('DEBUG-2 JAPostAllDataToWebServer() logLinesToPost: {0}'.format(tempLogTracesToPost))
+
+            data = json.dumps(tempLogTracesToPost)
+
+            if useRequests == True:
+                import requests
+
+                if disableWarnings == True:
+                    requests.packages.urllib3.disable_warnings()
+
+                try:
+                    # post interval elapsed, post the data to web server
+                    returnResult = requests.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
+                    resultText = returnResult.text
+                
+                except requests.exceptions.RequestException as err:
+                    resultText = ["500 ERROR requests.post() Error posting traces to web server, exception raised","error:{0}".format(err)]
+            else:
+                try:
+                    result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
+                                            "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    resultText = result.stdout.decode('utf-8').split('\n')
+                    
+                except Exception as err:
+                    resultText = ["500 subprocess.run() Error posting trace to web server, exception raised","error:{0}".format(err)]
+
+            resultLength = len(resultText)
+            if resultLength > 1 :
+                try:
+                    statusLine = resultText[resultLength-2]   
+                    if re.search(r'\[2..\]', statusLine) == None :
+                        if re.search(r'4\d\d |5\d\d ', statusLine) != None:
+                            logStatsPostSuccess = False 
+                        else:   
+                            matches = re.findall(r'Response \[2\d\d\]', resultText, re.MULTILINE)
+                            if len(matches) == 0:
+                                logStatsPostSuccess = False
+                except :
+                    logStatsPostSuccess = False
+            else:
+                logStatsPostSuccess = False
+            
+            if logStatsPostSuccess == True:
+                numPostings += 1
+                if debugLevel > 0:
+                    print('DEBUG-1 JAPostAllDataToWebServer() Posted traces to web server:|{0}|, with result:|{1}|'.format(webServerURL, resultText))
+
+            else:
+                errorMsg = 'ERROR JAPostAllDataToWebServer() error posting trace to web server:|{0}|, with result|{1}|'.format(webServerURL, resultText)
+                print(errorMsg)
+                LogMsg(errorMsg, statsLogFileName, True)
+                break
+
+        ### print result
+        errorMsg = "INFO JAPostAllDataToWebServer() DBType:|zipkin|, posted {0} trace lines to web server: {1}\n".format(numPostings, webServerURL)
         print(errorMsg)
         LogMsg(errorMsg, statsLogFileName, True)
 
@@ -1459,7 +1674,7 @@ def JAProcessCommands( logFileProcessingStartTime, debugLevel):
                     LogMsg(errorMsg, statsLogFileName, True)
 
 def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, gatherLogStatsEnabled, debugLevel):
-    global averageCPUUsage, thisHostName, logEventPriorityLevel
+    global averageCPUUsage, thisHostName, logEventPriorityLevel, processPatternIndexsList, traceLocalId
     logFileNames = JAGlobalLib.JAFindModifiedFiles(
         logFileName, startTimeInSec, debugLevel, thisHostName)
 
@@ -1478,15 +1693,23 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
             firstTime = True
         else:
             filePosition = int(logFileInfo[fileName].get('filePosition'))
-
-            # if the file was overwritten with same log file name,
-            # current file size can be less than filePosition store before
-            if os.path.getsize(fileName) < filePosition:
-                firstTime = True
-            else:
-                firstTime = False
-                file = logFileInfo[fileName].get('filePointer')
-                prevTimeInSec = logFileInfo[fileName].get('prevTime')
+            try:
+                # if the file was overwritten with same log file name,
+                # current file size can be less than filePosition store before
+                if os.path.getsize(fileName) < filePosition:
+                    firstTime = True
+                else:
+                    firstTime = False
+                    file = logFileInfo[fileName].get('filePointer')
+                    prevTimeInSec = logFileInfo[fileName].get('prevTime')
+            except OSError as err:
+                errorMsg = 'ERROR - JAProcessLogFile() Can not access logFile:| ' + fileName + \
+                    '|' + "OS error: {0}".format(err) + '\n'
+                print(errorMsg)
+                LogMsg(errorMsg, statsLogFileName, True)
+                # store error status so that next round, this will not be tried
+                logFileInfo[fileName]['filePosition'] = 'ERROR'
+                continue
 
         # first time, open the file
         if firstTime == True:
@@ -1580,9 +1803,9 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
                 # search for pass, fail, count, stats patterns of each service associated with this log file
                 for key, values in JAStatsSpec[logFileName].items():
-                    eventPriority = int(values[patternIndexForPriority])
+                    eventPriority = values[patternIndexForPriority]
 
-                    patternMatched = patternLogMatched = False
+                    patternMatched = patternLogMatched = patternTraceMatched = False
                     
                     if debugLevel > 3:
                         print('DEBUG-4 JAProcessLogFile() searching for patterns:{0}|{1}|{2}|{3}|{4}|{5}\n'.format(
@@ -1622,7 +1845,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         ###                                                ^ <-- variable prefix, group 2
                                         ###  use 2nd group value as variable prefix for the *_avrage metrics variable
                                         ###  PatternVariablePrefixGroup: 2
-                                        variablePrefix = myResults.group(int(values[patternIndexForVariablePrefixGroup]))
+                                        variablePrefix = myResults.group(values[patternIndexForVariablePrefixGroup])
                                     else:
                                         variablePrefix = myResults.group(1)
                             except re.error as err:
@@ -1653,7 +1876,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         ###                      ^^^ <-- label, group 1
                                         ###  use 1st group value as label this metrics
                                         ###  PatternLabelGroup: 1
-                                        labelPrefix = myResults.group(int(values[patternIndexForLabelGroup]))
+                                        labelPrefix = myResults.group(values[patternIndexForLabelGroup])
                                     else:
                                         labelPrefix = myResults.group(1)
                             except re.error as err:
@@ -1668,10 +1891,93 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         ### logStats[key] is indexed with twice the value
                         while index < len(values):
 
-                            if index == patternIndexForDBDetails or index == patternIndexForSkipGroups or index == patternIndexForPriority or index == patternIndexForVariablePrefix or index == patternIndexForVariablePrefixGroup or index == patternIndexForLabel or index == patternIndexForLabelGroup or values[index] == None:
+                            if index not in processPatternIndexsList or values[index] == None:
                                 index += 1
                                 continue
 
+                            ### process trace if enabled
+                            if index == patternIndexForTrace and patternTraceMatched == False and maxLogTraces > 0 :
+                                ### maxLogLines non-zero, logs collection is enabled for this host
+                                searchPattern = r'{0}'.format(values[index])
+                                ### search for matching PatternTrace regardless of whether stats type pattern is found or not.
+                                try:
+                                    myResults = re.findall( searchPattern, tempLine)
+                                    patternMatchCount =  len(myResults)
+                                    if myResults != None and patternMatchCount > 0 :
+                                        if int(logTracesCount[key]) < maxLogTraces:
+                                            groupNumber = 0
+                                            """
+                                            trace data to be posted to the web server is in the form
+                                            id=<number>,timestamp=<logTimeInMicroSec>,duration=<inMicroSec>,name=logFileName,serviceName=key
+                                            """
+                                            tempTraceLine = r'id={0},name={1},serviceName={2}'.format( traceLocalId, fileName, key)
+                                            traceLocalId += 1
+                                            tempLogLine = ''
+                                            tempSpace = ''
+                                            tempDuration = None
+                                            ### get current time in microseconds, default time for trace
+                                            tempTimeStamp = int(time.time() * 1000000)
+                                            ### if pattern matches to single instance in line, len(myResults) will be 1
+                                            ###     myResults is of the form = [ (key1, value1, key2, value2....)]
+                                            ### if pattern matches to multiple instances in line, len(myResults) will be > 1
+                                            while patternMatchCount > 0:
+                                                patternMatchCount -= 1
+
+                                                tempResults = myResults.pop(0)
+                                                for tempResult in tempResults:
+                                                    groupNumber += 1
+                                                    if values[patternIndexForSkipGroups] != None:
+                                                        ### if current group number is in skipGroup list, skip it
+                                                        if ( str(groupNumber) in values[patternIndexForSkipGroups]):
+                                                            tempResult = '_MASKED_'
+                                                            
+                                                    ### append current word to form original line (space added to separate words)
+                                                    tempLogLine = tempLogLine + r'{0}{1}'.format(tempSpace, tempResult)
+                                                    tempSpace = ' '
+                                                    if values[patternIndexForTraceId] == groupNumber :
+                                                        ### current tempResult is the traceid field
+                                                        tempTraceLine = tempTraceLine + r',traceId={0}'.format(tempResult)
+                                                    elif values[patternIndexForTimeStampGroup] == groupNumber:
+                                                        ### current tempResult is the timestamp field
+                                                        ### convert timestamp to microseconds since 1970-01-01 00:00:00
+                                                        ### format spec at https://www.tutorialspoint.com/python/time_strptime.htm
+                                                        traceTimeStamp = JAGlobalLib.JAConvertStringTimeToTime(tempResult, 
+                                                                            values[patternIndexForTimeStampFormat] )
+                                                        if ( traceTimeStamp == 0 ) :
+                                                            errorMsg = "ERROR Invalid TimeStampFormat:{0}".format(values[patternIndexForTimeStampFormat]) 
+                                                            print(errorMsg)
+                                                            LogMsg(errorMsg, statsLogFileName, True)
+                                                            ### DO NOT attempt to convert time next time
+                                                            values[patternIndexForTimeStampGroup] = None
+                                                        else:
+                                                            tempTimeStamp = traceTimeStamp
+                                            if tempDuration == None:
+                                                ### default to 1000 (1ms)
+                                                tempDuration = 1000
+                                            ### add timestamp and duration
+                                            tempTraceLine = tempTraceLine + r",timestamp={0},duration={1}\n".format(tempTimeStamp, tempDuration)
+
+                                            logTraces[key].append(tempTraceLine)
+                                            ### increment the logTracesCount
+                                            logTracesCount[key] += 1
+
+                                            ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
+                                            logLines[key].append(tempLogLine + '\n')
+                                            ### increment the logLinesCount
+                                            logLinesCount[key] += 1
+
+                                        ### do not search for any more trace patterns (trace line pattern matching stops at first match)
+                                        patternTraceMatched = True
+                                        
+                                except re.error as err:
+                                    errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
+                                    print(errorMsg)
+                                    LogMsg(errorMsg, statsLogFileName, True)
+                                    ### discard this pattern so that no need to check this again
+                                    values[index] = None
+                                    continue
+
+                            ### log line search
                             if index == patternIndexForPatternLog and patternLogMatched == False and maxLogLines > 0 :
                                 ### maxLogLines non-zero, logs collection is enabled for this host
                                 searchPattern = r'{0}'.format(values[index])
@@ -1684,7 +1990,10 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             logLines[key].append(tempLine)
                                         ### increment the logLinesCount
                                         logLinesCount[key] += 1
+                                        ### do not search for any more log patterns (log line pattern matching stops at first match)
                                         patternLogMatched = True
+                                        ### no more processing needed for the trace collection
+                                        
                                 except re.error as err:
                                     errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
                                     print(errorMsg)
@@ -1692,8 +2001,10 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                     ### discard this pattern so that no need to check this again
                                     values[index] = None
                                     continue
-
-                            elif patternMatched != True:
+                            
+                            ### current index to values[] is not trace, not log
+                            ###  continue search if log and trace not matched yet
+                            if patternMatched != True and patternTraceMatched != True and patternLogMatched != True :
                                 logStatsKeyValueIndexEven = index * 2
                                 logStatsKeyValueIndexOdd = logStatsKeyValueIndexEven + 1
                                 
@@ -1956,7 +2267,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         continue
                             
                             ## if both log pattern and stats pattern matched, get out of the while loop
-                            if patternMatched == True and patternLogMatched == True:
+                            if patternMatched == True and (patternLogMatched == True or patternTraceMatched == True):
                                 break
                             else:
                                 ### increment index so that search continues with next pattern

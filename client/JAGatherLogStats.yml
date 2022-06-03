@@ -119,11 +119,15 @@ Environment:
      ### save logs on web server (local cache, in addition to sending to loki)
      SaveLogsOnWebServer: True
      #WebServerURL: https://192.168.1.221:443/cgi-bin/try6.py
+     MaxLogTraces: 200
+     DataMaskEnabled: False
    Test:
      ## test environment uses the values defined under "All" environment for the variables WebServerURL, DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
      HostName: (...)(t)(...)([0-9][0-9])
      ### save logs on web server (local cache, in addition to sending to loki)
      SaveLogsOnWebServer: True
+     MaxLogTraces: 200
+     DataMaskEnabled: False
    UAT:
      ## UAT environment uses the values defined under "All" environment for the variables DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
      HostName: (...)(u)(...)([0-9][0-9])
@@ -134,6 +138,7 @@ Environment:
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
      ### collect max 10 lines per service type within the sampling period
      MaxLogLines: 10
+     
    Prod2:
      HostName: (...)(p2)(...)([0-9][0-9])
      WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
@@ -169,6 +174,10 @@ Environment:
      ### this is to reduce the data sent to central web server, posted to loki, cached by loki and stored under grafana
      ### set to 0 to disable log collection
      MaxLogLines: 10
+     ### trace disabled by default
+     MaxLogTraces: 0
+     ### datamask enabled by default
+     DataMaskEnabled: True
      ### Do not save logs on web server (local cache, in addition to sending to loki)
      SaveLogsOnWebServer: False
      ### while posting data to web server, defaults to False
@@ -387,4 +396,63 @@ LogFile:
       #                                                       ^^^^^^^^ <-- SKIP posting this data
       PatternSkipGroups: 3,4
       PatternAverage: (\w+)=(\d+)
+      Priority: 1
+
+    # Trace serviceName
+    TestTrace:
+      # post trace data to zipkin
+      DBDetails: DBType=zipkin
+      LogFileName: JATest.log*
+      # 2022-05-30T15:17:58.938264 Trace 0000000000000001 Service1 test trace line 1
+      # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
+      # regex group:          1                                 2          3          4         5    6
+      PatternTrace: (\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+) (Trace) ([0-9a-fA-F]+) (Service1) (.*) (\d+)$
+      #                                                                                        ^^^^ <-- duration
+      #                                                                              ^^^^ <-- trace name or trace label
+      #                                                               ^^^^^^^^^^^^^  <-- trace id
+      #             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
+      # group id where timestamp is present in trace log
+      PatternTraceTimeGroup: 1
+      # log timestamp format to convert time using time.strptime(). 
+      # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
+      TimeStampFormat: "%Y-%m-%d %H:%M:%S.%f"
+      # trace id group in log line
+      PatternTraceIdGroup: 3
+      # trace name
+      PatternLabelGroup: 4
+      # event duration is at this group id
+      PatternDurationGroup: 6
+      ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
+      PatternDurationMultiplier: 1000
+      Priority: 1
+
+    # Trace serviceName
+    TestTraceWithSkipGroups:
+      # post trace data to zipkin
+      DBDetails: DBType=zipkin
+      LogFileName: JATest.log*
+      # 2022-05-30T15:17:58.938412 Trace 0000000000000001 Service2 account=1234 Name=JaaduVision test trace line 1
+      # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
+      # regex group:          1                                 2          3              4         5      6       7     8    9    10
+      PatternTrace: (\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+) (Trace) ([0-9a-fA-F]+) (Service2) (account=)(\d+) (Name=)(\w+) (.*) (\d+)$
+      #                                                                                                                    ^^^^ <-- duration
+      #                                                                                             ^^^^        ^^^^ <-- skip these values while posting to loki
+      #                                                                              ^^^^ <-- trace name or trace label
+      #                                                               ^^^^^^^^^^^^^  <-- trace id
+      #             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
+      # group id where timestamp is present in trace log
+      PatternTraceTimeGroup: 1
+      # log timestamp format to convert time using time.strptime(). 
+      # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
+      TimeStampFormat: "%Y-%m-%d %H:%M:%S.%f"
+      # trace id group in log line
+      PatternTraceIdGroup: 3
+      # trace name
+      PatternLabelGroup: 4
+      # do not post values of these groups, just mask them. Here, account number and name are MASKED
+      PatternSkipGroups: 6,8
+      # event duration is at this group id
+      PatternDurationGroup: 10
+      ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
+      PatternDurationMultiplier: 1000
       Priority: 1

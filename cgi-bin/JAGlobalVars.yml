@@ -27,6 +27,8 @@ JASaveStats:
     LokiGatewayURL: http://localhost:9081
     ### URL to send data to influxdb, when client opts for it, default is prometheus pushgateway
     InfluxdbURL: http://localhost:8086
+    # zipkin URL using default port 9411
+    ZipkinURL: http://localhost:9411
     ### default DBType - valid values are Influxdb, Prometheus
     DBType: Prometheus
     ## token - get this from influxdb configuration

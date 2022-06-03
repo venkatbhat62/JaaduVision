@@ -45,6 +45,9 @@ Return Result
     parameter sent from client - DBType - values - influxdb or prometheus (default - prometheus)
     InfluxdbURL parameter defined in JAGlobalVars.yml is used to send the data to.
 
+2022-05-28 avembha@gmail.com
+    Added capability to insert trace events to zipkin when DBType posted is zipkin
+    
 """
 import os,sys,json,re
 from datetime import datetime
@@ -113,7 +116,12 @@ with open('JAGlobalVars.yml','r') as file:
             JAInfluxdbBucket = JAGlobalVars['JASaveStats']['InfluxdbBucket']
     except:
         JAInfluxdbURL = JAInfluxdbOrg = JAInfluxdbToken = JAInfluxdbBucket = ''
-        
+    
+    try:
+        JAZipkinURL = JAGlobalVars['JASaveStats']['ZipkinURL']
+    except:
+        JAZipkinURL = ''
+
     file.close()
 
 contentLength = int(os.environ["CONTENT_LENGTH"])
@@ -134,14 +142,16 @@ if JADirStats != None:
 else:
     fileName = None
 
+postToZipkin = postToLoki = False
+
 if postedData['jobName'] == None:
     JASaveStatsError('jobName not passed')
 else:
     jobName = postedData['jobName']
     if jobName == 'loki':
         postToLoki = True
-    else:
-        postToLoki = False
+    elif jobName == 'zipkin':
+        postToZipkin = True
 
 if postedData['hostName'] == None:
     JASaveStatsError('hostName not passed')
@@ -273,14 +283,16 @@ if hostName != None:
     else:
         labelParams += comma + 'instance=\"' + hostName + '\"'
 
+
 if debugLevel > 1:
     if JADBTypeInfludb == False:
-        print('DEBUG-2 Stats Dir:' + JADirStats + ', fileName: ' + fileName + ', pushGatewayURL: ' + pushGatewayURL + ', appendToURL: ' + appendToURL + ', prefixParamsForFile: |' + prefixParamsForFile + '|\n')
+        print('DEBUG-2 JASaveStats.py Stats Dir:' + JADirStats + ', fileName: ' + fileName + ', pushGatewayURL: ' + pushGatewayURL + ', appendToURL: ' + appendToURL + ', prefixParamsForFile: |' + prefixParamsForFile + ', ZipkinURL:|'+ JAZipkinURL + '|\n')
     else:
-        print("DEBUG-2 JASaveStats.py Stats Dir:|{0}, fileName:{1}, influxdbURL:|{2}|, influxdbBucket:|{3}|, influxdbOrg:|{4}|, prefixParamsForFile:|{5}|,labelParams:|{6}|".format(JADirStats, fileName, JAInfluxdbURL, JAInfluxdbBucket, JAInfluxdbOrg, prefixParamsForFile, labelParams ))
+        print("DEBUG-2 JASaveStats.py Stats Dir:|{0}, fileName:{1}, influxdbURL:|{2}|, influxdbBucket:|{3}|, influxdbOrg:|{4}|, prefixParamsForFile:|{5}|, ZipkinURL:|{6}|,labelParams:|{6}|".format(JADirStats, fileName, JAInfluxdbURL, JAInfluxdbBucket, JAInfluxdbOrg, prefixParamsForFile, JAZipkinURL, labelParams ))
 ### Now post the data to web server
 headersForPushGateway= {'Content-type': 'application/x-www-form-urlencoded', 'Accept': '*/*'}
 headersForLokiGateway = {'Content-Type': 'application/json'}
+headersForZipkin = {'Content-Type': 'application/json'}
 
 if JADisableWarnings == True:
     requests.packages.urllib3.disable_warnings()
@@ -317,8 +329,8 @@ try:
             if debugLevel > 1:
                 print('DEBUG-2 JASaveStats.py processing key: {0}, value: {1}'.format(key, value))
                 
-            ### SKIP LogStats, OSStats, loki  
-            if value == 'LogStats' or value == 'OSStats' or value == 'loki':
+            ### SKIP LogStats, OSStats, loki , zipkin
+            if value == 'LogStats' or value == 'OSStats' or value == 'loki' or value == 'zipkin':
                 statsType = value
                 continue
 
@@ -343,14 +355,32 @@ try:
                   site - siteName
                   component - componentName
                   platform - platformName 
+
+                Data posted is of the form:
+                2022-05-30T22:01:44.767078 Trace 0000000000000a3b Service1 test trace line 1\n
+                2022-05-30T22:01:44.767273 Trace 0000000000000a3c Service1 test trace line 3\n'
                 """
-                
+                ### regular expression definition for timestamp string at the start of line
+                myTimeStampRegex = re.compile(r'(\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)')
+
                 tempLines = value.split('\n')
                 lineCount = 1
                 for line in tempLines:
-                    curr_datetime = datetime.utcnow()
-                    curr_datetime = curr_datetime.isoformat('T')
-                    myDateTime = str(curr_datetime) + "-00:00"
+                    ### if current line has timestamp in standard ISO format, use it
+                    try:
+                        tempDateTime = myTimeStampRegex.search(line)
+                        if tempDateTime != None:
+                            myDateTime = str(tempDateTime.group()) + "-00:00"
+                        else:
+                            curr_datetime = datetime.utcnow()
+                            curr_datetime = curr_datetime.isoformat('T')
+                            myDateTime = str(curr_datetime) + "-00:00"
+                    except Exception as err:
+                        print("myTimeStampRegex.search() generated exception:" + str(err))
+                        curr_datetime = datetime.utcnow()
+                        curr_datetime = curr_datetime.isoformat('T')
+                        myDateTime = str(curr_datetime) + "-00:00"
+
                     # 'labels': '{instance=\"' + hostName + '\", site=\"' + siteName + '\", component=\"' + componentName + '\", platform=\"' + platformName + '\"}',
                     payload = {
                         'streams': [
@@ -382,7 +412,61 @@ try:
                         break
 
                     lineCount += 1
-            
+            elif postToZipkin == True:
+                """ content posted is the form:
+                id=1,name=./JATest.log.20220528,serviceName=TestTrace,traceId=0000000000000116,timestamp=1653771104716898,duration=1000\n
+                id=2,name=./JATest.log.20220528,serviceName=TestTrace,traceId=0000000000000116,timestamp=1653771104718201,duration=1000\n
+                id=3,name=./JATest.log.20220528,serviceName=TestTrace,traceId=0000000000000117,timestamp=1653771104718524,duration=1000\n
+                """
+                
+                traceLines = value.split("\\n")
+                if debugLevel > 0:
+                    print('DEBUG-1 JASaveStats.py number of traces to post:{0}\n{1}\n'.format( len(traceLines), traceLines) ) 
+                id ="1234"
+
+                for traceLine in traceLines:
+                    ### process each line having var=value,
+                    ### separate variable and value pairs using comma as separator
+                    items = traceLine.split(',')
+
+                    traceParameters = {}
+                
+                    for item in items:
+                        ### expect the item in the form paramName=value
+                        ### separate paramName and store it in metricsVariablesToBePosted hash
+                        variableNameAndValues = re.split('=', item)
+                        variableName = variableNameAndValues[0]
+                        if len(variableNameAndValues) > 1:
+                            traceParameters[variableName] = variableNameAndValues[1] 
+
+
+                    payload = [{
+                        "id": "1234",
+                        "traceId":  traceParameters['traceId'] ,
+                        "timestamp": int(traceParameters['timestamp']),
+                        "duration": int(traceParameters['duration']),
+                        "name":  traceParameters['name'] ,
+                        "tags": {
+                            "instance": hostName,
+                            "http.method": "GET",
+                            "http.path": "/api"
+                        },
+                        "localEndpoint": {
+                            "serviceName":  traceParameters['serviceName'] 
+                        }
+                    }]
+                    payload = json.dumps(payload)
+                    if debugLevel > 2:
+                        print("DEBUG-3 JASaveStats.py payload:|{0}|, ZipkinURL:|{1}|\n".format(payload, JAZipkinURL))
+
+                    try:
+                        tempReturnResult = requests.post( JAZipkinURL, data=payload, headers=headersForZipkin)
+                        if debugLevel > 0:
+                            print('DEBUG-1 JASaveStats.py data: {0} posted to zipkin with result:{1}\n\n'.format(payload,tempReturnResult))
+                    except requests.exceptions.RequestException as err:
+                        returnResult = returnResult + "ERROR posting trace to zipkin, traceToPost:{0}, returnResult:{1}".format(payload, err)
+                        errorPostingZipkin = True
+
             else:
                 ### timeStamp=2021-09-28T21:06:42.526907,TestStats_pass=0.05,TestStats_fail=0.02,TestStats_count=0.02,TestStats_key1_sum=0.40,TestStats_key2_sum=0.20,TestStats_key1_delta=-0.05,TestStats_key2_delta=-0.03
                 ### convert data 
