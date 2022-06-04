@@ -441,6 +441,7 @@ LogFile:
       #                                                               ^^^^^^^^^^^^^  <-- trace id
       #             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
       # group id where timestamp is present in trace log
+      # set to 0 or None if NO timestamp in current line, and use previous timestamp
       PatternTraceTimeGroup: 1
       # log timestamp format to convert time using time.strptime(). 
       # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  

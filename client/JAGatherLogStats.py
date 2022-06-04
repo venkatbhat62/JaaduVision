@@ -1772,6 +1772,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
         else:
             # gatherLogStats enabled
+            prevLineTimeStamp = ''
             while True:
                 # read line by line
                 tempLine = file.readline()
@@ -1913,10 +1914,17 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             tempTraceLine = r'id={0},name={1},serviceName={2}'.format( traceLocalId, fileName, key)
                                             traceLocalId += 1
                                             tempLogLine = ''
-                                            tempSpace = ''
+                                            
                                             tempDuration = None
-                                            ### get current time in microseconds, default time for trace
-                                            tempTimeStamp = int(time.time() * 1000000)
+
+                                            ### timestamp group is zero or not defined, use previous timestamp
+                                            if values[patternIndexForTimeStampGroup] == 0 or values[patternIndexForTimeStampGroup] == None:
+                                                if prevLineTimeStamp != '':
+                                                    tempTimeStamp = prevLineTimeStamp
+                                            else:
+                                                ### get current time in microseconds, default time for trace
+                                                tempTimeStamp = int(time.time() * 1000000)
+
                                             ### if pattern matches to single instance in line, len(myResults) will be 1
                                             ###     myResults is of the form = [ (key1, value1, key2, value2....)]
                                             ### if pattern matches to multiple instances in line, len(myResults) will be > 1
@@ -1931,13 +1939,11 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                         if ( str(groupNumber) in values[patternIndexForSkipGroups]):
                                                             tempResult = '_MASKED_'
                                                             
-                                                    ### append current word to form original line (space added to separate words)
-                                                    tempLogLine = tempLogLine + r'{0}{1}'.format(tempSpace, tempResult)
-                                                    tempSpace = ' '
                                                     if values[patternIndexForTraceId] == groupNumber :
                                                         ### current tempResult is the traceid field
                                                         ### remove -, _, g to Z from trace id field
-                                                        tempTraceLine = tempTraceLine + r',traceId={0}'.format(re.sub(r'-|_|[g-zG-Z]', "", tempResult))
+                                                        tempResult = re.sub(r'-|_|[g-zG-Z]', "", tempResult)
+                                                        tempTraceLine = tempTraceLine + r',traceId={0}'.format(tempResult)
                                                     elif values[patternIndexForTimeStampGroup] == groupNumber:
                                                         ### current tempResult is the timestamp field
                                                         ### convert timestamp to microseconds since 1970-01-01 00:00:00
@@ -1952,6 +1958,10 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                             values[patternIndexForTimeStampGroup] = None
                                                         else:
                                                             tempTimeStamp = traceTimeStamp
+                                                    
+                                                    ### append current word to form original line
+                                                    tempLogLine = tempLogLine + r'{0}'.format(tempResult)
+
                                             if tempDuration == None:
                                                 ### default to 1000 (1ms)
                                                 tempDuration = 1000
