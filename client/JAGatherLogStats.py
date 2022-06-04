@@ -1921,6 +1921,10 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             if values[patternIndexForTimeStampGroup] == 0 or values[patternIndexForTimeStampGroup] == None:
                                                 if prevLineTimeStamp != '':
                                                     tempTimeStamp = prevLineTimeStamp
+                                                else:
+                                                    ### get current time in microseconds, default time for trace
+                                                    tempTimeStamp = int(time.time() * 1000000)
+
                                             else:
                                                 ### get current time in microseconds, default time for trace
                                                 tempTimeStamp = int(time.time() * 1000000)
@@ -1949,7 +1953,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                         ### convert timestamp to microseconds since 1970-01-01 00:00:00
                                                         ### format spec at https://www.tutorialspoint.com/python/time_strptime.htm
                                                         traceTimeStamp = JAGlobalLib.JAConvertStringTimeToTime(tempResult, 
-                                                                            values[patternIndexForTimeStampFormat] )
+                                                                            values[patternIndexForTimeStampFormat] ) * 1000000
                                                         if ( traceTimeStamp == 0 ) :
                                                             errorMsg = "ERROR Invalid TimeStampFormat:{0}".format(values[patternIndexForTimeStampFormat]) 
                                                             print(errorMsg)
@@ -1957,8 +1961,9 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                             ### DO NOT attempt to convert time next time
                                                             values[patternIndexForTimeStampGroup] = None
                                                         else:
-                                                            tempTimeStamp = traceTimeStamp
-                                                    
+                                                            prevLineTimeStamp = tempTimeStamp = traceTimeStamp
+                                                             
+
                                                     ### append current word to form original line
                                                     tempLogLine = tempLogLine + r'{0}'.format(tempResult)
 

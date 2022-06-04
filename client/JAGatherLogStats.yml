@@ -405,17 +405,18 @@ LogFile:
       LogFileName: JATest.log*
       # 2022-05-30T15:17:58.938264 Trace 0000000000000001 Service1 test trace line 1
       # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
-      # regex group:          1                                 2          3          4         5    6
-      PatternTrace: (\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+) (Trace) ([0-9a-fA-F]+) (Service1) (.*) (\d+)$
+      # regex group:          1                                 2          3          4          5    6
+      PatternTrace: (\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Trace )([0-9a-fA-F]+)( Service1 )(.*)(\d+)$
       #                                                                                        ^^^^ <-- duration
       #                                                                              ^^^^ <-- trace name or trace label
       #                                                               ^^^^^^^^^^^^^  <-- trace id
       #             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
       # group id where timestamp is present in trace log
+      # set to 0 or None if NO timestamp in current line, and use previous timestamp
       PatternTraceTimeGroup: 1
       # log timestamp format to convert time using time.strptime(). 
       # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
-      TimeStampFormat: "%Y-%m-%d %H:%M:%S.%f"
+      TimeStampFormat: "%Y-%m-%dT%H:%M:%S.%f"
       # trace id group in log line
       PatternTraceIdGroup: 3
       # trace name
@@ -433,8 +434,8 @@ LogFile:
       LogFileName: JATest.log*
       # 2022-05-30T15:17:58.938412 Trace 0000000000000001 Service2 account=1234 Name=JaaduVision test trace line 1
       # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
-      # regex group:          1                                 2          3              4         5      6       7     8    9    10
-      PatternTrace: (\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+) (Trace) ([0-9a-fA-F]+) (Service2) (account=)(\d+) (Name=)(\w+) (.*) (\d+)$
+      # regex group:          1                                 2          3              4         5      6       7     8   9    10
+      PatternTrace: (\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Trace )([0-9a-fA-F]+)( Service2 )(account=)(\d+)( Name=)(\w+)(.*)(\d+)$
       #                                                                                                                    ^^^^ <-- duration
       #                                                                                             ^^^^        ^^^^ <-- skip these values while posting to loki
       #                                                                              ^^^^ <-- trace name or trace label
@@ -445,7 +446,7 @@ LogFile:
       PatternTraceTimeGroup: 1
       # log timestamp format to convert time using time.strptime(). 
       # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
-      TimeStampFormat: "%Y-%m-%d %H:%M:%S.%f"
+      TimeStampFormat: "%Y-%m-%dT%H:%M:%S.%f"
       # trace id group in log line
       PatternTraceIdGroup: 3
       # trace name

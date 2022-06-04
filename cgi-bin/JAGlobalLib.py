@@ -27,9 +27,12 @@ def UTCTime():
     return datetime.datetime.utcnow().strftime("%H:%M:%S")
 
 def JAConvertStringTimeToTime( dateTimeString, format):
-    datetime_obj = time.strptime(dateTimeString, format)
-    timeInSeconds = time.mktime(datetime_obj)
-    return timeInSeconds
+    try:
+        datetime_obj = time.strptime(dateTimeString, format)
+        timeInSeconds = time.mktime(datetime_obj)
+        return timeInSeconds
+    except:
+        return 0
 
 def JAGetTime( deltaSeconds ):
     tempTime = datetime.datetime.now()
