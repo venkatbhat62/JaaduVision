@@ -1952,8 +1952,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                         ### current tempResult is the timestamp field
                                                         ### convert timestamp to microseconds since 1970-01-01 00:00:00
                                                         ### format spec at https://www.tutorialspoint.com/python/time_strptime.htm
-                                                        traceTimeStamp = JAGlobalLib.JAConvertStringTimeToTime(tempResult, 
-                                                                            values[patternIndexForTimeStampFormat] ) * 1000000
+                                                        traceTimeStamp = int(JAGlobalLib.JAConvertStringTimeToTime(tempResult, 
+                                                                            values[patternIndexForTimeStampFormat] ) * 1000000)
                                                         if ( traceTimeStamp == 0 ) :
                                                             errorMsg = "ERROR Invalid TimeStampFormat:{0}".format(values[patternIndexForTimeStampFormat]) 
                                                             print(errorMsg)
