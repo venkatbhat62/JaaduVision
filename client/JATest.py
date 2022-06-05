@@ -106,6 +106,10 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
             msg = "Trace {0:016x} Service2 account=1234 Name=JaaduVision test trace line {1}\n".format(traceId, count)
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
+            msg = " 2nd line of prev trace line {0:016x}\n".format(traceId, count)
+            JAGlobalLib.LogMsg(msg, testLogFileName, True, False)
+            msg = " 2nd line of prev trace line {0:016x}\n".format(traceId, count)
+            JAGlobalLib.LogMsg(msg, testLogFileName, True, False)
             traceId += count
         elif count % 3 > 0:
             JAGlobalLib.LogMsg('TestMsg Count\n', testLogFileName, True)

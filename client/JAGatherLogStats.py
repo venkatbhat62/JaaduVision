@@ -1983,15 +1983,16 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                             
                                                         else:
                                                             prevLineTimeStamp = tempTimeStamp = traceTimeStamp
+
+                                                            ### loki needs the time stamp with fraction second upto microseconds
+                                                            ###  add ".000000" to get time with only up to seconds to get in microseconds
+                                                            if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S'  ) :
+                                                                tempResult = tempResult + ".000000" 
+                                                            ### replace space separator between date and time with T, loki needs in isoformat
+                                                            tempResult = tempResult.replace(" ", "T")
+
                                                             prevLineTimeStampString = tempResult
                                                             tempTimeStampStringPresent = True
-
-                                                        ### loki needs the time stamp with fraction second upto microseconds
-                                                        ###  add ".000000" to get time with only up to seconds to get in microseconds
-                                                        if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S'  ) :
-                                                            tempResult = tempResult + ".000000" 
-                                                        ### replace space separator between date and time with T, loki needs in isoformat
-                                                        tempResult = tempResult.replace(" ", "T")
 
                                                     ### append current word to form original line
                                                     tempLogLine = tempLogLine + r'{0}'.format(tempResult)
@@ -2012,13 +2013,13 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             logTracesCount[key] += 1
 
                                             ### if current line does not have timestamp, add prev line timestamp
-                                            if tempTimeStampStringPresent == None and prevLineTimeStampString != None :
-                                                tempLine = prevLineTimeStampString + " " + tempLine
+                                            if tempTimeStampStringPresent == None and prevLineTimeStampString != '' :
+                                                tempLogLine = prevLineTimeStampString + " " + tempLogLine
 
                                             ### add new line if not present in current line. This is used to separate lines on web server before
                                             ###   posting to loki
-                                            if tempLine.endswith('\n') == False:
-                                                tempLogLine += '\n'
+                                            #if tempLine.endswith('\n') == False:
+                                            tempLogLine += '\n'
                                             ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
                                             logLines[key].append(tempLogLine)
                                             ### increment the logLinesCount

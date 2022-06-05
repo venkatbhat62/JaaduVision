@@ -428,7 +428,7 @@ LogFile:
       Priority: 1
 
     # Trace serviceName
-    TestTraceWithSkipGroups:
+    TestTraceWithSkipGroupsLine1:
       # post trace data to zipkin
       DBDetails: DBType=zipkin
       LogFileName: JATest.log*
@@ -458,3 +458,32 @@ LogFile:
       ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
       PatternDurationMultiplier: 1000
       Priority: 1
+    # Trace serviceName
+    TestTraceWithSkipGroupsLine2:
+      # post trace data to zipkin
+      DBDetails: DBType=zipkin
+      LogFileName: JATest.log*
+      # 2nd line of prev trace line 000000000000002b
+      # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
+      # regex group:     1      2       3          
+      PatternTrace: (2nd line)(.*)([0-9a-fA-F]+)$
+      #                            ^^^^^^^^^^^^^  <-- trace id
+      # group id where timestamp is present in trace log
+      # set to 0 or None if NO timestamp in current line, and use previous timestamp
+      PatternTraceTimeGroup: 0
+      # log timestamp format to convert time using time.strptime(). 
+      # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
+      # TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
+      # trace id group in log line
+      PatternTraceIdGroup: 3
+      # trace name
+      # PatternLabelGroup: 0
+      # do not post values of these groups, just mask them. Here, account number and name are MASKED
+      # PatternSkipGroups: 6,8
+      # event duration is at this group id
+      # PatternDurationGroup: 10
+      ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
+      # PatternDurationMultiplier: 1000
+      Priority: 2
+
+

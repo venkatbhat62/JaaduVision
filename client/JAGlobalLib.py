@@ -49,7 +49,7 @@ def JAGetDayOfMonth( deltaSeconds ):
     newTimeString = newTime.strftime("%d")
     return newTimeString 
 
-def LogMsg(logMsg, fileName, appendDate=True):
+def LogMsg(logMsg, fileName, appendDate=True, prefixTimeStamp=True):
     if fileName == None:
         print(logMsg)
         return 0
@@ -64,7 +64,10 @@ def LogMsg(logMsg, fileName, appendDate=True):
     except OSError:
         return 0
     else:
-        logFileStream.write( UTCDateTime() + " " + logMsg )
+        if ( prefixTimeStamp == True) :
+            logFileStream.write( UTCDateTime() + " " + logMsg )
+        else:
+            logFileStream.write(logMsg )
         logFileStream.close()
         return 1
 
