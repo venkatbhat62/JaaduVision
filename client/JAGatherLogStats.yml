@@ -416,7 +416,7 @@ LogFile:
       PatternTraceTimeGroup: 1
       # log timestamp format to convert time using time.strptime(). 
       # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
-      TimeStampFormat: "%Y-%m-%dT%H:%M:%S.%f"
+      TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
       # trace id group in log line
       PatternTraceIdGroup: 3
       # trace name
@@ -446,7 +446,7 @@ LogFile:
       PatternTraceTimeGroup: 1
       # log timestamp format to convert time using time.strptime(). 
       # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
-      TimeStampFormat: "%Y-%m-%dT%H:%M:%S.%f"
+      TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
       # trace id group in log line
       PatternTraceIdGroup: 3
       # trace name

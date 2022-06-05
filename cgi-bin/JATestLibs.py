@@ -25,3 +25,8 @@ print( "timeZ:{0}".format(JAGlobalLib.JAConvertStringTimeToTime("2022-06-04 00:0
 print( "time:{0}".format(JAGlobalLib.JAConvertStringTimeToTime("1970-01-02T00:00:00.000000", "%Y-%m-%dT%H:%M:%S.%f" ) ) )
 
 print( "time no fraction:{0}".format(JAGlobalLib.JAConvertStringTimeToTime("1970-01-02T00:00:00", "%Y-%m-%dT%H:%M:%S" ) ) )
+timeFormat="%Y-%m-%dT%H:%M:%S.%f"
+if (timeFormat == '%Y-%m-%dT%H:%M:%S.%f' or timeFormat == '%Y-%m-%d %H:%M:%S.%f'):
+    print("match")
+else:
+    print("nomatch")
