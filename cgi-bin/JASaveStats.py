@@ -379,7 +379,7 @@ try:
                             if tempDateTime != None:
                                 myDateTime = str(tempDateTime.group()) + "-00:00"
                                 ### replace space with T to bring it to isoformat required by Loki
-                                myDateTime.replace(" ", "T")
+                                myDateTime = myDateTime.replace(" ", "T")
                             else:
                                 curr_datetime = datetime.utcnow()
                                 curr_datetime = curr_datetime.isoformat('T')

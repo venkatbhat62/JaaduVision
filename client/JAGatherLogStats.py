@@ -1977,6 +1977,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                         ###  add ".000000" to get time with only up to seconds to get in microseconds
                                                         if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S'  ) :
                                                             tempResult = tempResult + ".000000" 
+                                                        ### replace space separator between date and time with T, loki needs in isoformat
+                                                        tempResult = tempResult.replace(" ", "T")
 
                                                     ### append current word to form original line
                                                     tempLogLine = tempLogLine + r'{0}'.format(tempResult)
