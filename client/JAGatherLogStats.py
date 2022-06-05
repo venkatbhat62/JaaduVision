@@ -1952,6 +1952,16 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                         ### current tempResult is the timestamp field
                                                         ### convert timestamp to microseconds since 1970-01-01 00:00:00
                                                         ### format spec at https://www.tutorialspoint.com/python/time_strptime.htm
+
+                                                        # ensure the dateTimeString has 6 digits in fraction space, needed for loki time format
+                                                        if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S.%f' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S.%f') :
+                                                            # 2022-06-05 12:48:00.000000
+                                                            # 01234567890123456789012345 - length 26
+                                                            # 2022-06-05 12:48:00.000
+                                                            # 01234567890123456789012    - length 23            
+                                                            if len(tempResult) == 23 :
+                                                                tempResult = tempResult + "000"
+
                                                         traceTimeStamp = int(JAGlobalLib.JAConvertStringTimeToTime(tempResult, 
                                                                             values[patternIndexForTimeStampFormat] ) * 1000000)
                                                         if ( traceTimeStamp == 0 ) :
@@ -1962,7 +1972,11 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                             values[patternIndexForTimeStampGroup] = None
                                                         else:
                                                             prevLineTimeStamp = tempTimeStamp = traceTimeStamp
-                                                             
+
+                                                        ### loki needs the time stamp with fraction second upto microseconds
+                                                        ###  add ".000000" to get time with only up to seconds to get in microseconds
+                                                        if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S'  ) :
+                                                            tempResult = tempResult + ".000000" 
 
                                                     ### append current word to form original line
                                                     tempLogLine = tempLogLine + r'{0}'.format(tempResult)

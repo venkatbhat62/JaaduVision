@@ -23,3 +23,5 @@ print("epochTime:{0}, tzinfo:{1}".format(time.gmtime(0), time.tzname))
 print( "time:{0}".format(JAGlobalLib.JAConvertStringTimeToTime("1970-01-01 00:00:00.000000", "%Y-%m-%d %H:%M:%S.%f" ) ) )
 print( "timeZ:{0}".format(JAGlobalLib.JAConvertStringTimeToTime("2022-06-04 00:00:00.000", "%Y-%m-%d %H:%M:%S.%f" ) ) )
 print( "time:{0}".format(JAGlobalLib.JAConvertStringTimeToTime("1970-01-02T00:00:00.000000", "%Y-%m-%dT%H:%M:%S.%f" ) ) )
+
+print( "time no fraction:{0}".format(JAGlobalLib.JAConvertStringTimeToTime("1970-01-02T00:00:00", "%Y-%m-%dT%H:%M:%S" ) ) )
