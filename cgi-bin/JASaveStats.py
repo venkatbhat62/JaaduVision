@@ -448,34 +448,45 @@ try:
                         if len(variableNameAndValues) > 1:
                             traceParameters[variableName] = variableNameAndValues[1] 
 
-
-                    payload = [{
-                        "id": "1234",
-                        "traceId":  traceParameters['traceId'] ,
-                        "timestamp": int(traceParameters['timestamp']),
-                        "duration": int(traceParameters['duration']),
-                        "name":  traceParameters['name'] ,
-                        "tags": {
-                            "instance": hostName,
-                            "http.method": "GET",
-                            "http.path": "/api"
-                        },
-                        "localEndpoint": {
-                            "serviceName":  traceParameters['serviceName'] 
-                        }
-                    }]
-                    payload = json.dumps(payload)
-                    if debugLevel > 2:
-                        print("DEBUG-3 JASaveStats.py payload:|{0}|, ZipkinURL:|{1}|\n".format(payload, JAZipkinURL))
-
                     try:
-                        tempReturnResult = requests.post( JAZipkinURL, data=payload, headers=headersForZipkin)
-                        if debugLevel > 0:
-                            print('DEBUG-1 JASaveStats.py data: {0} posted to zipkin with result:{1}\n\n'.format(payload,tempReturnResult))
-                    except requests.exceptions.RequestException as err:
-                        returnResult = returnResult + "ERROR posting trace to zipkin, traceToPost:{0}, returnResult:{1}".format(payload, err)
-                        errorPostingZipkin = True
+                        payload = [{
+                            "id": "1234",
+                            "traceId":  traceParameters['traceId'] ,
+                            "timestamp": int(traceParameters['timestamp']),
+                            "duration": int(traceParameters['duration']),
+                            "name":  traceParameters['name'] ,
+                            "tags": {
+                                "instance": hostName,
+                                "http.method": "GET",
+                                "http.path": "/api"
+                            },
+                            "localEndpoint": {
+                                "serviceName":  traceParameters['serviceName'] 
+                            }
+                        }]
+                        payload = json.dumps(payload)
+                        if debugLevel > 2:
+                            print("DEBUG-3 JASaveStats.py payload:|{0}|, ZipkinURL:|{1}|\n".format(payload, JAZipkinURL))
 
+                        try:
+                            tempReturnResult = requests.post( JAZipkinURL, data=payload, headers=headersForZipkin)
+                            if debugLevel > 0:
+                                print('DEBUG-1 JASaveStats.py data: {0} posted to zipkin with result:{1}\n\n'.format(payload,tempReturnResult))
+                        except requests.exceptions.RequestException as err:
+                            returnResult = returnResult + "ERROR posting trace to zipkin, traceToPost:{0}, returnResult:{1}".format(payload, err)
+                            errorPostingZipkin = True
+                    except:
+                        returnResult += 'ERROR Data not posted to zipkin, '
+                        if traceParameters['timestamp'] == None:
+                            returnResult = returnResult + " missing timestamp"
+                        if traceParameters['traceId'] == None:
+                            returnResult = returnResult + " missing traceId"
+                        if traceParameters['duration'] == None:
+                            returnResult = returnResult + " missing duration"
+                        if traceParameters['serviceName'] == None:
+                            returnResult = returnResult + " missing serviceName"
+                        errorPostingZipkin = True
+                        
             else:
                 ### timeStamp=2021-09-28T21:06:42.526907,TestStats_pass=0.05,TestStats_fail=0.02,TestStats_count=0.02,TestStats_key1_sum=0.40,TestStats_key2_sum=0.20,TestStats_key1_delta=-0.05,TestStats_key2_delta=-0.03
                 ### convert data 
