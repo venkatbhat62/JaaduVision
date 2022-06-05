@@ -1772,7 +1772,10 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
         else:
             # gatherLogStats enabled
+            ### if a log line is continuation of previous log line that contained timestamp and traceId, 
+            ### use those values for next line also. This helps filtering at Loki and tie to Tempo traces uniformly.
             prevLineTimeStamp = ''
+            prevLineTraceId = ''
             while True:
                 # read line by line
                 tempLine = file.readline()
@@ -1916,6 +1919,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             tempLogLine = ''
                                             
                                             tempDuration = None
+                                            ### use thise flags to add traceId and timeStamp from prev line if not present in current line
+                                            tempTraceIdAdded =  None
 
                                             ### timestamp group is zero or not defined, use previous timestamp
                                             if values[patternIndexForTimeStampGroup] == 0 or values[patternIndexForTimeStampGroup] == None:
@@ -1948,6 +1953,9 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                         ### remove -, _, g to Z from trace id field
                                                         tempResult = re.sub(r'-|_|[g-zG-Z]', "", tempResult)
                                                         tempTraceLine = tempTraceLine + r',traceId={0}'.format(tempResult)
+                                                        ## current traceId for next line if it does not have the traceId
+                                                        prevLineTraceId = tempResult
+                                                        tempTraceIdAdded = True
                                                     elif values[patternIndexForTimeStampGroup] == groupNumber:
                                                         ### current tempResult is the timestamp field
                                                         ### convert timestamp to microseconds since 1970-01-01 00:00:00
@@ -1986,6 +1994,11 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             if tempDuration == None:
                                                 ### default to 1000 (1ms)
                                                 tempDuration = 1000
+
+                                            if tempTraceIdAdded == None :
+                                                ### add prev traceId to current line
+                                                tempTraceLine += ",traceId={0}".format(prevLineTraceId)
+                                                tempLogLine = "{0} {1}".format(prevLineTraceId, tempLogLine)
                                             ### add timestamp and duration
                                             tempTraceLine = tempTraceLine + r",timestamp={0},duration={1}\n".format(tempTimeStamp, tempDuration)
 
@@ -1993,8 +2006,12 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             ### increment the logTracesCount
                                             logTracesCount[key] += 1
 
+                                            ### add new line if not present in current line. This is used to separate lines on web server before
+                                            ###   posting to loki
+                                            if tempLine.endswith('\n') == False:
+                                                tempLogLine += '\n'
                                             ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
-                                            logLines[key].append(tempLogLine + '\n')
+                                            logLines[key].append(tempLogLine)
                                             ### increment the logLinesCount
                                             logLinesCount[key] += 1
 
