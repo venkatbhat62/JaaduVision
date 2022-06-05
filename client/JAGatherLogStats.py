@@ -1962,8 +1962,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                             if len(tempResult) == 23 :
                                                                 tempResult = tempResult + "000"
 
-                                                        traceTimeStamp = int(JAGlobalLib.JAConvertStringTimeToTime(tempResult, 
-                                                                            values[patternIndexForTimeStampFormat] ) * 1000000)
+                                                        traceTimeStamp = int(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(tempResult, 
+                                                                            values[patternIndexForTimeStampFormat] ) )
                                                         if ( traceTimeStamp == 0 ) :
                                                             errorMsg = "ERROR Invalid TimeStampFormat:{0}".format(values[patternIndexForTimeStampFormat]) 
                                                             print(errorMsg)

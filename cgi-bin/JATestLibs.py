@@ -20,11 +20,11 @@ print("current time:{0}, one min back time:{1}".format( JAGlobalLib.JAGetTime(0)
 print("day of month:{0}".format( JAGlobalLib.JAGetDayOfMonth(0)))
 
 print("epochTime:{0}, tzinfo:{1}".format(time.gmtime(0), time.tzname))
-print( "time:{0}".format(JAGlobalLib.JAConvertStringTimeToTime("1970-01-01 00:00:00.000000", "%Y-%m-%d %H:%M:%S.%f" ) ) )
-print( "timeZ:{0}".format(JAGlobalLib.JAConvertStringTimeToTime("2022-06-04 00:00:00.000", "%Y-%m-%d %H:%M:%S.%f" ) ) )
-print( "time:{0}".format(JAGlobalLib.JAConvertStringTimeToTime("1970-01-02T00:00:00.000000", "%Y-%m-%dT%H:%M:%S.%f" ) ) )
+print( "time:{0}".format(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec("1970-01-01 00:00:00.500000", "%Y-%m-%d %H:%M:%S.%f" ) ) )
+print( "timeZ:{0}".format(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec("2022-06-04 00:00:00.500", "%Y-%m-%d %H:%M:%S.%f" ) ) )
+print( "time:{0}".format(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec("1970-01-02T00:00:00.500000", "%Y-%m-%dT%H:%M:%S.%f" ) ) )
 
-print( "time no fraction:{0}".format(JAGlobalLib.JAConvertStringTimeToTime("1970-01-02T00:00:00", "%Y-%m-%dT%H:%M:%S" ) ) )
+print( "time no fraction:{0}".format(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec("1970-01-02T00:00:00", "%Y-%m-%dT%H:%M:%S" ) ) )
 timeFormat="%Y-%m-%dT%H:%M:%S.%f"
 if (timeFormat == '%Y-%m-%dT%H:%M:%S.%f' or timeFormat == '%Y-%m-%d %H:%M:%S.%f'):
     print("match")

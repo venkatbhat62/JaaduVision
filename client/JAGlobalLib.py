@@ -26,12 +26,12 @@ def UTCDateForFileName():
 def UTCTime():
     return datetime.datetime.utcnow().strftime("%H:%M:%S")
 
-def JAConvertStringTimeToTime( dateTimeString, format):
+def JAConvertStringTimeToTimeInMicrosec( dateTimeString, format):
     ### 2022-06-04 add logic to use timezone while converting time to UTC time ???
     try:
-        datetime_obj = time.strptime(dateTimeString, format)
-        timeInSeconds = time.mktime(datetime_obj)
-        return timeInSeconds
+        datetime_obj = datetime.datetime.strptime(dateTimeString, format)
+        timeInMicroSeconds = datetime_obj.timestamp() * 1000000
+        return timeInMicroSeconds
     except:
         return 0
 

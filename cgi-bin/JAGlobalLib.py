@@ -26,11 +26,11 @@ def UTCDateForFileName():
 def UTCTime():
     return datetime.datetime.utcnow().strftime("%H:%M:%S")
 
-def JAConvertStringTimeToTime( dateTimeString, format):
+def JAConvertStringTimeToTimeInMicrosec( dateTimeString, format):
     try:
-        datetime_obj = time.strptime(dateTimeString, format)
-        timeInSeconds = time.mktime(datetime_obj)
-        return timeInSeconds
+        datetime_obj = datetime.datetime.strptime(dateTimeString, format)
+        timeInMicroSeconds = datetime_obj.timestamp() * 1000000
+        return timeInMicroSeconds
     except:
         return 0
 
