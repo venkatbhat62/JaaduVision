@@ -361,20 +361,27 @@ try:
                 2022-05-30T22:01:44.767273 Trace 0000000000000a3c Service1 test trace line 3\n'
                 """
                 ### regular expression definition for timestamp string at the start of line
-                myTimeStampRegex = re.compile(r'(\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)|(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d+)')
+                myTimeStampRegexT = re.compile(r'(\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)')  # with T separator
+                myTimeStampRegexSpace = re.compile(r'(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d+') # with space separator
 
                 tempLines = value.split('\n')
                 lineCount = 1
                 for line in tempLines:
                     ### if current line has timestamp in standard ISO format, use it
                     try:
-                        tempDateTime = myTimeStampRegex.search(line)
+                        tempDateTime = myTimeStampRegexT.search(line)
                         if tempDateTime != None:
                             myDateTime = str(tempDateTime.group()) + "-00:00"
                         else:
-                            curr_datetime = datetime.utcnow()
-                            curr_datetime = curr_datetime.isoformat('T')
-                            myDateTime = str(curr_datetime) + "-00:00"
+                            tempDateTime = myTimeStampRegexSpace.search(line)
+                            if tempDateTime != None:
+                                myDateTime = str(tempDateTime.group()) + "-00:00"
+                                ### replace space with T to bring it to isoformat required by Loki
+                                myDateTime.replace(" ", "T")
+                            else:
+                                curr_datetime = datetime.utcnow()
+                                curr_datetime = curr_datetime.isoformat('T')
+                                myDateTime = str(curr_datetime) + "-00:00"
                     except Exception as err:
                         print("myTimeStampRegex.search() generated exception:" + str(err))
                         curr_datetime = datetime.utcnow()
