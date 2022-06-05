@@ -1775,6 +1775,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
             ### if a log line is continuation of previous log line that contained timestamp and traceId, 
             ### use those values for next line also. This helps filtering at Loki and tie to Tempo traces uniformly.
             prevLineTimeStamp = ''
+            prevLineTimeStampString = ''
             prevLineTraceId = ''
             while True:
                 # read line by line
@@ -1920,8 +1921,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             
                                             tempDuration = None
                                             ### use thise flags to add traceId and timeStamp from prev line if not present in current line
-                                            tempTraceIdAdded =  None
-
+                                            tempTraceIdAdded =  tempTimeStampStringPresent = None
+                                             
                                             ### timestamp group is zero or not defined, use previous timestamp
                                             if values[patternIndexForTimeStampGroup] == 0 or values[patternIndexForTimeStampGroup] == None:
                                                 if prevLineTimeStamp != '':
@@ -1957,6 +1958,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                         prevLineTraceId = tempResult
                                                         tempTraceIdAdded = True
                                                     elif values[patternIndexForTimeStampGroup] == groupNumber:
+                                                        
                                                         ### current tempResult is the timestamp field
                                                         ### convert timestamp to microseconds since 1970-01-01 00:00:00
                                                         ### format spec at https://www.tutorialspoint.com/python/time_strptime.htm
@@ -1978,8 +1980,11 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                             LogMsg(errorMsg, statsLogFileName, True)
                                                             ### DO NOT attempt to convert time next time
                                                             values[patternIndexForTimeStampGroup] = None
+                                                            
                                                         else:
                                                             prevLineTimeStamp = tempTimeStamp = traceTimeStamp
+                                                            prevLineTimeStampString = tempResult
+                                                            tempTimeStampStringPresent = True
 
                                                         ### loki needs the time stamp with fraction second upto microseconds
                                                         ###  add ".000000" to get time with only up to seconds to get in microseconds
@@ -2005,6 +2010,10 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             logTraces[key].append(tempTraceLine)
                                             ### increment the logTracesCount
                                             logTracesCount[key] += 1
+
+                                            ### if current line does not have timestamp, add prev line timestamp
+                                            if tempTimeStampStringPresent == None and prevLineTimeStampString != None :
+                                                tempLine = prevLineTimeStampString + " " + tempLine
 
                                             ### add new line if not present in current line. This is used to separate lines on web server before
                                             ###   posting to loki
