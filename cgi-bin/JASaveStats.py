@@ -361,8 +361,10 @@ try:
                 2022-05-30T22:01:44.767273 Trace 0000000000000a3c Service1 test trace line 3\n'
                 """
                 ### regular expression definition for timestamp string at the start of line
-                myTimeStampRegexT = re.compile(r'(\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)')  # with T separator
-                myTimeStampRegexSpace = re.compile(r'(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d+') # with space separator
+                # with T separator
+                myTimeStampRegexT = re.compile(r'(\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)') 
+                # with space separator 
+                myTimeStampRegexSpace = re.compile(r'(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d+)') 
 
                 tempLines = value.split('\n')
                 lineCount = 1
