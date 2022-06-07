@@ -89,9 +89,12 @@ patternIndexForDurationGroup = 17
 patternIndexForDurationMultiplier = 18
 patternIndexForTimeStampGroup = 19
 patternIndexForTimeStampFormat = 20
+patternIndexForTraceBlockStart = 21
+patternIndexForTraceBlockEnd = 22
+patternIndexForTraceBlockInProgress = 23
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
-maxPatternIndex = 21
+maxPatternIndex = 24
 
 ### while processing log line, process each line when index match to below list item
 ### this is to speed up the processing
@@ -104,7 +107,10 @@ processPatternIndexsList = [
     patternIndexForPatternDelta,
     patternIndexForPatternLog,
     patternIndexForTrace,
-    patternIndexForCSVVariableNames
+    patternIndexForCSVVariableNames,
+    patternIndexForTraceBlockStart,
+    patternIndexForTraceBlockEnd,
+    patternIndexForTraceBlockInProgress
 ]
 
 ### index used while processing Execute command spec
@@ -180,7 +186,7 @@ retryDurationInHours = None
 ### send 100 lines at a time to web serve while retrying
 retryLogStatsBatchSize = 100
 
-traceLocalId = 0
+traceSpanId = 0
 
 ### YYYYMMDD will be appended to this name to make daily file where retry stats are kept
 retryLogStatsFileNamePartial = "JARetryLogStats."
@@ -726,6 +732,16 @@ try:
                 tempPatternList[patternIndexForTimeStampFormat] = str(value.get('TimeStampFormat')).strip()
                 tempPatternPresent[patternIndexForTimeStampFormat] = True
 
+            if value.get('PatternTraceBlockStart') != None:
+                ## need to send current log line with trace data
+                tempPatternList[patternIndexForTraceBlockStart] = str(value.get('PatternTraceBlockStart')).strip()
+                tempPatternPresent[patternIndexForTraceBlockStart] = True
+
+            if value.get('PatternTraceBlockEnd') != None:
+                ## need to send current log line with trace data
+                tempPatternList[patternIndexForTraceBlockEnd] = str(value.get('PatternTraceBlockEnd')).strip()
+                tempPatternPresent[patternIndexForTraceBlockEnd] = True
+
             ### if DBDetails available per service definition, store that.
             if value.get('DBDetails') != None:
                 ### initialize it with default DBDetails. This is to inherit any value that is not specified locally.
@@ -821,6 +837,12 @@ try:
 
             logStats[key][patternIndexForTimeStampFormat*2] = None
             logStats[key][patternIndexForTimeStampFormat*2+1] = tempPatternPresent[patternIndexForTimeStampFormat]
+
+            logStats[key][patternIndexForTraceBlockStart*2] = None
+            logStats[key][patternIndexForTraceBlockStart*2+1] = tempPatternPresent[patternIndexForTraceBlockStart]
+
+            logStats[key][patternIndexForTraceBlockEnd*2] = None
+            logStats[key][patternIndexForTraceBlockEnd*2+1] = tempPatternPresent[patternIndexForTraceBlockEnd]
 
             ### initialize logLines[key] list to empty list
             logLines[key] = []
@@ -1674,7 +1696,7 @@ def JAProcessCommands( logFileProcessingStartTime, debugLevel):
                     LogMsg(errorMsg, statsLogFileName, True)
 
 def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, gatherLogStatsEnabled, debugLevel):
-    global averageCPUUsage, thisHostName, logEventPriorityLevel, processPatternIndexsList, traceLocalId
+    global averageCPUUsage, thisHostName, logEventPriorityLevel, processPatternIndexsList, traceSpanId
     logFileNames = JAGlobalLib.JAFindModifiedFiles(
         logFileName, startTimeInSec, debugLevel, thisHostName)
 
@@ -1811,12 +1833,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                     eventPriority = values[patternIndexForPriority]
 
                     patternMatched = patternLogMatched = patternTraceMatched = False
-                    
-                    if debugLevel > 3:
-                        print('DEBUG-4 JAProcessLogFile() searching for patterns:{0}|{1}|{2}|{3}|{4}|{5}\n'.format(
-                            values[patternIndexForPatternPass], values[patternIndexForPatternFail], values[patternIndexForPatternCount], 
-                            values[patternIndexForPatternSum], values[patternIndexForPatternAverage],values[patternIndexForPatternDelta]))
-                    
+
                     if averageCPUUsage > maxCPUUsageForEvents[eventPriority]:
                         if logEventPriorityLevel == maxCPUUsageLevels:
                             ### first time log file processing skipped, store current event priorityy
@@ -1901,140 +1918,181 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 continue
 
                             ### process trace if enabled
-                            if index == patternIndexForTrace and patternTraceMatched == False and maxLogTraces > 0 :
-                                ### maxLogLines non-zero, logs collection is enabled for this host
-                                searchPattern = r'{0}'.format(values[index])
-                                ### search for matching PatternTrace regardless of whether stats type pattern is found or not.
-                                try:
-                                    myResults = re.findall( searchPattern, tempLine)
-                                    patternMatchCount =  len(myResults)
-                                    if myResults != None and patternMatchCount > 0 :
-                                        if int(logTracesCount[key]) < maxLogTraces:
-                                            groupNumber = 0
-                                            """
-                                            trace data to be posted to the web server is in the form
-                                            id=<number>,timestamp=<logTimeInMicroSec>,duration=<inMicroSec>,name=logFileName,serviceName=key
-                                            """
-                                            tempTraceLine = r'id={0},name={1},serviceName={2}'.format( traceLocalId, fileName, key)
-                                            traceLocalId += 1
-                                            tempLogLine = ''
-                                            
-                                            tempDuration = None
-                                            ### use thise flags to add traceId and timeStamp from prev line if not present in current line
-                                            tempTraceIdAdded =  tempTimeStampStringPresent = None
-                                             
-                                            ### timestamp group is zero or not defined, use previous timestamp
-                                            if values[patternIndexForTimeStampGroup] == 0 or values[patternIndexForTimeStampGroup] == None:
-                                                if prevLineTimeStamp != '':
-                                                    tempTimeStamp = prevLineTimeStamp
+                            if (index == patternIndexForTrace or index == patternIndexForTraceBlockStart or index == patternIndexForTraceBlockEnd) \
+                                and (maxLogTraces > 0) and ( patternTraceMatched == False )  :
+                                
+                                ### if inside block, search for PatternTraceBlockEnd pattern only
+                                if values[patternIndexForTraceBlockInProgress] != None:  
+                                    
+                                    searchPattern = r'{0}'.format(values[patternIndexForTraceBlockEnd])
+                                    try:
+                                        myResults = re.findall( searchPattern, tempLine)
+                                        patternMatchCount =  len(myResults)
+                                        if myResults != None and patternMatchCount > 0 :
+                                            ### Current line is the BlockEnd line, reset the flag
+                                            values[patternIndexForTraceBlockInProgress] = None
+                                            ### remove \n, it will be added later when ___NEWLINE__ is appended
+                                            tempLine = re.sub("\n$", '', tempLine)
+                                            ### Log lines group separator, used by script on Web Server to post log line groups separatly to Loki
+                                            logLines[key].append(tempLine + "__NEWLINE__")
+                                        else:
+                                            ### append current line to prev log line
+                                            logLines[key].append(tempLine)
+                                        patternTraceMatched = True
+                                    except re.error as err:
+                                        errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
+                                        print(errorMsg)
+                                        LogMsg(errorMsg, statsLogFileName, True)
+                                        ### discard this pattern so that no need to check this again
+                                        values[index] = None
+                                        continue
+
+                                else:
+                                    ### search for any of the trace patterns
+                                    searchPattern = r'{0}'.format(values[index])
+                                    ### search for matching PatternTrace regardless of whether stats type pattern is found or not.
+                                    try:
+                                        myResults = re.findall( searchPattern, tempLine)
+                                        patternMatchCount =  len(myResults)
+                                        if myResults != None and patternMatchCount > 0 :
+
+                                            ### if TraceBlockStart, set the flag so that subsequent log lines are collected till TraceBlockEnd
+                                            if index == patternIndexForTraceBlockStart:
+                                                values[patternIndexForTraceBlockInProgress] = True
+
+                                            if int(logTracesCount[key]) < maxLogTraces:
+                                                groupNumber = 0
+                                                """
+                                                trace data to be posted to the web server is in the form
+                                                id=<number>,timestamp=<logTimeInMicroSec>,duration=<inMicroSec>,name=logFileName,serviceName=key
+                                                """
+                                                tempTraceLine = r'id={0},name={1},serviceName={2}'.format( traceSpanId, fileName, key)
+                                                tempLogLine = ''
+                                                
+                                                tempDuration = None
+                                                ### use thise flags to add traceId and timeStamp from prev line if not present in current line
+                                                tempTraceIdAdded =  tempTimeStampStringPresent = None
+                                                
+                                                ### timestamp group is zero or not defined, use previous timestamp
+                                                if values[patternIndexForTimeStampGroup] == 0 or values[patternIndexForTimeStampGroup] == None:
+                                                    if prevLineTimeStamp != '':
+                                                        tempTimeStamp = prevLineTimeStamp
+                                                    else:
+                                                        ### get current time in microseconds, default time for trace
+                                                        tempTimeStamp = int(time.time() * 1000000)
+
                                                 else:
                                                     ### get current time in microseconds, default time for trace
                                                     tempTimeStamp = int(time.time() * 1000000)
 
-                                            else:
-                                                ### get current time in microseconds, default time for trace
-                                                tempTimeStamp = int(time.time() * 1000000)
+                                                ### if pattern matches to single instance in line, len(myResults) will be 1
+                                                ###     myResults is of the form = [ (key1, value1, key2, value2....)]
+                                                ### if pattern matches to multiple instances in line, len(myResults) will be > 1
+                                                while patternMatchCount > 0:
+                                                    patternMatchCount -= 1
 
-                                            ### if pattern matches to single instance in line, len(myResults) will be 1
-                                            ###     myResults is of the form = [ (key1, value1, key2, value2....)]
-                                            ### if pattern matches to multiple instances in line, len(myResults) will be > 1
-                                            while patternMatchCount > 0:
-                                                patternMatchCount -= 1
-
-                                                tempResults = myResults.pop(0)
-                                                for tempResult in tempResults:
-                                                    groupNumber += 1
-                                                    if values[patternIndexForSkipGroups] != None:
-                                                        ### if current group number is in skipGroup list, skip it
-                                                        if ( str(groupNumber) in values[patternIndexForSkipGroups]):
-                                                            tempResult = '_MASKED_'
+                                                    tempResults = myResults.pop(0)
+                                                    for tempResult in tempResults:
+                                                        groupNumber += 1
+                                                        if values[patternIndexForSkipGroups] != None:
+                                                            ### if current group number is in skipGroup list, skip it
+                                                            if ( str(groupNumber) in values[patternIndexForSkipGroups]):
+                                                                tempResult = '_MASKED_'
+                                                                
+                                                        if values[patternIndexForTraceId] == groupNumber :
+                                                            ### current tempResult is the traceid field
+                                                            ### remove -, _, g to Z from trace id field
+                                                            tempResult = re.sub(r'-|_|[g-zG-Z]', "", tempResult)
+                                                            tempTraceLine = tempTraceLine + r',traceId={0}'.format(tempResult)
+                                                            ## current traceId for next line if it does not have the traceId
+                                                            prevLineTraceId = tempResult
+                                                            tempTraceIdAdded = True
+                                                        elif values[patternIndexForTimeStampGroup] == groupNumber:
                                                             
-                                                    if values[patternIndexForTraceId] == groupNumber :
-                                                        ### current tempResult is the traceid field
-                                                        ### remove -, _, g to Z from trace id field
-                                                        tempResult = re.sub(r'-|_|[g-zG-Z]', "", tempResult)
-                                                        tempTraceLine = tempTraceLine + r',traceId={0}'.format(tempResult)
-                                                        ## current traceId for next line if it does not have the traceId
-                                                        prevLineTraceId = tempResult
-                                                        tempTraceIdAdded = True
-                                                    elif values[patternIndexForTimeStampGroup] == groupNumber:
-                                                        
-                                                        ### current tempResult is the timestamp field
-                                                        ### convert timestamp to microseconds since 1970-01-01 00:00:00
-                                                        ### format spec at https://www.tutorialspoint.com/python/time_strptime.htm
+                                                            ### current tempResult is the timestamp field
+                                                            ### convert timestamp to microseconds since 1970-01-01 00:00:00
+                                                            ### format spec at https://www.tutorialspoint.com/python/time_strptime.htm
 
-                                                        # ensure the dateTimeString has 6 digits in fraction space, needed for loki time format
-                                                        if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S.%f' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S.%f') :
-                                                            # 2022-06-05 12:48:00.000000
-                                                            # 01234567890123456789012345 - length 26
-                                                            # 2022-06-05 12:48:00.000
-                                                            # 01234567890123456789012    - length 23            
-                                                            if len(tempResult) == 23 :
-                                                                tempResult = tempResult + "000"
+                                                            # ensure the dateTimeString has 6 digits in fraction space, needed for loki time format
+                                                            if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S.%f' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S.%f') :
+                                                                # 2022-06-05 12:48:00.000000
+                                                                # 01234567890123456789012345 - length 26
+                                                                # 2022-06-05 12:48:00.000
+                                                                # 01234567890123456789012    - length 23            
+                                                                if len(tempResult) == 23 :
+                                                                    tempResult = tempResult + "000"
 
-                                                        traceTimeStamp = int(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(tempResult, 
-                                                                            values[patternIndexForTimeStampFormat] ) )
-                                                        if ( traceTimeStamp == 0 ) :
-                                                            errorMsg = "ERROR Invalid TimeStampFormat:{0}".format(values[patternIndexForTimeStampFormat]) 
-                                                            print(errorMsg)
-                                                            LogMsg(errorMsg, statsLogFileName, True)
-                                                            ### DO NOT attempt to convert time next time
-                                                            values[patternIndexForTimeStampGroup] = None
-                                                            
-                                                        else:
-                                                            prevLineTimeStamp = tempTimeStamp = traceTimeStamp
+                                                            traceTimeStamp = int(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(tempResult, 
+                                                                                values[patternIndexForTimeStampFormat] ) )
+                                                            if ( traceTimeStamp == 0 ) :
+                                                                errorMsg = "ERROR Invalid TimeStampFormat:{0}".format(values[patternIndexForTimeStampFormat]) 
+                                                                print(errorMsg)
+                                                                LogMsg(errorMsg, statsLogFileName, True)
+                                                                ### DO NOT attempt to convert time next time
+                                                                values[patternIndexForTimeStampGroup] = None
+                                                                
+                                                            else:
+                                                                prevLineTimeStamp = tempTimeStamp = traceTimeStamp
 
-                                                            ### loki needs the time stamp with fraction second upto microseconds
-                                                            ###  add ".000000" to get time with only up to seconds to get in microseconds
-                                                            if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S'  ) :
-                                                                tempResult = tempResult + ".000000" 
-                                                            ### replace space separator between date and time with T, loki needs in isoformat
-                                                            tempResult = tempResult.replace(" ", "T")
+                                                                ### loki needs the time stamp with fraction second upto microseconds
+                                                                ###  add ".000000" to get time with only up to seconds to get in microseconds
+                                                                if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S'  ) :
+                                                                    tempResult = tempResult + ".000000" 
+                                                                ### replace space separator between date and time with T, loki needs in isoformat
+                                                                tempResult = tempResult.replace(" ", "T")
 
-                                                            prevLineTimeStampString = tempResult
-                                                            tempTimeStampStringPresent = True
+                                                                prevLineTimeStampString = tempResult
+                                                                tempTimeStampStringPresent = True
 
-                                                    ### append current word to form original line
-                                                    tempLogLine = tempLogLine + r'{0}'.format(tempResult)
+                                                        ### append current word to form original line
+                                                        tempLogLine = tempLogLine + r'{0}'.format(tempResult)
 
-                                            if tempDuration == None:
-                                                ### default to 1000 (1ms)
-                                                tempDuration = 1000
+                                                if tempDuration == None:
+                                                    ### default to 1000 (1ms)
+                                                    tempDuration = 1000
 
-                                            if tempTraceIdAdded == None :
-                                                ### add prev traceId to current line
-                                                tempTraceLine += ",traceId={0}".format(prevLineTraceId)
-                                                tempLogLine = "{0} {1}".format(prevLineTraceId, tempLogLine)
-                                            ### add timestamp and duration
-                                            tempTraceLine = tempTraceLine + r",timestamp={0},duration={1}\n".format(tempTimeStamp, tempDuration)
+                                                if tempTraceIdAdded == None :
+                                                    ### add prev traceId to current line
+                                                    tempTraceLine += ",traceId={0}".format(prevLineTraceId)
+                                                    tempLogLine = "{0} {1}".format(prevLineTraceId, tempLogLine)
+                                                ### add timestamp and duration
+                                                tempTraceLine = tempTraceLine + r",timestamp={0},duration={1}\n".format(tempTimeStamp, tempDuration)
 
-                                            logTraces[key].append(tempTraceLine)
-                                            ### increment the logTracesCount
-                                            logTracesCount[key] += 1
+                                                logTraces[key].append(tempTraceLine)
+                                                ### increment the logTracesCount
+                                                logTracesCount[key] += 1
 
-                                            ### if current line does not have timestamp, add prev line timestamp
-                                            if tempTimeStampStringPresent == None and prevLineTimeStampString != '' :
-                                                tempLogLine = prevLineTimeStampString + " " + tempLogLine
+                                                ### if current line does not have timestamp, add prev line timestamp
+                                                if tempTimeStampStringPresent == None and prevLineTimeStampString != '' :
+                                                    tempLogLine = prevLineTimeStampString + " " + tempLogLine
 
-                                            ### add new line if not present in current line. This is used to separate lines on web server before
-                                            ###   posting to loki
-                                            #if tempLine.endswith('\n') == False:
-                                            tempLogLine += '\n'
-                                            ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
-                                            logLines[key].append(tempLogLine)
-                                            ### increment the logLinesCount
-                                            logLinesCount[key] += 1
+                                                ### add new line if not present in current line. This is used to separate lines on web server before
+                                                ###   posting to loki
+                                                #if tempLine.endswith('\n') == False:
+                                                #tempLogLine += '\n'
 
-                                        ### do not search for any more trace patterns (trace line pattern matching stops at first match)
-                                        patternTraceMatched = True
-                                        
-                                except re.error as err:
-                                    errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
-                                    print(errorMsg)
-                                    LogMsg(errorMsg, statsLogFileName, True)
-                                    ### discard this pattern so that no need to check this again
-                                    values[index] = None
-                                    continue
+                                                if index == patternIndexForTraceBlockStart :
+                                                    tempLogLine += '\n'
+                                                    ### DO NOT append __NEWLINE__ separator so that this line is logged as a group of log lines
+                                                    logLines[key].append(tempLogLine )
+                                                else:
+                                                    ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
+                                                    ### Log lines group separator, used by script on Web Server to post log line groups separatly to Loki
+                                                    logLines[key].append(tempLogLine + "__NEWLINE__")
+
+                                                ### increment the logLinesCount
+                                                logLinesCount[key] += 1
+
+                                            ### do not search for any more trace patterns (trace line pattern matching stops at first match)
+                                            patternTraceMatched = True
+                                            
+                                    except re.error as err:
+                                        errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
+                                        print(errorMsg)
+                                        LogMsg(errorMsg, statsLogFileName, True)
+                                        ### discard this pattern so that no need to check this again
+                                        values[index] = None
+                                        continue
 
                             ### log line search
                             if index == patternIndexForPatternLog and patternLogMatched == False and maxLogLines > 0 :
@@ -2045,8 +2103,10 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                     if re.search(searchPattern, tempLine) != None:
                                         ### matching pattern found, collect this log line
                                         if int(logLinesCount[key]) < maxLogLines:
+                                            ### remove \n from the line, it will be added when __NEWLINE__ is appended
+                                            tempLine = re.sub("\n$",'',tempLine)
                                             ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
-                                            logLines[key].append(tempLine)
+                                            logLines[key].append(tempLine + "__NEWLINE__")
                                         ### increment the logLinesCount
                                         logLinesCount[key] += 1
                                         ### do not search for any more log patterns (log line pattern matching stops at first match)

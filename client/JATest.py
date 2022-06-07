@@ -46,7 +46,7 @@ if debugLevel > 0 :
 
 def JATestExit(reason):
     print(reason)
-    sys.exit()
+    exit()
 
 startTimeInSec = time.time()
 # seed random number generator
@@ -108,7 +108,9 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
             msg = " 2nd line of prev trace line {0:016x}\n".format(traceId, count)
             JAGlobalLib.LogMsg(msg, testLogFileName, True, False)
-            msg = " 2nd line of prev trace line {0:016x}\n".format(traceId, count)
+            msg = "Block1 {0:016x} Service3 test trace line {1}\n".format(traceId, count)
+            JAGlobalLib.LogMsg(msg, testLogFileName, True)
+            msg = " 2nd line of block \n 3rd line of block \n 4th line of block \n 5th line of block \n 6th line of block \n"
             JAGlobalLib.LogMsg(msg, testLogFileName, True, False)
             traceId += count
         elif count % 3 > 0:

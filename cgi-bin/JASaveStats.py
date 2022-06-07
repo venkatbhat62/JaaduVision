@@ -366,61 +366,64 @@ try:
                 # with space separator 
                 myTimeStampRegexSpace = re.compile(r'(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d+)') 
 
-                tempLines = value.split('\n')
+                ### tempLines = value.split('\n')
+                tempLines = value.split("__NEWLINE__")
                 lineCount = 1
                 for line in tempLines:
-                    ### if current line has timestamp in standard ISO format, use it
-                    try:
-                        tempDateTime = myTimeStampRegexT.search(line)
-                        if tempDateTime != None:
-                            myDateTime = str(tempDateTime.group()) + "-00:00"
-                        else:
-                            tempDateTime = myTimeStampRegexSpace.search(line)
+                    line = line.replace("__NEWLINE__", "")
+                    if len(line) > 0:
+                        ### if current line has timestamp in standard ISO format, use it
+                        try:
+                            tempDateTime = myTimeStampRegexT.search(line)
                             if tempDateTime != None:
                                 myDateTime = str(tempDateTime.group()) + "-00:00"
-                                ### replace space with T to bring it to isoformat required by Loki
-                                myDateTime = myDateTime.replace(" ", "T")
                             else:
-                                curr_datetime = datetime.utcnow()
-                                curr_datetime = curr_datetime.isoformat('T')
-                                myDateTime = str(curr_datetime) + "-00:00"
-                    except Exception as err:
-                        print("myTimeStampRegex.search() generated exception:" + str(err))
-                        curr_datetime = datetime.utcnow()
-                        curr_datetime = curr_datetime.isoformat('T')
-                        myDateTime = str(curr_datetime) + "-00:00"
+                                tempDateTime = myTimeStampRegexSpace.search(line)
+                                if tempDateTime != None:
+                                    myDateTime = str(tempDateTime.group()) + "-00:00"
+                                    ### replace space with T to bring it to isoformat required by Loki
+                                    myDateTime = myDateTime.replace(" ", "T")
+                                else:
+                                    curr_datetime = datetime.utcnow()
+                                    curr_datetime = curr_datetime.isoformat('T')
+                                    myDateTime = str(curr_datetime) + "-00:00"
+                        except Exception as err:
+                            print("myTimeStampRegex.search() generated exception:" + str(err))
+                            curr_datetime = datetime.utcnow()
+                            curr_datetime = curr_datetime.isoformat('T')
+                            myDateTime = str(curr_datetime) + "-00:00"
 
-                    # 'labels': '{instance=\"' + hostName + '\", site=\"' + siteName + '\", component=\"' + componentName + '\", platform=\"' + platformName + '\"}',
-                    payload = {
-                        'streams': [
-                            {
-                                'labels': '{' + labelParams + '}',
-                                'entries': [
-                                    {
-                                        'ts': myDateTime,
-                                        'line': " " + line
-                                    }
-                                ]
+                        # 'labels': '{instance=\"' + hostName + '\", site=\"' + siteName + '\", component=\"' + componentName + '\", platform=\"' + platformName + '\"}',
+                        payload = {
+                            'streams': [
+                                {
+                                    'labels': '{' + labelParams + '}',
+                                    'entries': [
+                                        {
+                                            'ts': myDateTime,
+                                            'line': " " + line
+                                        }
+                                    ]
+                                }
+                            ]
                             }
-                        ]
-                        }
-                    payload = json.dumps(payload)
-                    if debugLevel > 2:
-                        print("DEBUG-3 JASaveStats.py payload:|{0}|, lokiGatewayURL:|{1}|\n".format(payload, lokiGatewayURL))
+                        payload = json.dumps(payload)
+                        if debugLevel > 2:
+                            print("DEBUG-3 JASaveStats.py payload:|{0}|, lokiGatewayURL:|{1}|\n".format(payload, lokiGatewayURL))
 
-                    try:
-                        tempReturnResult = requests.post( lokiGatewayURL, data=payload, headers=headersForLokiGateway)
-                        tempReturnResult.raise_for_status()
-                        
-                        if debugLevel > 1:
-                            print('DEBUG-2 JASaveStats.py log line: {0} posted to loki with result:{1}\n'.format(line,tempReturnResult.text))
-                    except requests.exceptions.RequestException as err:
-                        ### DO NOT abort here on error, continue to post data to other destinations 
-                        returnResult = returnResult + "ERROR posting logs to Loki, returnResult:{0}".format(err)
-                        errorPostingLoki = True
-                        break
+                        try:
+                            tempReturnResult = requests.post( lokiGatewayURL, data=payload, headers=headersForLokiGateway)
+                            tempReturnResult.raise_for_status()
+                            
+                            if debugLevel > 1:
+                                print('DEBUG-2 JASaveStats.py log line: {0} posted to loki with result:{1}\n'.format(line,tempReturnResult.text))
+                        except requests.exceptions.RequestException as err:
+                            ### DO NOT abort here on error, continue to post data to other destinations 
+                            returnResult = returnResult + "ERROR posting logs to Loki, returnResult:{0}".format(err)
+                            errorPostingLoki = True
+                            break
 
-                    lineCount += 1
+                        lineCount += 1
             elif postToZipkin == True:
                 """ content posted is the form:
                 id=1,name=./JATest.log.20220528,serviceName=TestTrace,traceId=0000000000000116,timestamp=1653771104716898,duration=1000\n
