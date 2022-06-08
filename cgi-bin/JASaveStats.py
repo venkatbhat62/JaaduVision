@@ -362,9 +362,9 @@ try:
                 """
                 ### regular expression definition for timestamp string at the start of line
                 # with T separator
-                myTimeStampRegexT = re.compile(r'(\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)') 
+                myTimeStampRegexT = re.compile(r'(\d\d\d\d-\d\d-\d\d[T ]\d\d:\d\d:\d\d[\.,]\d+)') 
                 # with space separator 
-                myTimeStampRegexSpace = re.compile(r'(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d+)') 
+                #myTimeStampRegexSpace = re.compile(r'(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d+)') 
 
                 ### tempLines = value.split('\n')
                 tempLines = value.split("__NEWLINE__")
@@ -377,16 +377,16 @@ try:
                             tempDateTime = myTimeStampRegexT.search(line)
                             if tempDateTime != None:
                                 myDateTime = str(tempDateTime.group()) + "-00:00"
+                            #else:
+                            #    tempDateTime = myTimeStampRegexSpace.search(line)
+                            #    if tempDateTime != None:
+                            #        myDateTime = str(tempDateTime.group()) + "-00:00"
+                            #        ### replace space with T to bring it to isoformat required by Loki
+                            #        myDateTime = myDateTime.replace(" ", "T")
                             else:
-                                tempDateTime = myTimeStampRegexSpace.search(line)
-                                if tempDateTime != None:
-                                    myDateTime = str(tempDateTime.group()) + "-00:00"
-                                    ### replace space with T to bring it to isoformat required by Loki
-                                    myDateTime = myDateTime.replace(" ", "T")
-                                else:
-                                    curr_datetime = datetime.utcnow()
-                                    curr_datetime = curr_datetime.isoformat('T')
-                                    myDateTime = str(curr_datetime) + "-00:00"
+                                curr_datetime = datetime.utcnow()
+                                curr_datetime = curr_datetime.isoformat('T')
+                                myDateTime = str(curr_datetime) + "-00:00"
                         except Exception as err:
                             print("myTimeStampRegex.search() generated exception:" + str(err))
                             curr_datetime = datetime.utcnow()
