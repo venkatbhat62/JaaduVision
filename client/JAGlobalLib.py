@@ -30,7 +30,10 @@ def JAConvertStringTimeToTimeInMicrosec( dateTimeString, format):
     ### 2022-06-04 add logic to use timezone while converting time to UTC time ???
     try:
         datetime_obj = datetime.datetime.strptime(dateTimeString, format)
-        timeInMicroSeconds = datetime_obj.timestamp() * 1000000
+        if sys.version_info[0] < 3 or sys.version_info[1] < 4:
+            timeInMicroSeconds =  time.mktime(datetime_obj.timetuple()) * 1000000
+        else:
+            timeInMicroSeconds = datetime_obj.timestamp() * 1000000
         return timeInMicroSeconds
     except:
         return 0

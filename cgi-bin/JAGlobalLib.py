@@ -29,11 +29,14 @@ def UTCTime():
 def JAConvertStringTimeToTimeInMicrosec( dateTimeString, format):
     try:
         datetime_obj = datetime.datetime.strptime(dateTimeString, format)
-        timeInMicroSeconds = datetime_obj.timestamp() * 1000000
+        if sys.version_info[0] < 3 or sys.version_info[1] < 4:
+            timeInMicroSeconds =  time.mktime(datetime_obj.timetuple()) * 1000000
+        else:
+            timeInMicroSeconds = datetime_obj.timestamp() * 1000000
         return timeInMicroSeconds
     except:
         return 0
-
+        
 def JAGetTime( deltaSeconds ):
     tempTime = datetime.datetime.now()
     deltaTime = datetime.timedelta(seconds=deltaSeconds)
