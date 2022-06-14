@@ -490,7 +490,8 @@ LogFile:
       #                              ^^^^^^^^ <-- label group
       # trace name
       PatternTraceLabelGroup: 2
-
+      # 3rd line of block
+      PatternTraceBlockContains: (3rd )(line of block)
       # 4th line of block 00000000000000c
       # regex group:    1    2           3        4
       PatternTraceId: (.*)( block )([0-9a-fA-F]+)$
