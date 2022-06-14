@@ -104,9 +104,10 @@ patternIndexForTraceBlockInProgress = 27
 patternIndexForSkip = 28
 patternIndexForTraceSingleLine = 29
 patternIndexForTraceIdPrefix = 30
+patternIndexForTraceBlockContains = 31
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
-maxPatternIndex = 31
+maxPatternIndex = 32
 
 ### while processing log line, process each line when index match to below list item
 ### this is to speed up the processing
@@ -133,7 +134,8 @@ tracePatternIndexsList = [
     patternIndexForTraceLabel,
     patternIndexForTraceBlockStart,
     patternIndexForTraceBlockEnd,
-    patternIndexForSkip
+    patternIndexForSkip,
+    patternIndexForTraceBlockContains
 ]
 ### index used while processing Execute command spec
 indexForCommand = 0
@@ -802,6 +804,11 @@ try:
                 tempPatternList[patternIndexForTraceIdPrefix] = str(value.get('PatternTraceIdPrefix')).strip()
                 tempPatternPresent[patternIndexForTraceIdPrefix] = True
 
+            if value.get('PatternTraceBlockContains') != None:
+                ## need to send current log line with trace data
+                tempPatternList[patternIndexForTraceBlockContains] = str(value.get('PatternTraceBlockContains')).strip()
+                tempPatternPresent[patternIndexForTraceBlockContains] = True
+
             ### if DBDetails available per service definition, store that.
             if value.get('DBDetails') != None:
                 ### initialize it with default DBDetails. This is to inherit any value that is not specified locally.
@@ -921,6 +928,9 @@ try:
 
             logStats[key][patternIndexForTraceIdPrefix*2] = None
             logStats[key][patternIndexForTraceIdPrefix*2+1] = tempPatternPresent[patternIndexForTraceSingleLine]
+
+            logStats[key][patternIndexForTraceBlockContains*2] = None
+            logStats[key][patternIndexForTraceBlockContains*2+1] = tempPatternPresent[patternIndexForTraceBlockContains]
 
             ### initialize logLines[key] list to empty list
             logLines[key] = []
@@ -1781,6 +1791,7 @@ traceBlockLogLines = defaultdict(dict)
 traceBlockTimeStamp = defaultdict(dict)
 traceBlockTraceId =  defaultdict(dict)
 traceBlockStartLine = defaultdict(dict)
+traceBlockContains = defaultdict(dict)
 
 def JAProcessLineForTrace( tempLine, fileName, key, values ):
 
@@ -1834,6 +1845,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                         tempLogLine = tempTraceLine[fileName] = tempDuration[fileName] =  ''
                         traceBlockTraceId[fileName] = traceBlockTimeStamp[fileName] = traceBlockLogLines[fileName] = []
                         traceBlockInProgress[fileName] = key
+                        traceBlockContains[fileName] = False
 
                     groupNumber = 0
                     if tempTraceLine[fileName] == '':
@@ -1930,6 +1942,10 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                         tempResult = '_MASKED_'                                                                
                                         tempAppendTraceLine = True
 
+                            if  tempTraceSingleLine == False and index == patternIndexForTraceBlockContains:
+                                ### current line contains the desired 
+                                traceBlockContains[fileName] = True
+                                
                             ### append current word to form original line
                             tempLogLine = tempLogLine + r'{0}'.format(tempResult)
 
@@ -1949,24 +1965,32 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                 tempTraceLine[fileName] = tempTraceLine[fileName] + r",duration={0}\n".format(1000)                   
         
         if ( tempAddNEWLINE == True) :
-            ### remove \n, it will be added later when ___NEWLINE__ is appended
-            tempLine = re.sub("\n$", '', tempLogLine) 
-            ### Log lines group separator, used by script on Web Server to post log line groups separatly to Loki
-            traceBlockLogLines[fileName].append(tempLine + "__NEWLINE__")
 
-            ### add current trace block lines to logLines[key] with traceId prefixed at start of the line
-            ### this is to ensure loki can use the traceid to associate with tempo on starting line
-            tempLogLineWithTraceId = r'{0} {1} {2} {3}'.format( traceBlockTimeStamp[fileName], \
-                        values[patternIndexForTraceIdPrefix], \
-                        traceBlockTraceId[fileName], traceBlockLogLines[fileName].pop(0))
-            logLines[key].append( tempLogLineWithTraceId )
-            for line in traceBlockLogLines[fileName]:
-                logLines[key].append( line )
-            ### increment the logTracesCount
-            logLinesCount[key] += 1
-            
-            logTraces[key].append( tempTraceLine[fileName])
-            logTracesCount[key] +=1 
+            tempIncludeCurrentBlock = True
+            if values[patternIndexForTraceBlockContains] != None :
+                if traceBlockContains[fileName] == False:
+                    tempIncludeCurrentBlock = False
+
+            if tempIncludeCurrentBlock == True:
+                ### remove \n, it will be added later when ___NEWLINE__ is appended
+                tempLine = re.sub("\n$", '', tempLogLine) 
+                ### Log lines group separator, used by script on Web Server to post log line groups separatly to Loki
+                traceBlockLogLines[fileName].append(tempLine + "__NEWLINE__")
+
+                ### add current trace block lines to logLines[key] with traceId prefixed at start of the line
+                ### this is to ensure loki can use the traceid to associate with tempo on starting line
+                tempLogLineWithTraceId = r'{0} {1} {2} {3}'.format( traceBlockTimeStamp[fileName], \
+                            values[patternIndexForTraceIdPrefix], \
+                            traceBlockTraceId[fileName], traceBlockLogLines[fileName].pop(0))
+                logLines[key].append( tempLogLineWithTraceId )
+                for line in traceBlockLogLines[fileName]:
+                    logLines[key].append( line )
+                ### increment the logTracesCount
+                logLinesCount[key] += 1
+                
+                logTraces[key].append( tempTraceLine[fileName])
+                logTracesCount[key] +=1 
+
             tempTraceLine[fileName] = ''
             tempAddNEWLINE = False
 
