@@ -45,7 +45,7 @@ Author: havembha@gmail.com, 2021-07-18
       This data is to show the trace using tempo and grafana
 
 """
-from email.policy import default
+# from email.policy import default
 import json
 import platform
 import argparse
