@@ -102,16 +102,25 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
             msg = "CSV,client2,{0},{1:.2f},{2:.2f}\n".format( rampupCount+30, rampupCount, (rampupCount+30)/2 )
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
+
+            # generate log to test TracePattern line with timestamp, traceId both in the same line, not a log block
             msg = "Trace {0:016x} Service1 test trace line {1}\n".format(traceId, count)
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
+            
+            # generate log to test TraceBlockStart, and TraceBlockEnd sequence
+            # here, the traceId is in TraceBlockStart line
             msg = "Trace {0:016x} Service2 account=1234 Name=JaaduVision test trace line {1}\n".format(traceId, count)
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
             msg = " 2nd line of prev trace line {0:016x}\n".format(traceId, count)
             JAGlobalLib.LogMsg(msg, testLogFileName, True, False)
-            msg = "Block1 {0:016x} Service3 test trace line {1}\n".format(traceId, count)
+
+            ## generate log to test TraceBlockStart, TracePattern, TraceBlockEnd sequence
+            # here, the traceId is in TracePattern line, data to be masked in 5th line
+            msg = "Block1 Service3 test trace line\n"
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
-            msg = " 2nd line of block \n 3rd line of block \n 4th line of block \n 5th line of block \n 6th line of block \n"
+            msg = " 2nd line of block \n 3rd line of block \n 4th line of block {0:016x}\n 5th line of block account=1234 Name=JaaduVision \n 6th line of block \n".format(traceId)
             JAGlobalLib.LogMsg(msg, testLogFileName, True, False)
+
             traceId += count
         elif count % 3 > 0:
             JAGlobalLib.LogMsg('TestMsg Count\n', testLogFileName, True)

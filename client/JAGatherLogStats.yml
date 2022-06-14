@@ -405,87 +405,109 @@ LogFile:
       LogFileName: JATest.log*
       # 2022-05-30T15:17:58.938264 Trace 0000000000000001 Service1 test trace line 1
       # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
-      # regex group:          1                                 2          3          4          5    6
-      PatternTrace: (\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Trace )([0-9a-fA-F]+)( Service1 )(.*)(\d+)$
-      #                                                                                        ^^^^ <-- duration
-      #                                                                              ^^^^ <-- trace name or trace label
-      #                                                               ^^^^^^^^^^^^^  <-- trace id
-      #             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
+      # regex group:                1                                     2         3         4      5         6              7
+      PatternTraceTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Trace )([0-9a-fA-F]+)( )(Service1)( test trace line )(\d+)
+      #                                                                                                                    ^^^^ <-- duration
+      #                                                                                       ^^^^ <-- label
+      #                                                                         ^^^^^^^^^^ <-- trace Id
+      #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
       # group id where timestamp is present in trace log
-      # set to 0 or None if NO timestamp in current line, and use previous timestamp
       PatternTraceTimeGroup: 1
       # log timestamp format to convert time using time.strptime(). 
       # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
       TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
+      # all trace info in single line
+      PatternTraceSingleLine: True
       # trace id group in log line
       PatternTraceIdGroup: 3
       # trace name
-      PatternLabelGroup: 4
+      PatternTraceLabelGroup: 5
       # event duration is at this group id
-      PatternDurationGroup: 6
+      PatternDurationGroup: 7
       ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
       PatternDurationMultiplier: 1000
       Priority: 1
 
     # Trace serviceName
-    TestTraceWithSkipGroupsLine1:
+    TestTraceWithSkipGroups:
       # post trace data to zipkin
       DBDetails: DBType=zipkin
       LogFileName: JATest.log*
+
       # 2022-05-30T15:17:58.938412 Trace 0000000000000001 Service2 account=1234 Name=JaaduVision test trace line 1
       # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
-      # regex group:          1                                 2          3              4         5      6       7     8   9    10
-      PatternTrace: (\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Trace )([0-9a-fA-F]+)( Service2 )(account=)(\d+)( Name=)(\w+)(.*)(\d+)$
-      #                                                                                                                    ^^^^ <-- duration
-      #                                                                                             ^^^^        ^^^^ <-- skip these values while posting to loki
-      #                                                                              ^^^^ <-- trace name or trace label
-      #                                                               ^^^^^^^^^^^^^  <-- trace id
-      #             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
+      # regex group:             1                                      2          
+      # regex group:                1                                     2         3         4     5           6     7      8      9   10  11
+      PatternTraceTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Trace )([0-9a-fA-F]+)( )(Service2)( account=)(\d+)( Name=)(\w+)(.*)(\d+)
+      #                                                                                                                                     ^^^^ <-- duration
+      #                                                                                                             ^^^          ^^^  <-- skip groups
+      #                                                                                       ^^^^ <-- label
+      #                                                                         ^^^^^^^^^^ <-- trace Id
+      #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
       # group id where timestamp is present in trace log
-      # set to 0 or None if NO timestamp in current line, and use previous timestamp
       PatternTraceTimeGroup: 1
       # log timestamp format to convert time using time.strptime(). 
       # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
       TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
-      # trace id group in log line
+      # all trace info in single line
+      PatternTraceSingleLine: True
       PatternTraceIdGroup: 3
-      # trace name
-      PatternLabelGroup: 4
+      PatternTraceLabelGroup: 5
       # do not post values of these groups, just mask them. Here, account number and name are MASKED
-      PatternSkipGroups: 6,8
+      PatternSkipGroups: 7,9
       # event duration is at this group id
-      PatternDurationGroup: 10
+      PatternDurationGroup: 11
       ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
       PatternDurationMultiplier: 1000
-      Priority: 1
+      Priority: 2
 
     # Trace serviceName
     TestTraceBlock:
       # post trace data to zipkin
       DBDetails: DBType=zipkin
       LogFileName: JATest.log*
-      # 2022-06-06T18:56:03.515883 Block1 0000000000000002 Service3 test trace line 3
-      # regex group:                   1                                 2          3              4         5      6       7     8   9    10
-      PatternTraceBlockStart: (\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Block1 )([0-9a-fA-F]+)( Service3 )(\w+)(.*)(\d+)$
-      #                                                                                                             ^^^ <-- duration
-      #                                                                                          ^^^^ <-- trace name or trace label
-      #                                                                           ^^^^^^^^^^^^^  <-- trace id
+      # all trace info in single line
+      PatternTraceSingleLine: False
+      # log block of the form:
+      # 2022-06-10T23:28:33.906468 Block1 Service3 test trace line
+      # 2nd line of block 
+      # 3rd line of block 
+      # 4th line of block 00000000000000cb
+      # 5th line of block 
+      # 6th line of block 
+      # 
+      PatternTraceBlockStart: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Block1 )(.*)
+      #
       #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
       # group id where timestamp is present in trace log
-      # set to 0 or None if NO timestamp in current line, and use previous timestamp
       PatternTraceTimeGroup: 1
       # log timestamp format to convert time using time.strptime(). 
       # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
       TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
+
+      # regex group:        1           2           3
+      PatternTraceLabel: ( Block1 )( Service3 )(.*)
+      #                              ^^^^^^^^ <-- label group
+      # trace name
+      PatternTraceLabelGroup: 2
+
+      # 4th line of block 00000000000000c
+      # regex group:    1    2           3        4
+      PatternTraceId: (.*)( block )([0-9a-fA-F]+)$
+      #                             ^^^^^^^^^^^^ <--- trace id
       # trace id group in log line
       PatternTraceIdGroup: 3
-      # trace name
-      PatternLabelGroup: 4
-      # event duration is at this group id
-      PatternDurationGroup: 6
-      ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
-      PatternDurationMultiplier: 1000
-      # trace block ends with below pattern in line
-      PatternTraceBlockEnd: 6th line of block
+
+      # 5th line has SKIP words
+      # 5th line of block account=1234 Name=JaaduVision
+      # regex groups: 1       2     3       4 
+      PatternSkip: (account=)(\d+)( Name=)(\w+)(.*)
+      PatternSkipGroups: 2,4
+
+      ### Block end line, use at least two groups so that it goes through skip group checks
+      PatternTraceBlockEnd: (6th line)( of block)
+      ### add below word after timestamp, before traceId to the first line of the block so that
+      ###   loki can identify trace id in timestamp line and link to trace record.
+      PatternTraceIdPrefix: Trace
       Priority: 2
 
