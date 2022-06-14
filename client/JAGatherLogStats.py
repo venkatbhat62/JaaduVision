@@ -1941,7 +1941,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                         tempResult = '_MASKED_'                                                                
                                         tempAppendTraceLine = True
 
-                            if  tempTraceSingleLine == False and index == patternIndexForTraceBlockContains:
+                            if  (tempTraceSingleLine == None or tempTraceSingleLine == False)  and index == patternIndexForTraceBlockContains:
                                 ### current line contains the desired 
                                 traceBlockContains[fileName] = True
                                 
