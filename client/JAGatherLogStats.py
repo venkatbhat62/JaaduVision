@@ -1904,7 +1904,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                             tempResult = tempResult + ".000000" 
                                         ### replace space separator between date and time with T, loki needs in isoformat
                                         tempResult = tempResult.replace(" ", "T")
-                                    tempTraceLine[fileName] = tempTraceLine[fileName] + r",timestamp={0}".format(tempTimeStamp)
+                                    tempTraceLine[fileName] =  r"{0},timestamp={1}".format(tempTraceLine[fileName], tempTimeStamp)
                                     traceBlockTimeStamp[fileName] = tempResult
 
                             if tempTraceSingleLine == True or index == patternIndexForTraceId:
@@ -1913,7 +1913,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                     ### current tempResult is the traceid field
                                     ### remove -, _, g to Z from trace id field
                                     tempResult = re.sub(r'-|_|[g-zG-Z]', "", tempResult)
-                                    tempTraceLine[fileName] = tempTraceLine[fileName] + r',traceId={0}'.format(tempResult)
+                                    tempTraceLine[fileName] = r'{0},traceId={1}'.format(tempTraceLine[fileName],tempResult)
                                     tempAppendTraceLine = True
                                     traceBlockTraceId[fileName] = tempResult
 
@@ -1921,14 +1921,14 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                 ### trace label can be on it's own line or
                                 ###   or can be part of traceId or traceBlockStart line
                                 if values[patternIndexForTraceLabelGroup] == groupNumber:
-                                    tempTraceLine[fileName] = tempTraceLine[fileName] + r",label={0}".format(tempResult)
+                                    tempTraceLine[fileName] = r"{0},label={1}".format(tempTraceLine[fileName],tempResult)
                                     tempAppendTraceLine = True
 
                             if tempTraceSingleLine == True or index == patternIndexForTraceDuration :
                                 ### trace duration can be on its own line or
                                 ###  or can be part of traceId or traceBlockStart line
                                 if values[patternIndexForDurationGroup] == groupNumber:
-                                    tempTraceLine[fileName] = tempTraceLine[fileName] + r",duration={0}\n".format(tempResult)
+                                    tempTraceLine[fileName] = r"{0},duration={1}\n".format(tempTraceLine[fileName],tempResult)
                                     tempDuration[fileName] = tempResult
                                     tempAppendTraceLine = True
 
