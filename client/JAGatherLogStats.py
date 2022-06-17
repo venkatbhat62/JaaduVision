@@ -802,7 +802,9 @@ try:
                 ## need to send current log line with trace data
                 tempPatternList[patternIndexForTraceIdPrefix] = str(value.get('PatternTraceIdPrefix')).strip()
                 tempPatternPresent[patternIndexForTraceIdPrefix] = True
-
+            else:
+                tempPatternList[patternIndexForTraceIdPrefix] = ''
+                
             if value.get('PatternTraceBlockContains') != None:
                 ## need to send current log line with trace data
                 tempPatternList[patternIndexForTraceBlockContains] = str(value.get('PatternTraceBlockContains')).strip()
