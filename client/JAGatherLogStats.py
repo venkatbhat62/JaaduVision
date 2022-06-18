@@ -104,9 +104,15 @@ patternIndexForSkip = 28
 patternIndexForTraceSingleLine = 29
 patternIndexForTraceIdPrefix = 30
 patternIndexForTraceBlockContains = 31
+
+# index to indicate processing neeeded for a key in that category
+patternIndexForLogProcessing = 32
+patternIndexForTraceProcessing = 33
+patternIndexForStatsProcessing = 34
+
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
-maxPatternIndex = 32
+maxPatternIndex = 35
 
 ### while processing log line, process each line when index match to below list item
 ### this is to speed up the processing
@@ -136,6 +142,7 @@ tracePatternIndexsList = [
     patternIndexForSkip,
     patternIndexForTraceBlockContains
 ]
+
 ### index used while processing Execute command spec
 indexForCommand = 0
 indexForIntervalInSec = 1
@@ -838,8 +845,27 @@ try:
                 tempPatternPresent[patternIndexForDBDetails] = True
 
             if logFileName != None:     
+                ### set the LogProcessing needed flag if log processing related spec present for current key
+                for index in logPatternIndexsList:
+                    if tempPatternList[index] != None:
+                        tempPatternList[patternIndexForLogProcessing] = True
+                        break
+
+                ### set TraceProcessing needed flag if trace processing related spec present for current key
+                for index in tracePatternIndexsList:
+                    if tempPatternList[index] != None:
+                        tempPatternList[patternIndexForTraceProcessing] = True
+                        break
+
+                ### set stats processing needed if stats processing related spec present in current key
+                for index in statsPatternIndexsList:
+                    if tempPatternList[index] != None:
+                        tempPatternList[patternIndexForStatsProcessing] = True
+                        break
+                
+                ### store the current key spec
                 JAStatsSpec[logFileName][key] = list(tempPatternList)
-                    
+                                      
                 if debugLevel > 1:
                     print('DEBUG-2 key: {0}, value: {1}, pass, fail, count search strings: {2}'.format(
                         key, value, JAStatsSpec[logFileName][key]))
@@ -1812,7 +1838,6 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
             else:
                 tempAppendTraceLine = True
 
-
     tempTraceSingleLine = values[patternIndexForTraceSingleLine]
     if ( tempTraceSingleLine == True ) :
         tempLogLine = tempTraceLine[fileName] = ''
@@ -1823,141 +1848,141 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
         if values[index] == None:
             continue
 
-        if int(logTracesCount[key]) < maxTraceLines and patternTraceMatched == False :
-
-            ### search for other patterns like patternIndexForTraceId, patternIndexForTraceBlockStart
-            #   PatternTraceTimeStamp, patternIndexForTraceLabel, patternIndexForTraceDuration
-            searchPattern = r'{0}'.format(values[index])
-            try:
-                myResults = re.findall( searchPattern, tempLine)
-                patternMatchCount =  len(myResults)
-                if myResults != None and patternMatchCount > 0 :
-                    
-                    if index == patternIndexForTraceBlockEnd:
-                        if traceBlockInProgress[fileName] == key:
-                            ### trace block end pattern in current line
-                            traceBlockInProgress[fileName] = None
-                            tempAddNEWLINE = True
-                            tempAppendTraceLine = True
-
-                    ### if TraceBlockStart, set the flag so that subsequent log lines are collected till TraceBlockEnd
-                    elif index == patternIndexForTraceBlockStart:
-                        tempAppendTraceLine = True
-                        tempLogLine = tempTraceLine[fileName] = tempDuration[fileName] =  ''
-                        traceBlockTraceId[fileName] = traceBlockTimeStamp[fileName] = traceBlockLogLines[fileName] = []
-                        traceBlockInProgress[fileName] = key
-                        traceBlockContains[fileName] = False
-
-                    groupNumber = 0
-                    if tempTraceLine[fileName] == '':
-                        """
-                        trace data to be posted to the web server is in the form
-                        id=<number>,timestamp=<logTimeInMicroSec>,duration=<inMicroSec>,name=logFileName,serviceName=key
-                        """
-                        tempTraceLine[fileName] = r'id={0},name={1},serviceName={2}'.format( traceSpanId, fileName, key)
- 
-                    ### if pattern matches to single instance in line, len(myResults) will be 1
-                    ###     myResults is of the form = [ (key1, value1, key2, value2....)]
-                    ### if pattern matches to multiple instances in line, len(myResults) will be > 1
-                    while patternMatchCount > 0:
-                        patternMatchCount -= 1
-
-                        tempResults = myResults.pop(0)
-                        for tempResult in tempResults:
-                            groupNumber += 1
-
-                            # if current pattern is PatternTraceTimeStamp   
-                            if index == patternIndexForTimeStamp or (values[patternIndexForTimeStamp] == None \
-                                    and index == patternIndexForTraceBlockStart):
-
-                                if values[patternIndexForTimeStampGroup] == groupNumber :
-                                    tempAppendTraceLine = True
-
-                                    ### current tempResult is the timestamp field
-                                    ### convert timestamp to microseconds since 1970-01-01 00:00:00
-                                    ### format spec at https://www.tutorialspoint.com/python/time_strptime.htm
-
-                                    # ensure the dateTimeString has 6 digits in fraction space, needed for loki time format
-                                    if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S.%f' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S.%f') :
-                                        # 2022-06-05 12:48:00.000000
-                                        # 01234567890123456789012345 - length 26
-                                        # 2022-06-05 12:48:00.000
-                                        # 01234567890123456789012    - length 23            
-                                        if len(tempResult) == 23 :
-                                            tempResult = tempResult + "000"
-
-                                    traceTimeStamp = int(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(tempResult, 
-                                                        values[patternIndexForTimeStampFormat] ) )
-                                    if ( traceTimeStamp == 0 ) :
-                                        errorMsg = "ERROR Invalid TimeStampFormat:{0}".format(values[patternIndexForTimeStampFormat]) 
-                                        print(errorMsg)
-                                        LogMsg(errorMsg, statsLogFileName, True)
-                                        ### DO NOT attempt to convert time next time
-                                        values[patternIndexForTimeStampGroup] = None
-                                        ### get current time in microseconds, default time for trace
-                                        tempTimeStamp = int(time.time() * 1000000)
-                                        
-                                    else:
-                                        tempTimeStamp = traceTimeStamp
-
-                                        ### loki needs the time stamp with fraction second upto microseconds
-                                        ###  add ".000000" to get time with only up to seconds to get in microseconds
-                                        if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S'  ) :
-                                            tempResult = tempResult + ".000000" 
-                                        ### replace space separator between date and time with T, loki needs in isoformat
-                                        tempResult = tempResult.replace(" ", "T")
-                                    tempTraceLine[fileName] =  r"{0},timestamp={1}".format(tempTraceLine[fileName], tempTimeStamp)
-                                    traceBlockTimeStamp[fileName] = tempResult
-
-                            if tempTraceSingleLine == True or index == patternIndexForTraceId:
-                                ### current line has trace id
-                                if values[patternIndexForTraceIdGroup] == groupNumber :
-                                    ### current tempResult is the traceid field
-                                    ### remove -, _, g to Z from trace id field
-                                    tempResult = re.sub(r'-|_|[g-zG-Z]', "", tempResult)
-                                    tempTraceLine[fileName] = r'{0},traceId={1}'.format(tempTraceLine[fileName],tempResult)
-                                    tempAppendTraceLine = True
-                                    traceBlockTraceId[fileName] = tempResult
-
-                            if tempTraceSingleLine == True or index == patternIndexForTraceLabel :
-                                ### trace label can be on it's own line or
-                                ###   or can be part of traceId or traceBlockStart line
-                                if values[patternIndexForTraceLabelGroup] == groupNumber:
-                                    tempTraceLine[fileName] = r"{0},label={1}".format(tempTraceLine[fileName],tempResult)
-                                    tempAppendTraceLine = True
-
-                            if tempTraceSingleLine == True or index == patternIndexForTraceDuration :
-                                ### trace duration can be on its own line or
-                                ###  or can be part of traceId or traceBlockStart line
-                                if values[patternIndexForDurationGroup] == groupNumber:
-                                    tempTraceLine[fileName] = r"{0},duration={1}\n".format(tempTraceLine[fileName],tempResult)
-                                    tempDuration[fileName] = tempResult
-                                    tempAppendTraceLine = True
-
-                            if tempTraceSingleLine == True or index == patternIndexForSkip:
-                                if values[patternIndexForSkipGroups] != None:
-                                    ### SKIP words can be on its own line or
-                                    ###  or can be part of traceId or traceBlockStart line
-                                    if str(groupNumber) in values[patternIndexForSkipGroups]:
-                                        ### SKIP current group
-                                        tempResult = '_MASKED_'                                                                
-                                        tempAppendTraceLine = True
-
-                            if  (tempTraceSingleLine == None or tempTraceSingleLine == False)  and index == patternIndexForTraceBlockContains:
-                                ### current line contains the desired 
-                                traceBlockContains[fileName] = True
-                                
-                            ### append current word to form original line
-                            tempLogLine = tempLogLine + r'{0}'.format(tempResult)
-
+        ### search for other patterns like patternIndexForTraceId, patternIndexForTraceBlockStart
+        #   PatternTraceTimeStamp, patternIndexForTraceLabel, patternIndexForTraceDuration
+        searchPattern = r'{0}'.format(values[index])
+        try:
+            myResults = re.findall( searchPattern, tempLine)
+            patternMatchCount =  len(myResults)
+            if myResults != None and patternMatchCount > 0 :
                 
-            except re.error as err:
-                errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
-                print(errorMsg)
-                LogMsg(errorMsg, statsLogFileName, True)
-                ### discard this pattern so that no need to check this again
-                values[index] = None
-                continue
+                if index == patternIndexForTraceBlockEnd:
+                    if traceBlockInProgress[fileName] == key:
+                        ### trace block end pattern in current line
+                        traceBlockInProgress[fileName] = None
+                        tempAddNEWLINE = True
+                        tempAppendTraceLine = True
+
+                ### if TraceBlockStart, set the flag so that subsequent log lines are collected till TraceBlockEnd
+                elif index == patternIndexForTraceBlockStart:
+                    tempAppendTraceLine = True
+                    tempLogLine = tempTraceLine[fileName] = tempDuration[fileName] =  ''
+                    traceBlockTraceId[fileName] = traceBlockTimeStamp[fileName] = traceBlockLogLines[fileName] = []
+                    traceBlockInProgress[fileName] = key
+                    traceBlockContains[fileName] = False
+
+                groupNumber = 0
+                if tempTraceLine[fileName] == '':
+                    """
+                    trace data to be posted to the web server is in the form
+                    id=<number>,timestamp=<logTimeInMicroSec>,duration=<inMicroSec>,name=logFileName,serviceName=key
+                    """
+                    tempTraceLine[fileName] = r'id={0},name={1},serviceName={2}'.format( traceSpanId, fileName, key)
+
+                ### if pattern matches to single instance in line, len(myResults) will be 1
+                ###     myResults is of the form = [ (key1, value1, key2, value2....)]
+                ### if pattern matches to multiple instances in line, len(myResults) will be > 1
+                while patternMatchCount > 0:
+                    patternMatchCount -= 1
+
+                    tempResults = myResults.pop(0)
+                    for tempResult in tempResults:
+                        groupNumber += 1
+
+                        # if current pattern is PatternTraceTimeStamp   
+                        if index == patternIndexForTimeStamp or (values[patternIndexForTimeStamp] == None \
+                                and index == patternIndexForTraceBlockStart):
+
+                            if values[patternIndexForTimeStampGroup] == groupNumber :
+                                tempAppendTraceLine = True
+
+                                ### current tempResult is the timestamp field
+                                ### convert timestamp to microseconds since 1970-01-01 00:00:00
+                                ### format spec at https://www.tutorialspoint.com/python/time_strptime.htm
+
+                                # ensure the dateTimeString has 6 digits in fraction space, needed for loki time format
+                                if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S.%f' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S.%f') :
+                                    # 2022-06-05 12:48:00.000000
+                                    # 01234567890123456789012345 - length 26
+                                    # 2022-06-05 12:48:00.000
+                                    # 01234567890123456789012    - length 23            
+                                    if len(tempResult) == 23 :
+                                        tempResult = tempResult + "000"
+
+                                traceTimeStamp = int(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(tempResult, 
+                                                    values[patternIndexForTimeStampFormat] ) )
+                                if ( traceTimeStamp == 0 ) :
+                                    errorMsg = "ERROR Invalid TimeStampFormat:{0}".format(values[patternIndexForTimeStampFormat]) 
+                                    print(errorMsg)
+                                    LogMsg(errorMsg, statsLogFileName, True)
+                                    ### DO NOT attempt to convert time next time
+                                    values[patternIndexForTimeStampGroup] = None
+                                    ### get current time in microseconds, default time for trace
+                                    tempTimeStamp = int(time.time() * 1000000)
+                                    
+                                else:
+                                    tempTimeStamp = traceTimeStamp
+
+                                    ### loki needs the time stamp with fraction second upto microseconds
+                                    ###  add ".000000" to get time with only up to seconds to get in microseconds
+                                    if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S'  ) :
+                                        tempResult = tempResult + ".000000" 
+                                    ### replace space separator between date and time with T, loki needs in isoformat
+                                    tempResult = tempResult.replace(" ", "T")
+                                tempTraceLine[fileName] =  r"{0},timestamp={1}".format(tempTraceLine[fileName], tempTimeStamp)
+                                traceBlockTimeStamp[fileName] = tempResult
+
+                        if tempTraceSingleLine == True or index == patternIndexForTraceId:
+                            ### current line has trace id
+                            if values[patternIndexForTraceIdGroup] == groupNumber :
+                                ### current tempResult is the traceid field
+                                ### remove -, _, g to Z from trace id field
+                                tempResult = re.sub(r'-|_|[g-zG-Z]', "", tempResult)
+                                tempTraceLine[fileName] = r'{0},traceId={1}'.format(tempTraceLine[fileName],tempResult)
+                                tempAppendTraceLine = True
+                                traceBlockTraceId[fileName] = tempResult
+
+                        if tempTraceSingleLine == True or index == patternIndexForTraceLabel :
+                            ### trace label can be on it's own line or
+                            ###   or can be part of traceId or traceBlockStart line
+                            if values[patternIndexForTraceLabelGroup] == groupNumber:
+                                tempTraceLine[fileName] = r"{0},label={1}".format(tempTraceLine[fileName],tempResult)
+                                tempAppendTraceLine = True
+
+                        if tempTraceSingleLine == True or index == patternIndexForTraceDuration :
+                            ### trace duration can be on its own line or
+                            ###  or can be part of traceId or traceBlockStart line
+                            if values[patternIndexForDurationGroup] == groupNumber:
+                                tempTraceLine[fileName] = r"{0},duration={1}\n".format(tempTraceLine[fileName],tempResult)
+                                tempDuration[fileName] = tempResult
+                                tempAppendTraceLine = True
+
+                        if tempTraceSingleLine == True or index == patternIndexForSkip:
+                            if values[patternIndexForSkipGroups] != None:
+                                ### SKIP words can be on its own line or
+                                ###  or can be part of traceId or traceBlockStart line
+                                if str(groupNumber) in values[patternIndexForSkipGroups]:
+                                    ### SKIP current group
+                                    tempResult = '_MASKED_'                                                                
+                                    tempAppendTraceLine = True
+
+                        if  (tempTraceSingleLine == None or tempTraceSingleLine == False)  and index == patternIndexForTraceBlockContains:
+                            ### current line contains the desired 
+                            traceBlockContains[fileName] = True
+                            
+                        ### append current word to form original line
+                        tempLogLine = tempLogLine + r'{0}'.format(tempResult)
+                # found a matching pattern in current line, NO more search for any other pattern
+                ### get out of for loop
+                break
+
+        except re.error as err:
+            errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
+            print(errorMsg)
+            LogMsg(errorMsg, statsLogFileName, True)
+            ### discard this pattern so that no need to check this again
+            values[index] = None
+            continue
 
     if tempAppendTraceLine == True:
         if tempDuration[fileName] == None or tempDuration[fileName] == '':
@@ -1986,8 +2011,8 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                 logLines[key].append( tempLogLineWithTraceId )
                 for line in traceBlockLogLines[fileName]:
                     logLines[key].append( line )
-                ### increment the logTracesCount
-                logLinesCount[key] += 1
+                    ### increment the logTracesCount
+                    logLinesCount[key] += 1
                 
                 logTraces[key].append( tempTraceLine[fileName])
                 logTracesCount[key] +=1 
@@ -2008,6 +2033,8 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
             ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
             ### Log lines group separator, used by script on Web Server to post log line groups separatly to Loki
             logLines[key].append(tempLogLine + "__NEWLINE__")
+            ### increment the logLinesCount
+            logLinesCount[key] += 1
             
             ### all trace definitions in single line with regex group corresponding to that line
             ###   no other log line to process, add current trace info.
@@ -2017,8 +2044,6 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                 tempTraceLine[fileName] = ''
                 tempAddNEWLINE = False
 
-        ### increment the logLinesCount
-        logLinesCount[key] += 1
         tempLogLine = ''
 
         ### do not search for any more trace patterns (trace line pattern matching stops at first match)
@@ -2033,7 +2058,7 @@ def JAProcessLineForLog( tempLine, fileName, key, values ):
     ### see whether current line match to any log definitions
     for index in logPatternIndexsList:
 
-        if values[index] == None or patternLogMatched == False:
+        if values[index] == None or (values[index] == None or values[index] == '' ):
             continue
 
         ### maxLogLines non-zero, logs collection is enabled for this host
@@ -2042,17 +2067,17 @@ def JAProcessLineForLog( tempLine, fileName, key, values ):
         try:
             if re.search(searchPattern, tempLine) != None:
                 ### matching pattern found, collect this log line
-                if int(logLinesCount[key]) < maxLogLines:
-                    ### remove \n from the line, it will be added when __NEWLINE__ is appended
-                    tempLine = re.sub("\n$",'',tempLine)
-                    ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
-                    logLines[key].append(tempLine + "__NEWLINE__")
+                ### remove \n from the line, it will be added when __NEWLINE__ is appended
+                tempLine = re.sub("\n$",'',tempLine)
+                ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
+                logLines[key].append(tempLine + "__NEWLINE__")
                 ### increment the logLinesCount
                 logLinesCount[key] += 1
                 ### do not search for any more log patterns (log line pattern matching stops at first match)
                 patternLogMatched = True
-                ### no more processing needed for the trace collection
-                
+                ### no more processing needed for current log line
+                break
+
         except re.error as err:
             errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
             print(errorMsg)
@@ -2209,6 +2234,20 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         ### proceed with search if current CPU usage is lower than max CPU usage allowed
                         index = 0
 
+                        ### if current key has spec related to trace processing, 
+                        if values[patternIndexForTraceProcessing] == True and maxTraceLines > 0:   
+                            if int(logTracesCount[key]) < maxTraceLines:
+                                patternTraceMatched = JAProcessLineForTrace( tempLine, fileName, key, values )
+
+                        ## upon trace match, log line is collected, thus, no need to search for log line again
+                        if patternTraceMatched == False  and maxLogLines > 0 and values[patternIndexForLogProcessing] == True:
+                            if int(logLinesCount[key]) < maxLogLines:
+                                patternLogMatched = JAProcessLineForLog( tempLine, fileName, key, values )
+
+                        ### if current key does not have any stats processing spec, skip it
+                        if values[patternIndexForStatsProcessing] != True:
+                            continue
+
                         ### if variable prefix is defined for current service, 
                         ###   see whether the variable prefix pattern is present in current line
                         variablePrefix = None
@@ -2272,11 +2311,6 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 values[patternIndexForLabel] = None
                                 continue
 
-                        if maxTraceLines > 0:   
-                            patternTraceMatched = JAProcessLineForTrace( tempLine, fileName, key, values )
-
-                        if patternTraceMatched == False  and maxLogLines > 0 :
-                            patternLogMatched = JAProcessLineForLog( tempLine, fileName, key, values )
 
                         ### see whether current line match to any sttas definitions
                         for index in statsPatternIndexsList:
