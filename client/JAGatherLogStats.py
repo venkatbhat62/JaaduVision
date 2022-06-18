@@ -63,52 +63,52 @@ from JAGlobalLib import LogMsg
 JAVersion = "01.20.01"
 
 ### number of patterns that can be searched in log line per Service
-patternIndexForPriority = 0
-patternIndexForPatternPass = 1
-patternIndexForPatternFail = 2
-patternIndexForPatternCount = 3
-patternIndexForPatternSum = 4
-patternIndexForPatternAverage = 5
-patternIndexForPatternDelta = 6
+indexForPriority = 0
+indexForPatternPass = 1
+indexForPatternFail = 2
+indexForPatternCount = 3
+indexForPatternSum = 4
+indexForPatternAverage = 5
+indexForPatternDelta = 6
 ## below patterns comes into play when pattern searched is Pattern Sum/Average/Delta
-patternIndexForVariablePrefix = 7
-patternIndexForVariablePrefixGroup = 8
-patternIndexForPatternLog = 9
-patternIndexForLabel = 10
-patternIndexForLabelGroup = 11
+indexForVariablePrefix = 7
+indexForVariablePrefixGroup = 8
+indexForPatternLog = 9
+indexForLabel = 10
+indexForLabelGroup = 11
 
 ### skip posting stats or skip posting words in log line for below regex groups if dataMaskEnabled is set to True
-patternIndexForSkipGroups = 12
+indexForSkipGroups = 12
 
-patternIndexForDBDetails = 13
-patternIndexForCSVVariableNames = 14
+indexForDBDetails = 13
+indexForCSVVariableNames = 14
 # below are used for trace feature
-patternIndexForTimeStamp   = 15
-patternIndexForTimeStampGroup = 16
+indexForTimeStamp   = 15
+indexForTimeStampGroup = 16
 
-patternIndexForTraceId = 17
-patternIndexForTraceIdGroup = 18
+indexForTraceId = 17
+indexForTraceIdGroup = 18
 
-patternIndexForTraceLabel = 19
-patternIndexForTraceLabelGroup = 20
+indexForTraceLabel = 19
+indexForTraceLabelGroup = 20
 
-patternIndexForTraceDuration = 21
-patternIndexForDurationGroup = 22
+indexForTraceDuration = 21
+indexForDurationGroup = 22
 
-patternIndexForDurationMultiplier = 23
-patternIndexForTimeStampFormat = 24
-patternIndexForTraceBlockStart = 25
-patternIndexForTraceBlockEnd = 26
-patternIndexForTraceBlockInProgress = 27
-patternIndexForSkip = 28
-patternIndexForTraceSingleLine = 29
-patternIndexForTraceIdPrefix = 30
-patternIndexForTraceBlockContains = 31
+indexForDurationMultiplier = 23
+indexForTimeStampFormat = 24
+indexForTraceBlockStart = 25
+indexForTraceBlockEnd = 26
+indexForTraceBlockInProgress = 27
+indexForSkip = 28
+indexForTraceSingleLine = 29
+indexForTraceIdPrefix = 30
+indexForTraceBlockContains = 31
 
 # index to indicate processing neeeded for a key in that category
-patternIndexForLogProcessing = 32
-patternIndexForTraceProcessing = 33
-patternIndexForStatsProcessing = 34
+indexForLogProcessing = 32
+indexForTraceProcessing = 33
+indexForStatsProcessing = 34
 
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
@@ -117,37 +117,59 @@ maxPatternIndex = 35
 ### while processing log line, process each line when index match to below list item
 ### this is to speed up the processing
 statsPatternIndexsList = [
-    patternIndexForPatternPass,
-    patternIndexForPatternFail,
-    patternIndexForPatternCount,
-    patternIndexForPatternSum,
-    patternIndexForPatternAverage,
-    patternIndexForPatternDelta,
-    patternIndexForTimeStamp,
-    patternIndexForCSVVariableNames,
-    patternIndexForSkip
+    indexForPatternPass,
+    indexForPatternFail,
+    indexForPatternCount,
+    indexForPatternSum,
+    indexForPatternAverage,
+    indexForPatternDelta,
+    indexForTimeStamp,
+    indexForCSVVariableNames,
+    indexForSkip
+]
+### include any pattern spec associated with stats processing. DO NOT include TimeStamp here.
+specForStatsProcessing = [
+    indexForPatternPass,
+    indexForPatternFail,
+    indexForPatternCount,
+    indexForPatternSum,
+    indexForPatternAverage,
+    indexForPatternDelta,
+    indexForCSVVariableNames,
 ]
 
-logPatternIndexsList = [
-    patternIndexForPatternLog,
-    patternIndexForSkip,
-    patternIndexForTimeStamp
+### include any pattern spec associated with log processing. DO NOT include TimeStamp here.
+specForLogProcessing = [
+   indexForPatternLog
 ]
+logPatternIndexsList = [
+    indexForPatternLog,
+    indexForSkip,
+    indexForTimeStamp
+]
+### include any pattern spec associated with trace processing. DO NOT include TimeStamp here.
+specForTraceProcessing = [
+    indexForTraceId,
+    indexForTraceBlockStart,
+    indexForTraceIdGroup,
+    indexForTraceSingleLine
+]
+
 tracePatternIndexsList = [
-    patternIndexForTimeStamp,
-    patternIndexForTraceId,
-    patternIndexForTraceLabel,
-    patternIndexForTraceBlockStart,
-    patternIndexForTraceBlockEnd,
-    patternIndexForSkip,
-    patternIndexForTraceBlockContains
+    indexForTimeStamp,
+    indexForTraceId,
+    indexForTraceLabel,
+    indexForTraceBlockStart,
+    indexForTraceBlockEnd,
+    indexForSkip,
+    indexForTraceBlockContains
 ]
 
 ### index used while processing Execute command spec
 indexForCommand = 0
 indexForIntervalInSec = 1
 indexForLastExecutionTime = 2
-indexForPriority = 3
+indexForCommandPriority = 3
 maxCommandIndex = 4
 
 try:
@@ -662,8 +684,8 @@ try:
             tempPatternPresent = [False] * (maxPatternIndex)
             
             ## default priority 3, lowest
-            tempPatternList[patternIndexForPriority] = 3
-            tempPatternPresent[patternIndexForPriority] = True
+            tempPatternList[indexForPriority] = 3
+            tempPatternPresent[indexForPriority] = True
 
             if value.get('LogFileName') != None:
                 logFileName = str(value.get('LogFileName')).strip()
@@ -674,153 +696,171 @@ try:
                     continue
 
             if value.get('PatternPass') != None:
-                tempPatternList[patternIndexForPatternPass] = str(value.get('PatternPass')).strip()
-                tempPatternPresent[patternIndexForPatternPass] = True
+                tempPatternList[indexForPatternPass] = str(value.get('PatternPass')).strip()
+                tempPatternPresent[indexForPatternPass] = True
 
             if value.get('PatternFail') != None:
-                tempPatternList[patternIndexForPatternFail] = str(value.get('PatternFail')).strip()
-                tempPatternPresent[patternIndexForPatternFail] = True
+                tempPatternList[indexForPatternFail] = str(value.get('PatternFail')).strip()
+                tempPatternPresent[indexForPatternFail] = True
                 
             if value.get('PatternCount') != None:
-                tempPatternList[patternIndexForPatternCount] = str(value.get('PatternCount')).strip()
-                tempPatternPresent[patternIndexForPatternCount] = True
+                tempPatternList[indexForPatternCount] = str(value.get('PatternCount')).strip()
+                tempPatternPresent[indexForPatternCount] = True
 
             if value.get('PatternSum') != None:
-                tempPatternList[patternIndexForPatternSum] = str(value.get('PatternSum')).strip()
-                tempPatternPresent[patternIndexForPatternSum] = True
+                tempPatternList[indexForPatternSum] = str(value.get('PatternSum')).strip()
+                tempPatternPresent[indexForPatternSum] = True
 
             if value.get('PatternAverage') != None:
-                tempPatternList[patternIndexForPatternAverage] = str(value.get('PatternAverage')).strip()
-                tempPatternPresent[patternIndexForPatternAverage] = True
+                tempPatternList[indexForPatternAverage] = str(value.get('PatternAverage')).strip()
+                tempPatternPresent[indexForPatternAverage] = True
 
             if value.get('PatternDelta') != None:
-                tempPatternList[patternIndexForPatternDelta] = str(value.get('PatternDelta')).strip()
-                tempPatternPresent[patternIndexForPatternDelta] = True
+                tempPatternList[indexForPatternDelta] = str(value.get('PatternDelta')).strip()
+                tempPatternPresent[indexForPatternDelta] = True
 
             if value.get('Priority') != None:
-                tempPatternList[patternIndexForPriority] = int(value.get('Priority'))
+                tempPatternList[indexForPriority] = int(value.get('Priority'))
 
             if value.get('PatternLog') != None:
-                tempPatternList[patternIndexForPatternLog] = str(value.get('PatternLog')).strip()
-                tempPatternPresent[patternIndexForPatternLog] = True
+                tempPatternList[indexForPatternLog] = str(value.get('PatternLog')).strip()
+                tempPatternPresent[indexForPatternLog] = True
 
             if value.get('PatternVariablePrefix') != None:
-                tempPatternList[patternIndexForVariablePrefix] = str(value.get('PatternVariablePrefix')).strip()
-                tempPatternPresent[patternIndexForVariablePrefix] = True
+                tempPatternList[indexForVariablePrefix] = str(value.get('PatternVariablePrefix')).strip()
+                tempPatternPresent[indexForVariablePrefix] = True
 
+            if value.get('VariablePrefixGroup') != None:
+                tempPatternList[indexForVariablePrefixGroup] = int(str(value.get('VariablePrefixGroup')).strip())
+                tempPatternPresent[indexForVariablePrefixGroup] = True
+            ## remove below three lines once all spec is using variablePrefixGroup name
             if value.get('PatternVariablePrefixGroup') != None:
-                tempPatternList[patternIndexForVariablePrefixGroup] = int(str(value.get('PatternVariablePrefixGroup')).strip())
-                tempPatternPresent[patternIndexForVariablePrefixGroup] = True
+                tempPatternList[indexForVariablePrefixGroup] = int(str(value.get('PatternVariablePrefixGroup')).strip())
+                tempPatternPresent[indexForVariablePrefixGroup] = True
 
             if value.get('PatternLabel') != None:
-                tempPatternList[patternIndexForLabel] = str(value.get('PatternLabel')).strip()
-                tempPatternPresent[patternIndexForLabel] = True
+                tempPatternList[indexForLabel] = str(value.get('PatternLabel')).strip()
+                tempPatternPresent[indexForLabel] = True
 
+            if value.get('LabelGroup') != None:
+                tempPatternList[indexForLabelGroup] = int(str(value.get('LabelGroup')).strip())
+                tempPatternPresent[indexForLabelGroup] = True
+            ## remove below three lines once all spec is using LabelGroup name
             if value.get('PatternLabelGroup') != None:
-                tempPatternList[patternIndexForLabelGroup] = int(str(value.get('PatternLabelGroup')).strip())
-                tempPatternPresent[patternIndexForLabelGroup] = True
+                tempPatternList[indexForLabelGroup] = int(str(value.get('PatternLabelGroup')).strip())
+                tempPatternPresent[indexForLabelGroup] = True
 
+            if value.get('PatternSkip') != None:
+                tempPatternList[indexForSkip] = str(value.get('PatternSkip')).strip()
+                tempPatternPresent[indexForSkip] = True
+
+            if value.get('SkipGroups') != None:
+                ## DO NOT post values of these regex groups
+                tempCSVString = str(value.get('SkipGroups')).strip()
+                tempPatternList[indexForSkipGroups] = list(tempCSVString.split(","))
+                tempPatternPresent[indexForSkipGroups] = True
+            ## remove below lines once all spec is using LabelGroup name
             if value.get('PatternSkipGroups') != None:
                 ## DO NOT post values of these regex groups
                 tempCSVString = str(value.get('PatternSkipGroups')).strip()
-                tempPatternList[patternIndexForSkipGroups] = list(tempCSVString.split(","))
-                tempPatternPresent[patternIndexForSkipGroups] = True
-
-            if value.get('patternIndexForSkip') != None:
-                tempPatternList[patternIndexForSkip] = str(value.get('patternIndexForSkip')).strip()
-                tempPatternPresent[patternIndexForSkip] = True
+                tempPatternList[indexForSkipGroups] = list(tempCSVString.split(","))
+                tempPatternPresent[indexForSkipGroups] = True
 
             if value.get('PatternCSVVariableNames') != None:
                 ## the value is in CSV format, with one or more values
                 tempCSVString = str(value.get('PatternCSVVariableNames')).strip()
-                tempPatternList[patternIndexForCSVVariableNames] = list(tempCSVString.split(","))
-                tempPatternPresent[patternIndexForCSVVariableNames] = True
+                tempPatternList[indexForCSVVariableNames] = list(tempCSVString.split(","))
+                tempPatternPresent[indexForCSVVariableNames] = True
 
             if value.get('PatternTraceId') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForTraceId] = str(value.get('PatternTraceId')).strip()
-                tempPatternPresent[patternIndexForTraceId] = True
+                tempPatternList[indexForTraceId] = str(value.get('PatternTraceId')).strip()
+                tempPatternPresent[indexForTraceId] = True
 
-            if value.get('PatternTraceIdGroup') != None:
+            if value.get('TraceIdGroup') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForTraceIdGroup] = int(str(value.get('PatternTraceIdGroup')).strip())
-                tempPatternPresent[patternIndexForTraceIdGroup] = True
+                tempPatternList[indexForTraceIdGroup] = int(str(value.get('TraceIdGroup')).strip())
+                tempPatternPresent[indexForTraceIdGroup] = True
 
             if value.get('PatternTraceLabel') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForTraceLabel] = str(value.get('PatternTraceLabel')).strip()
-                tempPatternPresent[patternIndexForTraceLabel] = True
+                tempPatternList[indexForTraceLabel] = str(value.get('PatternTraceLabel')).strip()
+                tempPatternPresent[indexForTraceLabel] = True
 
+            if value.get('TraceLabelGroup') != None:
+                ## need to send current log line with trace data
+                tempPatternList[indexForTraceLabelGroup] = int(str(value.get('TraceLabelGroup')).strip())
+                tempPatternPresent[indexForTraceLabelGroup] = True
+            ### remove below lines once TraceLabelGroup is used in all spec files
             if value.get('PatternTraceLabelGroup') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForTraceLabelGroup] = int(str(value.get('PatternTraceLabelGroup')).strip())
-                tempPatternPresent[patternIndexForTraceLabelGroup] = True
+                tempPatternList[indexForTraceLabelGroup] = int(str(value.get('PatternTraceLabelGroup')).strip())
+                tempPatternPresent[indexForTraceLabelGroup] = True
 
             if value.get('PatternTraceDuration') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForTraceDuration] = str(value.get('PatternTraceDuration')).strip()
-                tempPatternPresent[patternIndexForTraceDuration] = True
+                tempPatternList[indexForTraceDuration] = str(value.get('PatternTraceDuration')).strip()
+                tempPatternPresent[indexForTraceDuration] = True
 
-            if value.get('PatternDurationGroup') != None:
+            if value.get('DurationGroup') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForDurationGroup] = int(str(value.get('PatternDurationGroup')).strip())
-                tempPatternPresent[patternIndexForDurationGroup] = True
+                tempPatternList[indexForDurationGroup] = int(str(value.get('DurationGroup')).strip())
+                tempPatternPresent[indexForDurationGroup] = True
 
-            if value.get('PatternDurationMultiplier') != None:
+            if value.get('DurationMultiplier') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForDurationMultiplier] = int(str(value.get('PatternDurationMultiplier')).strip())
-                tempPatternPresent[patternIndexForDurationMultiplier] = True
+                tempPatternList[indexForDurationMultiplier] = int(str(value.get('DurationMultiplier')).strip())
+                tempPatternPresent[indexForDurationMultiplier] = True
 
-            if value.get('PatternTraceTimeStamp') != None:
+            if value.get('PatternTimeStamp') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForTimeStamp] = str(value.get('PatternTraceTimeStamp')).strip()
-                tempPatternPresent[patternIndexForTimeStamp] = True
+                tempPatternList[indexForTimeStamp] = str(value.get('PatternTimeStamp')).strip()
+                tempPatternPresent[indexForTimeStamp] = True
 
-            if value.get('PatternTraceTimeGroup') != None:
+            if value.get('TimeStampGroup') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForTimeStampGroup] = int(str(value.get('PatternTraceTimeGroup')).strip())
-                tempPatternPresent[patternIndexForTimeStampGroup] = True
+                tempPatternList[indexForTimeStampGroup] = int(str(value.get('TimeStampGroup')).strip())
+                tempPatternPresent[indexForTimeStampGroup] = True
 
             if value.get('TimeStampFormat') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForTimeStampFormat] = str(value.get('TimeStampFormat')).strip()
-                tempPatternPresent[patternIndexForTimeStampFormat] = True
+                tempPatternList[indexForTimeStampFormat] = str(value.get('TimeStampFormat')).strip()
+                tempPatternPresent[indexForTimeStampFormat] = True
 
             if value.get('PatternTraceBlockStart') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForTraceBlockStart] = str(value.get('PatternTraceBlockStart')).strip()
-                tempPatternPresent[patternIndexForTraceBlockStart] = True
+                tempPatternList[indexForTraceBlockStart] = str(value.get('PatternTraceBlockStart')).strip()
+                tempPatternPresent[indexForTraceBlockStart] = True
 
             if value.get('PatternTraceBlockEnd') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForTraceBlockEnd] = str(value.get('PatternTraceBlockEnd')).strip()
-                tempPatternPresent[patternIndexForTraceBlockEnd] = True
+                tempPatternList[indexForTraceBlockEnd] = str(value.get('PatternTraceBlockEnd')).strip()
+                tempPatternPresent[indexForTraceBlockEnd] = True
 
-            if value.get('PatternTraceSingleLine') != None:
+            if value.get('TraceSingleLine') != None:
                 ## need to send current log line with trace data
-                
-                if str(value.get('PatternTraceSingleLine')).strip() == 'True' or str(value.get('PatternTraceSingleLine')).strip() == 'true':
-                    tempPatternList[patternIndexForTraceSingleLine] = True
+                if str(value.get('TraceSingleLine')).strip() == 'True' or str(value.get('TraceSingleLine')).strip() == 'true':
+                    tempPatternList[indexForTraceSingleLine] = True
                 else:
-                    tempPatternList[patternIndexForTraceSingleLine] = False
-                tempPatternPresent[patternIndexForTraceSingleLine] = True
+                    tempPatternList[indexForTraceSingleLine] = False
+                tempPatternPresent[indexForTraceSingleLine] = True
 
-            if value.get('PatternTraceIdPrefix') != None:
+            if value.get('TraceIdPrefix') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForTraceIdPrefix] = str(value.get('PatternTraceIdPrefix')).strip()
-                tempPatternPresent[patternIndexForTraceIdPrefix] = True
+                tempPatternList[indexForTraceIdPrefix] = str(value.get('TraceIdPrefix')).strip()
+                tempPatternPresent[indexForTraceIdPrefix] = True
             else:
-                tempPatternList[patternIndexForTraceIdPrefix] = ''
+                tempPatternList[indexForTraceIdPrefix] = ''
                 
             if value.get('PatternTraceBlockContains') != None:
                 ## need to send current log line with trace data
-                tempPatternList[patternIndexForTraceBlockContains] = str(value.get('PatternTraceBlockContains')).strip()
-                tempPatternPresent[patternIndexForTraceBlockContains] = True
+                tempPatternList[indexForTraceBlockContains] = str(value.get('PatternTraceBlockContains')).strip()
+                tempPatternPresent[indexForTraceBlockContains] = True
 
             ### if DBDetails available per service definition, store that.
             if value.get('DBDetails') != None:
                 ### initialize it with default DBDetails. This is to inherit any value that is not specified locally.
-                tempPatternList[patternIndexForDBDetails] = defaultdict(dict)
+                tempPatternList[indexForDBDetails] = defaultdict(dict)
                 tempValue = str(value.get('DBDetails')).strip()
                 tempDBDetailsArray = tempValue.split(',')
                 if len(tempDBDetailsArray) == 0 :
@@ -831,36 +871,36 @@ try:
                 for keyValuePair in tempDBDetailsArray:
                     fieldArray = keyValuePair.split('=')
                     if len(fieldArray) > 0:
-                        tempPatternList[patternIndexForDBDetails][fieldArray[0]]= fieldArray[1]
+                        tempPatternList[indexForDBDetails][fieldArray[0]]= fieldArray[1]
                     else:
                         errorMsg = "ERROR invalid format in DB spec:|{0}|, DBDetails:|{1}|".format(keyValuePair, tempValue)
                         print(errorMsg)
                         LogMsg(errorMsg, statsLogFileName, True)
                         continue
-                tempPatternPresent[patternIndexForDBDetails] = True
+                tempPatternPresent[indexForDBDetails] = True
 
             elif DBDetails['DBType'] != None:
                 ### if DBDetails available at environment level, store that.
-                tempPatternList[patternIndexForDBDetails ] = DBDetails
-                tempPatternPresent[patternIndexForDBDetails] = True
+                tempPatternList[indexForDBDetails ] = DBDetails
+                tempPatternPresent[indexForDBDetails] = True
 
             if logFileName != None:     
                 ### set the LogProcessing needed flag if log processing related spec present for current key
-                for index in logPatternIndexsList:
+                for index in specForLogProcessing:
                     if tempPatternList[index] != None:
-                        tempPatternList[patternIndexForLogProcessing] = True
+                        tempPatternList[indexForLogProcessing] = True
                         break
 
                 ### set TraceProcessing needed flag if trace processing related spec present for current key
-                for index in tracePatternIndexsList:
+                for index in specForTraceProcessing:
                     if tempPatternList[index] != None:
-                        tempPatternList[patternIndexForTraceProcessing] = True
+                        tempPatternList[indexForTraceProcessing] = True
                         break
 
                 ### set stats processing needed if stats processing related spec present in current key
-                for index in statsPatternIndexsList:
+                for index in specForStatsProcessing:
                     if tempPatternList[index] != None:
-                        tempPatternList[patternIndexForStatsProcessing] = True
+                        tempPatternList[indexForStatsProcessing] = True
                         break
                 
                 ### store the current key spec
@@ -872,92 +912,92 @@ try:
 
             # initialize counts to 0
             # set present flag if that count is to be posted to web server
-            logStats[key][patternIndexForPatternPass*2] = 0
-            logStats[key][patternIndexForPatternPass*2+1] = tempPatternPresent[patternIndexForPatternPass]
-            logStats[key][patternIndexForPatternFail*2] = 0
-            logStats[key][patternIndexForPatternFail*2+1] = tempPatternPresent[patternIndexForPatternFail]
-            logStats[key][patternIndexForPatternCount*2] = 0
-            logStats[key][patternIndexForPatternCount*2+1] = tempPatternPresent[patternIndexForPatternCount]
+            logStats[key][indexForPatternPass*2] = 0
+            logStats[key][indexForPatternPass*2+1] = tempPatternPresent[indexForPatternPass]
+            logStats[key][indexForPatternFail*2] = 0
+            logStats[key][indexForPatternFail*2+1] = tempPatternPresent[indexForPatternFail]
+            logStats[key][indexForPatternCount*2] = 0
+            logStats[key][indexForPatternCount*2+1] = tempPatternPresent[indexForPatternCount]
             ### data to be posted may have multiple values, initialize it to be a list
-            logStats[key][patternIndexForPatternSum*2] = 0
+            logStats[key][indexForPatternSum*2] = 0
             ### for sum, data is posted if sample count is non=zero, no pattern present flag used
-            logStats[key][patternIndexForPatternSum*2+1] = []
+            logStats[key][indexForPatternSum*2+1] = []
             ### data to be posted may have multiple values, initialize it to be a list
-            logStats[key][patternIndexForPatternAverage*2] = []
+            logStats[key][indexForPatternAverage*2] = []
             ### for average, data is posted if sample count is non=zero, no pattern present flag used
-            logStats[key][patternIndexForPatternAverage*2+1] = []
-            logStats[key][patternIndexForPatternDelta*2] = 0
+            logStats[key][indexForPatternAverage*2+1] = []
+            logStats[key][indexForPatternDelta*2] = 0
             ### for delta, data is posted if sample count is non=zero, no pattern present flag used
-            logStats[key][patternIndexForPatternDelta*2+1] = []
+            logStats[key][indexForPatternDelta*2+1] = []
 
-            logStats[key][patternIndexForCSVVariableNames*2] = tempPatternList[patternIndexForCSVVariableNames]
-            logStats[key][patternIndexForCSVVariableNames*2+1] = tempPatternPresent[patternIndexForCSVVariableNames]
-
-            ### set to None, it will be set to proper value later before posting to web server
-            logStats[key][patternIndexForVariablePrefix*2] = None
-            logStats[key][patternIndexForVariablePrefix*2+1] = tempPatternPresent[patternIndexForVariablePrefix]
-            ### set to None, it will be set to proper value later before posting to web server
-            logStats[key][patternIndexForVariablePrefixGroup*2] = None
-            logStats[key][patternIndexForVariablePrefixGroup*2+1] = tempPatternPresent[patternIndexForVariablePrefixGroup]
+            logStats[key][indexForCSVVariableNames*2] = tempPatternList[indexForCSVVariableNames]
+            logStats[key][indexForCSVVariableNames*2+1] = tempPatternPresent[indexForCSVVariableNames]
 
             ### set to None, it will be set to proper value later before posting to web server
-            logStats[key][patternIndexForLabel*2] = None
-            logStats[key][patternIndexForLabel*2+1] = tempPatternPresent[patternIndexForLabel]
+            logStats[key][indexForVariablePrefix*2] = None
+            logStats[key][indexForVariablePrefix*2+1] = tempPatternPresent[indexForVariablePrefix]
             ### set to None, it will be set to proper value later before posting to web server
-            logStats[key][patternIndexForLabelGroup*2] = None
-            logStats[key][patternIndexForLabelGroup*2+1] = tempPatternPresent[patternIndexForLabelGroup]
+            logStats[key][indexForVariablePrefixGroup*2] = None
+            logStats[key][indexForVariablePrefixGroup*2+1] = tempPatternPresent[indexForVariablePrefixGroup]
 
-            logStats[key][patternIndexForSkip*2] = tempPatternList[patternIndexForSkip]
-            logStats[key][patternIndexForSkip*2+1] = tempPatternPresent[patternIndexForSkip]
+            ### set to None, it will be set to proper value later before posting to web server
+            logStats[key][indexForLabel*2] = None
+            logStats[key][indexForLabel*2+1] = tempPatternPresent[indexForLabel]
+            ### set to None, it will be set to proper value later before posting to web server
+            logStats[key][indexForLabelGroup*2] = None
+            logStats[key][indexForLabelGroup*2+1] = tempPatternPresent[indexForLabelGroup]
 
-            logStats[key][patternIndexForSkipGroups*2] = tempPatternList[patternIndexForSkipGroups]
-            logStats[key][patternIndexForSkipGroups*2+1] = tempPatternPresent[patternIndexForSkipGroups]
+            logStats[key][indexForSkip*2] = tempPatternList[indexForSkip]
+            logStats[key][indexForSkip*2+1] = tempPatternPresent[indexForSkip]
+
+            logStats[key][indexForSkipGroups*2] = tempPatternList[indexForSkipGroups]
+            logStats[key][indexForSkipGroups*2+1] = tempPatternPresent[indexForSkipGroups]
 
             ### store DBDetails spec in logStats[key] so that it can be referred in JAPostAllDataToWebServer()
-            logStats[key][patternIndexForDBDetails*2] = tempPatternList[patternIndexForDBDetails ]
-            logStats[key][patternIndexForDBDetails*2+1] = tempPatternPresent[patternIndexForDBDetails]
+            logStats[key][indexForDBDetails*2] = tempPatternList[indexForDBDetails ]
+            logStats[key][indexForDBDetails*2+1] = tempPatternPresent[indexForDBDetails]
 
-            logStats[key][patternIndexForTraceId*2] = None
-            logStats[key][patternIndexForTraceId*2+1] = tempPatternPresent[patternIndexForTraceId]
+            logStats[key][indexForTraceId*2] = None
+            logStats[key][indexForTraceId*2+1] = tempPatternPresent[indexForTraceId]
 
-            logStats[key][patternIndexForTraceIdGroup*2] = None
-            logStats[key][patternIndexForTraceIdGroup*2+1] = tempPatternPresent[patternIndexForTraceIdGroup]
+            logStats[key][indexForTraceIdGroup*2] = None
+            logStats[key][indexForTraceIdGroup*2+1] = tempPatternPresent[indexForTraceIdGroup]
 
-            logStats[key][patternIndexForTraceLabel*2] = None
-            logStats[key][patternIndexForTraceLabel*2+1] = tempPatternPresent[patternIndexForTraceLabel]
+            logStats[key][indexForTraceLabel*2] = None
+            logStats[key][indexForTraceLabel*2+1] = tempPatternPresent[indexForTraceLabel]
 
-            logStats[key][patternIndexForTraceLabelGroup*2] = None
-            logStats[key][patternIndexForTraceLabelGroup*2+1] = tempPatternPresent[patternIndexForTraceLabelGroup]
+            logStats[key][indexForTraceLabelGroup*2] = None
+            logStats[key][indexForTraceLabelGroup*2+1] = tempPatternPresent[indexForTraceLabelGroup]
 
-            logStats[key][patternIndexForTraceDuration*2] = None
-            logStats[key][patternIndexForTraceDuration*2+1] = tempPatternPresent[patternIndexForTraceDuration]
+            logStats[key][indexForTraceDuration*2] = None
+            logStats[key][indexForTraceDuration*2+1] = tempPatternPresent[indexForTraceDuration]
 
-            logStats[key][patternIndexForDurationGroup*2] = None
-            logStats[key][patternIndexForDurationGroup*2+1] = tempPatternPresent[patternIndexForDurationGroup]
+            logStats[key][indexForDurationGroup*2] = None
+            logStats[key][indexForDurationGroup*2+1] = tempPatternPresent[indexForDurationGroup]
 
-            logStats[key][patternIndexForDurationMultiplier*2] = None
-            logStats[key][patternIndexForDurationMultiplier*2+1] = tempPatternPresent[patternIndexForDurationMultiplier]
+            logStats[key][indexForDurationMultiplier*2] = None
+            logStats[key][indexForDurationMultiplier*2+1] = tempPatternPresent[indexForDurationMultiplier]
 
-            logStats[key][patternIndexForTimeStampGroup*2] = None
-            logStats[key][patternIndexForTimeStampGroup*2+1] = tempPatternPresent[patternIndexForTimeStampGroup]
+            logStats[key][indexForTimeStampGroup*2] = None
+            logStats[key][indexForTimeStampGroup*2+1] = tempPatternPresent[indexForTimeStampGroup]
 
-            logStats[key][patternIndexForTimeStampFormat*2] = None
-            logStats[key][patternIndexForTimeStampFormat*2+1] = tempPatternPresent[patternIndexForTimeStampFormat]
+            logStats[key][indexForTimeStampFormat*2] = None
+            logStats[key][indexForTimeStampFormat*2+1] = tempPatternPresent[indexForTimeStampFormat]
 
-            logStats[key][patternIndexForTraceBlockStart*2] = None
-            logStats[key][patternIndexForTraceBlockStart*2+1] = tempPatternPresent[patternIndexForTraceBlockStart]
+            logStats[key][indexForTraceBlockStart*2] = None
+            logStats[key][indexForTraceBlockStart*2+1] = tempPatternPresent[indexForTraceBlockStart]
 
-            logStats[key][patternIndexForTraceBlockEnd*2] = None
-            logStats[key][patternIndexForTraceBlockEnd*2+1] = tempPatternPresent[patternIndexForTraceBlockEnd]
+            logStats[key][indexForTraceBlockEnd*2] = None
+            logStats[key][indexForTraceBlockEnd*2+1] = tempPatternPresent[indexForTraceBlockEnd]
 
-            logStats[key][patternIndexForTraceSingleLine*2] = None
-            logStats[key][patternIndexForTraceSingleLine*2+1] = tempPatternPresent[patternIndexForTraceSingleLine]
+            logStats[key][indexForTraceSingleLine*2] = None
+            logStats[key][indexForTraceSingleLine*2+1] = tempPatternPresent[indexForTraceSingleLine]
 
-            logStats[key][patternIndexForTraceIdPrefix*2] = None
-            logStats[key][patternIndexForTraceIdPrefix*2+1] = tempPatternPresent[patternIndexForTraceSingleLine]
+            logStats[key][indexForTraceIdPrefix*2] = None
+            logStats[key][indexForTraceIdPrefix*2+1] = tempPatternPresent[indexForTraceSingleLine]
 
-            logStats[key][patternIndexForTraceBlockContains*2] = None
-            logStats[key][patternIndexForTraceBlockContains*2+1] = tempPatternPresent[patternIndexForTraceBlockContains]
+            logStats[key][indexForTraceBlockContains*2] = None
+            logStats[key][indexForTraceBlockContains*2+1] = tempPatternPresent[indexForTraceBlockContains]
 
             ### initialize logLines[key] list to empty list
             logLines[key] = []
@@ -983,9 +1023,9 @@ try:
                 JAExecuteCommandSpec[key][indexForLastExecutionTime] = None            
 
             if value.get('Priority') != None:
-                JAExecuteCommandSpec[key][indexForPriority] = str(value.get('Priority')).strip()
+                JAExecuteCommandSpec[key][indexForCommandPriority] = str(value.get('Priority')).strip()
             else:
-                JAExecuteCommandSpec[key][indexForPriority] = 3
+                JAExecuteCommandSpec[key][indexForCommandPriority] = 3
 
 except OSError as err:
     JAStatsExit('ERROR - Can not open configFile:|' +
@@ -1312,8 +1352,8 @@ def JAPostAllDataToWebServer():
     #   'ApacheICDR': [ 2, True, 0, False, 0, False, 0, False]}
     #                    pass      fail     count     stats
     for key, values in logStats.items():
-        if logStats[key][patternIndexForDBDetails*2+1] == True:
-            if logStats[key][patternIndexForDBDetails*2]['DBType'] != prevDBType:
+        if logStats[key][indexForDBDetails*2+1] == True:
+            if logStats[key][indexForDBDetails*2]['DBType'] != prevDBType:
                 ### current key's DBDetails differ from prevDBType
                 ###   post the data aggregated so far in tempLogStatsToPost
                 if postData == True :
@@ -1331,40 +1371,40 @@ def JAPostAllDataToWebServer():
                 ### prepare tempLogStatsToPost with fixed data for next posting
                 tempLogStatsToPost = logStatsToPost.copy()
 
-                prevDBType = tempLogStatsToPost['DBType'] = logStats[key][patternIndexForDBDetails*2]['DBType']
+                prevDBType = tempLogStatsToPost['DBType'] = logStats[key][indexForDBDetails*2]['DBType']
                 try:
-                    if logStats[key][patternIndexForDBDetails*2]['InfluxdbBucket'] != None:
-                        tempLogStatsToPost['InfluxdbBucket'] = logStats[key][patternIndexForDBDetails*2]['InfluxdbBucket']
-                    if logStats[key][patternIndexForDBDetails*2]['InfluxdbOrg'] != None:
-                        tempLogStatsToPost['InfluxdbOrg'] = logStats[key][patternIndexForDBDetails*2]['InfluxdbOrg']
+                    if logStats[key][indexForDBDetails*2]['InfluxdbBucket'] != None:
+                        tempLogStatsToPost['InfluxdbBucket'] = logStats[key][indexForDBDetails*2]['InfluxdbBucket']
+                    if logStats[key][indexForDBDetails*2]['InfluxdbOrg'] != None:
+                        tempLogStatsToPost['InfluxdbOrg'] = logStats[key][indexForDBDetails*2]['InfluxdbOrg']
                 except:
                     if prevDBType != 'Prometheus' :
                         if debugLevel > 0:
-                            print("DEBUG-1 Better to add other DBDetails for :|{0}|".format(logStats[key][patternIndexForDBDetails*2]))
+                            print("DEBUG-1 Better to add other DBDetails for :|{0}|".format(logStats[key][indexForDBDetails*2]))
 
         tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
 
         # 2022-03-27 JAPrepareStatsToPost() debug this later           
-        if values[patternIndexForPatternPass*2+1] == True:
-            tempLogStatsToPost[key] += ",{0}_pass={1:.2f}".format(key,float(values[patternIndexForPatternPass*2]) / floatDataPostIntervalInSec)
-            logStats[key][patternIndexForPatternPass*2] = 0
-            # tempLogStatsToPost[key] += JAPrepareStatsToPost(key,patternIndexForPatternPass,"pass",values[patternIndexForPatternPass*2], values[patternIndexForPatternPass*2+1])
+        if values[indexForPatternPass*2+1] == True:
+            tempLogStatsToPost[key] += ",{0}_pass={1:.2f}".format(key,float(values[indexForPatternPass*2]) / floatDataPostIntervalInSec)
+            logStats[key][indexForPatternPass*2] = 0
+            # tempLogStatsToPost[key] += JAPrepareStatsToPost(key,indexForPatternPass,"pass",values[indexForPatternPass*2], values[indexForPatternPass*2+1])
             postData = True
-        if values[patternIndexForPatternFail*2+1] == True:
-            tempLogStatsToPost[key] += ",{0}_fail={1:.2f}".format(key,float(values[patternIndexForPatternFail*2]) / floatDataPostIntervalInSec)
-            logStats[key][patternIndexForPatternFail*2] = 0
-            # tempLogStatsToPost[key] += JAPrepareStatsToPost(key,patternIndexForPatternFail,"fail",values[patternIndexForPatternFail*2], values[patternIndexForPatternFail*2+1])
+        if values[indexForPatternFail*2+1] == True:
+            tempLogStatsToPost[key] += ",{0}_fail={1:.2f}".format(key,float(values[indexForPatternFail*2]) / floatDataPostIntervalInSec)
+            logStats[key][indexForPatternFail*2] = 0
+            # tempLogStatsToPost[key] += JAPrepareStatsToPost(key,indexForPatternFail,"fail",values[indexForPatternFail*2], values[indexForPatternFail*2+1])
             postData = True
-        if values[patternIndexForPatternCount*2+1] == True:
-            tempLogStatsToPost[key] += ",{0}_count={1:.2f}".format(key, float(values[patternIndexForPatternCount*2])/ floatDataPostIntervalInSec)
-            logStats[key][patternIndexForPatternCount*2] = 0
-            # tempLogStatsToPost[key] += JAPrepareStatsToPost(key,patternIndexForPatternCount,"count",values[patternIndexForPatternCount*2], values[patternIndexForPatternCount*2+1])
+        if values[indexForPatternCount*2+1] == True:
+            tempLogStatsToPost[key] += ",{0}_count={1:.2f}".format(key, float(values[indexForPatternCount*2])/ floatDataPostIntervalInSec)
+            logStats[key][indexForPatternCount*2] = 0
+            # tempLogStatsToPost[key] += JAPrepareStatsToPost(key,indexForPatternCount,"count",values[indexForPatternCount*2], values[indexForPatternCount*2+1])
             postData = True
 
-        if values[patternIndexForPatternSum*2] > 0 :
+        if values[indexForPatternSum*2] > 0 :
             postData = True
             ### sample count is non-zero, stats has value to post
-            tempResults = list(values[patternIndexForPatternSum*2+1])
+            tempResults = list(values[indexForPatternSum*2+1])
 
             if debugLevel > 3:
                 print("DEBUG-4 JAPostAllDataToWebServer() PatternSum:{0}".format(tempResults))
@@ -1389,13 +1429,13 @@ def JAPostAllDataToWebServer():
                     paramName = tempResult
                 index += 1
             ### reset count and param list
-            logStats[key][patternIndexForPatternSum*2] = 0
-            logStats[key][patternIndexForPatternSum*2+1] = []
+            logStats[key][indexForPatternSum*2] = 0
+            logStats[key][indexForPatternSum*2+1] = []
 
-        if values[patternIndexForPatternDelta*2] > 0 :
+        if values[indexForPatternDelta*2] > 0 :
             postData = True
             ### sample count is non-zero, stats has value to post
-            tempResults = list(values[patternIndexForPatternDelta*2+1])
+            tempResults = list(values[indexForPatternDelta*2+1])
 
             if debugLevel > 3:
                 print("DEBUG-4 JAPostAllDataToWebServer() PatternDelta:{0}".format(tempResults))
@@ -1424,20 +1464,20 @@ def JAPostAllDataToWebServer():
                     paramName = tempResult
                 index += 1
             ### reset count and param list
-            logStats[key][patternIndexForPatternDelta*2] = 0
-            logStats[key][patternIndexForPatternDelta*2+1] = []
+            logStats[key][indexForPatternDelta*2] = 0
+            logStats[key][indexForPatternDelta*2+1] = []
 
         ### for average type of metrics, need to use sample count of individual key so that for metrics with prefixGroup, 
         ###    average computation uses corresponding sample count
         ### sampleCountList is of type [2,2,2,2,5,5,5,5] where 
         ###      first 2 keys/values, the sample count is 2
         ###      next 2 keys/values, the sample count is 5
-        ### relative position of these sample count map to same position in values[patternIndexForPatternAverage*2+1]
-        sampleCountList = list( values[patternIndexForPatternAverage*2])               
+        ### relative position of these sample count map to same position in values[indexForPatternAverage*2+1]
+        sampleCountList = list( values[indexForPatternAverage*2])               
         if len(sampleCountList) > 0 :
             postData = True
             ### sample count is non-zero, stats has value to post
-            tempResults = list(values[patternIndexForPatternAverage*2+1])
+            tempResults = list(values[indexForPatternAverage*2+1])
 
             if debugLevel > 3:
                 print("DEBUG-4 JAPostAllDataToWebServer() PatternAverage:{0}, sampleCountList:{1}".format(tempResults, sampleCountList))
@@ -1465,8 +1505,8 @@ def JAPostAllDataToWebServer():
                     paramName = tempResult
                 index += 1
             ### empty both lists
-            logStats[key][patternIndexForPatternAverage*2] = []
-            logStats[key][patternIndexForPatternAverage*2+1] = []
+            logStats[key][indexForPatternAverage*2] = []
+            logStats[key][indexForPatternAverage*2+1] = []
 
     
     if postData == True :
@@ -1775,7 +1815,7 @@ def JAProcessCommands( logFileProcessingStartTime, debugLevel):
 
         
         if gatherLogStatsEnabled == True:
-            eventPriority = int(values[indexForPriority])
+            eventPriority = int(values[indexForCommandPriority])
 
             if averageCPUUsage > maxCPUUsageForEvents[eventPriority]:
                 if logEventPriorityLevel == maxCPUUsageLevels:
@@ -1838,7 +1878,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
             else:
                 tempAppendTraceLine = True
 
-    tempTraceSingleLine = values[patternIndexForTraceSingleLine]
+    tempTraceSingleLine = values[indexForTraceSingleLine]
     if ( tempTraceSingleLine == True ) :
         tempLogLine = tempTraceLine[fileName] = ''
 
@@ -1848,15 +1888,15 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
         if values[index] == None:
             continue
 
-        ### search for other patterns like patternIndexForTraceId, patternIndexForTraceBlockStart
-        #   PatternTraceTimeStamp, patternIndexForTraceLabel, patternIndexForTraceDuration
+        ### search for other patterns like indexForTraceId, indexForTraceBlockStart
+        #   PatternTraceTimeStamp, indexForTraceLabel, indexForTraceDuration
         searchPattern = r'{0}'.format(values[index])
         try:
             myResults = re.findall( searchPattern, tempLine)
             patternMatchCount =  len(myResults)
             if myResults != None and patternMatchCount > 0 :
                 
-                if index == patternIndexForTraceBlockEnd:
+                if index == indexForTraceBlockEnd:
                     if traceBlockInProgress[fileName] == key:
                         ### trace block end pattern in current line
                         traceBlockInProgress[fileName] = None
@@ -1864,7 +1904,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                         tempAppendTraceLine = True
 
                 ### if TraceBlockStart, set the flag so that subsequent log lines are collected till TraceBlockEnd
-                elif index == patternIndexForTraceBlockStart:
+                elif index == indexForTraceBlockStart:
                     tempAppendTraceLine = True
                     tempLogLine = tempTraceLine[fileName] = tempDuration[fileName] =  ''
                     traceBlockTraceId[fileName] = traceBlockTimeStamp[fileName] = traceBlockLogLines[fileName] = []
@@ -1890,10 +1930,10 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                         groupNumber += 1
 
                         # if current pattern is PatternTraceTimeStamp   
-                        if index == patternIndexForTimeStamp or (values[patternIndexForTimeStamp] == None \
-                                and index == patternIndexForTraceBlockStart):
+                        if index == indexForTimeStamp or (values[indexForTimeStamp] == None \
+                                and index == indexForTraceBlockStart):
 
-                            if values[patternIndexForTimeStampGroup] == groupNumber :
+                            if values[indexForTimeStampGroup] == groupNumber :
                                 tempAppendTraceLine = True
 
                                 ### current tempResult is the timestamp field
@@ -1901,7 +1941,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                 ### format spec at https://www.tutorialspoint.com/python/time_strptime.htm
 
                                 # ensure the dateTimeString has 6 digits in fraction space, needed for loki time format
-                                if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S.%f' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S.%f') :
+                                if ( values[indexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S.%f' or values[indexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S.%f') :
                                     # 2022-06-05 12:48:00.000000
                                     # 01234567890123456789012345 - length 26
                                     # 2022-06-05 12:48:00.000
@@ -1910,13 +1950,13 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                         tempResult = tempResult + "000"
 
                                 traceTimeStamp = int(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(tempResult, 
-                                                    values[patternIndexForTimeStampFormat] ) )
+                                                    values[indexForTimeStampFormat] ) )
                                 if ( traceTimeStamp == 0 ) :
-                                    errorMsg = "ERROR Invalid TimeStampFormat:{0}".format(values[patternIndexForTimeStampFormat]) 
+                                    errorMsg = "ERROR Invalid TimeStampFormat:{0}".format(values[indexForTimeStampFormat]) 
                                     print(errorMsg)
                                     LogMsg(errorMsg, statsLogFileName, True)
                                     ### DO NOT attempt to convert time next time
-                                    values[patternIndexForTimeStampGroup] = None
+                                    values[indexForTimeStampGroup] = None
                                     ### get current time in microseconds, default time for trace
                                     tempTimeStamp = int(time.time() * 1000000)
                                     
@@ -1925,16 +1965,16 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
 
                                     ### loki needs the time stamp with fraction second upto microseconds
                                     ###  add ".000000" to get time with only up to seconds to get in microseconds
-                                    if ( values[patternIndexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S' or values[patternIndexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S'  ) :
+                                    if ( values[indexForTimeStampFormat] == '%Y-%m-%dT%H:%M:%S' or values[indexForTimeStampFormat] == '%Y-%m-%d %H:%M:%S'  ) :
                                         tempResult = tempResult + ".000000" 
                                     ### replace space separator between date and time with T, loki needs in isoformat
                                     tempResult = tempResult.replace(" ", "T")
                                 tempTraceLine[fileName] =  r"{0},timestamp={1}".format(tempTraceLine[fileName], tempTimeStamp)
                                 traceBlockTimeStamp[fileName] = tempResult
 
-                        if tempTraceSingleLine == True or index == patternIndexForTraceId:
+                        if tempTraceSingleLine == True or index == indexForTraceId:
                             ### current line has trace id
-                            if values[patternIndexForTraceIdGroup] == groupNumber :
+                            if values[indexForTraceIdGroup] == groupNumber :
                                 ### current tempResult is the traceid field
                                 ### remove -, _, g to Z from trace id field
                                 tempResult = re.sub(r'-|_|[g-zG-Z]', "", tempResult)
@@ -1942,31 +1982,31 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                 tempAppendTraceLine = True
                                 traceBlockTraceId[fileName] = tempResult
 
-                        if tempTraceSingleLine == True or index == patternIndexForTraceLabel :
+                        if tempTraceSingleLine == True or index == indexForTraceLabel or index == indexForTraceBlockStart :
                             ### trace label can be on it's own line or
                             ###   or can be part of traceId or traceBlockStart line
-                            if values[patternIndexForTraceLabelGroup] == groupNumber:
+                            if values[indexForTraceLabelGroup] == groupNumber:
                                 tempTraceLine[fileName] = r"{0},label={1}".format(tempTraceLine[fileName],tempResult)
                                 tempAppendTraceLine = True
 
-                        if tempTraceSingleLine == True or index == patternIndexForTraceDuration :
+                        if tempTraceSingleLine == True or index == indexForTraceDuration :
                             ### trace duration can be on its own line or
                             ###  or can be part of traceId or traceBlockStart line
-                            if values[patternIndexForDurationGroup] == groupNumber:
+                            if values[indexForDurationGroup] == groupNumber:
                                 tempTraceLine[fileName] = r"{0},duration={1}\n".format(tempTraceLine[fileName],tempResult)
                                 tempDuration[fileName] = tempResult
                                 tempAppendTraceLine = True
 
-                        if tempTraceSingleLine == True or index == patternIndexForSkip:
-                            if values[patternIndexForSkipGroups] != None:
+                        if tempTraceSingleLine == True or index == indexForSkip:
+                            if values[indexForSkipGroups] != None:
                                 ### SKIP words can be on its own line or
                                 ###  or can be part of traceId or traceBlockStart line
-                                if str(groupNumber) in values[patternIndexForSkipGroups]:
+                                if str(groupNumber) in values[indexForSkipGroups]:
                                     ### SKIP current group
                                     tempResult = '_MASKED_'                                                                
                                     tempAppendTraceLine = True
 
-                        if  (tempTraceSingleLine == None or tempTraceSingleLine == False)  and index == patternIndexForTraceBlockContains:
+                        if  (tempTraceSingleLine == None or tempTraceSingleLine == False)  and index == indexForTraceBlockContains:
                             ### current line contains the desired 
                             traceBlockContains[fileName] = True
                             
@@ -1993,7 +2033,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
         if ( tempAddNEWLINE == True) :
 
             tempIncludeCurrentBlock = True
-            if values[patternIndexForTraceBlockContains] != None :
+            if values[indexForTraceBlockContains] != None :
                 if traceBlockContains[fileName] == False:
                     tempIncludeCurrentBlock = False
 
@@ -2006,7 +2046,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                 ### add current trace block lines to logLines[key] with traceId prefixed at start of the line
                 ### this is to ensure loki can use the traceid to associate with tempo on starting line
                 tempLogLineWithTraceId = r'{0} {1} {2} {3}'.format( traceBlockTimeStamp[fileName], \
-                            values[patternIndexForTraceIdPrefix], \
+                            values[indexForTraceIdPrefix], \
                             traceBlockTraceId[fileName], traceBlockLogLines[fileName].pop(0))
                 logLines[key].append( tempLogLineWithTraceId )
                 for line in traceBlockLogLines[fileName]:
@@ -2038,7 +2078,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
             
             ### all trace definitions in single line with regex group corresponding to that line
             ###   no other log line to process, add current trace info.
-            if values[patternIndexForTraceSingleLine] == True :
+            if values[indexForTraceSingleLine] == True :
                 logTraces[key].append( tempTraceLine[fileName])
                 logTracesCount[key] +=1 
                 tempTraceLine[fileName] = ''
@@ -2218,7 +2258,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
                 # search for pass, fail, count, stats patterns of each service associated with this log file
                 for key, values in JAStatsSpec[logFileName].items():
-                    eventPriority = values[patternIndexForPriority]
+                    eventPriority = values[indexForPriority]
 
                     patternMatched = patternLogMatched = patternTraceMatched = False
 
@@ -2235,24 +2275,24 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         index = 0
 
                         ### if current key has spec related to trace processing, 
-                        if values[patternIndexForTraceProcessing] == True and maxTraceLines > 0:   
+                        if values[indexForTraceProcessing] == True and maxTraceLines > 0:   
                             if int(logTracesCount[key]) < maxTraceLines:
                                 patternTraceMatched = JAProcessLineForTrace( tempLine, fileName, key, values )
 
                         ## upon trace match, log line is collected, thus, no need to search for log line again
-                        if patternTraceMatched == False  and maxLogLines > 0 and values[patternIndexForLogProcessing] == True:
+                        if patternTraceMatched == False  and maxLogLines > 0 and values[indexForLogProcessing] == True:
                             if int(logLinesCount[key]) < maxLogLines:
                                 patternLogMatched = JAProcessLineForLog( tempLine, fileName, key, values )
 
                         ### if current key does not have any stats processing spec, skip it
-                        if values[patternIndexForStatsProcessing] != True:
+                        if values[indexForStatsProcessing] != True:
                             continue
 
                         ### if variable prefix is defined for current service, 
                         ###   see whether the variable prefix pattern is present in current line
                         variablePrefix = None
-                        if values[patternIndexForVariablePrefix] != None:
-                            variablePrefixSearchPattern = r'{0}'.format( values[patternIndexForVariablePrefix])
+                        if values[indexForVariablePrefix] != None:
+                            variablePrefixSearchPattern = r'{0}'.format( values[indexForVariablePrefix])
                             try:
                                 myResults = re.search( variablePrefixSearchPattern, tempLine)
                                 if myResults == None:
@@ -2261,7 +2301,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                     #  no need to match any other patterns for this service 
                                     continue
                                 else:
-                                    if values[patternIndexForVariablePrefixGroup] != None:
+                                    if values[indexForVariablePrefixGroup] != None:
                                         ### use the group value; based on pattern match, as variable prefix.
                                         ### Log line: 2021-10-05T01:09:03.249334 Stats MicroService25 total key1 9 dummy1 total key2 4.50 dummy2
                                         ###                                                        ^^ <-- variablePrefixGroupValues (two groups)
@@ -2269,7 +2309,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         ###                                                ^ <-- variable prefix, group 2
                                         ###  use 2nd group value as variable prefix for the *_avrage metrics variable
                                         ###  PatternVariablePrefixGroup: 2
-                                        variablePrefix = myResults.group(values[patternIndexForVariablePrefixGroup])
+                                        variablePrefix = myResults.group(values[indexForVariablePrefixGroup])
                                     else:
                                         variablePrefix = myResults.group(1)
                             except re.error as err:
@@ -2277,13 +2317,13 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 print(errorMsg)
                                 LogMsg(errorMsg, statsLogFileName, True)
                                 ### discard this pattern so that no need to check this again
-                                values[patternIndexForVariablePrefix] = None
+                                values[indexForVariablePrefix] = None
                                 continue
                         ### if patternLabel is defined for current service, 
                         ###   see whether the label  pattern is present in current line
                         labelPrefix = None
-                        if values[patternIndexForLabel] != None:
-                            patternLabelSearchPattern = r'{0}'.format( values[patternIndexForLabel])
+                        if values[indexForLabel] != None:
+                            patternLabelSearchPattern = r'{0}'.format( values[indexForLabel])
                             try:
                                 myResults = re.search( patternLabelSearchPattern, tempLine)
                                 if myResults == None:
@@ -2292,7 +2332,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                     #  no need to match any other patterns for this service 
                                     continue
                                 else:
-                                    if values[patternIndexForLabelGroup] != None:
+                                    if values[indexForLabelGroup] != None:
                                         ### use the group value; based on pattern match, as label.
                                         ### Log line: 2021-10-30T13:32:49.825709 Stats client1 total key1 34 dummy1 total key2 17.00 dummy2
                                         ###                                            ^^^^^^^ <-- labelGroup (signle group)
@@ -2300,7 +2340,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         ###                      ^^^ <-- label, group 1
                                         ###  use 1st group value as label this metrics
                                         ###  PatternLabelGroup: 1
-                                        labelPrefix = myResults.group(values[patternIndexForLabelGroup])
+                                        labelPrefix = myResults.group(values[indexForLabelGroup])
                                     else:
                                         labelPrefix = myResults.group(1)
                             except re.error as err:
@@ -2308,7 +2348,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 print(errorMsg)
                                 LogMsg(errorMsg, statsLogFileName, True)
                                 ### discard this pattern so that no need to check this again
-                                values[patternIndexForLabel] = None
+                                values[indexForLabel] = None
                                 continue
 
 
@@ -2322,7 +2362,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                             logStatsKeyValueIndexOdd = logStatsKeyValueIndexEven + 1
                             
                             searchPattern = r'{0}'.format(values[index])
-                            if index == patternIndexForPatternSum or index == patternIndexForPatternAverage or index == patternIndexForPatternDelta :
+                            if index == indexForPatternSum or index == indexForPatternAverage or index == indexForPatternDelta :
                                 ### special processing needed to extract the statistics from current line
                                 try:
                                     myResults = re.findall( searchPattern, tempLine)
@@ -2344,7 +2384,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                     tempStats = list(logStats[key][logStatsKeyValueIndexOdd])
 
                                     ### make a copy of sampleCountList values for average type metrics
-                                    if index == patternIndexForPatternAverage :
+                                    if index == indexForPatternAverage :
                                         sampleCountList = list(logStats[key][logStatsKeyValueIndexEven])
 
                                     if debugLevel > 3:
@@ -2363,20 +2403,20 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
                                         tempResults = myResults.pop(0)
 
-                                        if values[patternIndexForCSVVariableNames] != None:
-                                            CSVVariableNames = list(logStats[key][patternIndexForCSVVariableNames*2])
+                                        if values[indexForCSVVariableNames] != None:
+                                            CSVVariableNames = list(logStats[key][indexForCSVVariableNames*2])
                                         else:
                                             CSVVariableNames = None
 
                                         for tempResult in tempResults:
                                             groupNumber += 1
-                                            if values[patternIndexForSkipGroups] != None:
+                                            if values[indexForSkipGroups] != None:
                                                 ### if current group number is in skipGroup list, skip it
-                                                if ( str(groupNumber) in values[patternIndexForSkipGroups]):
+                                                if ( str(groupNumber) in values[indexForSkipGroups]):
                                                     continue
                                             
                                             ### if line in CSV format, use the variable names defined in config file
-                                            if values[patternIndexForCSVVariableNames] != None:
+                                            if values[indexForCSVVariableNames] != None:
                                                 ### log line is in CSV format, each field contains data
                                                 tempResultContainsValue = True
                                                 try:
@@ -2412,7 +2452,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                     appendCurrentValueToList = True
                                                     ### current tempResult is not yet in the list, append it
                                                     tempStats.append(currentVariableName)
-                                                    if index == patternIndexForPatternAverage :
+                                                    if index == indexForPatternAverage :
                                                         sampleCountList.append(1)
 
                                                 ### save the key name, this is used to make a combined key later <serviceName>_<key>
@@ -2448,7 +2488,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                         appendCurrentValueToList = True
                                                         ### current tempResult is not yet in the list, append it
                                                         tempStats.append(currentVariableName)
-                                                        if index == patternIndexForPatternAverage :
+                                                        if index == indexForPatternAverage :
                                                             sampleCountList.append(1)
 
                                                     ### save the key name, this is used to make a combined key later <serviceName>_<key>
@@ -2466,9 +2506,9 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                     tempResultIsNumber = False
 
                                                 ## value portion of key/ value pair
-                                                ## if index is patternIndexForPatternDelta, tempResult is cumulative value, need to subtract previous sample
+                                                ## if index is indexForPatternDelta, tempResult is cumulative value, need to subtract previous sample
                                                 ## value to get delta value and store it as current sample value.
-                                                if  index == patternIndexForPatternDelta:
+                                                if  index == indexForPatternDelta:
                                                     serviceNameSubKey = "{0}_{1}".format( key, tempKey)
                                                     if tempResultIsNumber == True:
                                                         tempResultToStore = float(tempResult)
@@ -2496,7 +2536,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
                                                     ### if working average type metrics, set sample count in the list corresponding to 
                                                     ###     current key in key/value list
-                                                    if index == patternIndexForPatternAverage :
+                                                    if index == indexForPatternAverage :
                                                         sampleCountList.append(1)
 
                                                 else:
@@ -2510,12 +2550,12 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
                                                     ### if working average type metrics, increment sample count in the list corresponding to 
                                                     ###     current key in key/value list
-                                                    if index == patternIndexForPatternAverage :
+                                                    if index == indexForPatternAverage :
                                                         sampleCountList[indexToCurrentKeyInTempStats+1] += 1
                                             numStats += 1
 
                                     ### for average type, sample count is incremented based for ecach prefix variable key values   
-                                    if index == patternIndexForPatternAverage :
+                                    if index == indexForPatternAverage :
                                         logStats[key][logStatsKeyValueIndexEven] = list(sampleCountList)
                                     else:
                                         ### increment sample count
@@ -2562,9 +2602,9 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                                 ## start with stats value of 1 for this label
                                                 tempListStats.append(1)
 
-                                        elif ( index != patternIndexForTimeStamp and \
-                                               index != patternIndexForSkip and \
-                                               index != patternIndexForCSVVariableNames):
+                                        elif ( index != indexForTimeStamp and \
+                                               index != indexForSkip and \
+                                               index != indexForCSVVariableNames):
                                             ### matching pattern found without any label, increment the count 
                                             logStats[key][logStatsKeyValueIndexEven] += 1
 

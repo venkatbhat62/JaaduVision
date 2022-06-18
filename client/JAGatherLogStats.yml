@@ -49,7 +49,7 @@
 #     PatternLabelGroup: While matching the label pattern, if the group to be used is not the first one,
 #                     use this to specify group number (see example below for more info)
 #  
-#     PatternSkipGroups: applicable to PatternSum, PatternAverage, PatternDelta type of service definitions
+#     SkipGroups: applicable to PatternSum, PatternAverage, PatternDelta type of service definitions
 #               where prefix group is used to create dynamic metric variables and post the data to web server
 #               Use this to SKIP posting name=value pairs, or any single matching group (groups as matched in regex expression)
 #
@@ -252,7 +252,7 @@ LogFile:
       ###             ^^^ <-- extract IP address and post the data for this service name with that label
       ### using separate label name for these stats allows aggregation of stats per label name in dashboard
       ###  use 1st group value as variable prefix for the *_avrage metrics variable
-      PatternLabelGroup: 1
+      LabelGroup: 1
       ### _pass variable is posted to web server is of the form:
       ###  ApacheSaveStats_:<IPAddress>:_pass=<countPerCollectionInterval>
       ###                   ^^^^^^^^^ <-- this will be separated by web service as label and 
@@ -306,6 +306,7 @@ LogFile:
       ### On grafana, variable name wil be TestStatsWithVarPrefix_1_key1_average, TestStatsWithVarPrefix_1_key2_average
       PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
       Priority: 1
+
     TestStatsWithVarPrefixGroup:
       LogFileName: JATest.log*
       ### extract the regular expression value that matches to the variable prefix definition
@@ -315,7 +316,7 @@ LogFile:
       ###                                       1    2  <-- group numbers, using index starting from 1
       ###                                           ^^
       ###  use 2nd group value as variable prefix for the *_avrage metrics variable
-      PatternVariablePrefixGroup: 2
+      VariablePrefixGroup: 2
       # 2021-10-05T01:09:03.249334 Stats MicroService25 total key1 9 dummy1 total key2 4.50 dummy2
       #                                                       kkk vv              kkkk vvvv
       ### On Grafana, variable will be TestStatsWithVarPrefixGroup_5_key1_average, TestStatsWithVarPrefixGroup_5_key2_average
@@ -331,7 +332,7 @@ LogFile:
       ###                  ^^^
       ###  use 2nd group value as label so that variables can be tracked per client name,
       ###       this allows to graph stats per client in grafana dashboard
-      PatternLabelGroup: 2
+      LabelGroup: 2
       ### On Grafana, variable will be TestStatsCSV_key1_delta, TestStatsCSV_key2_delta,... along with client name as label
       ### Stats client2 total key1 39 dummy1 total key2 200.00 key3 19.50 dummy3
       ### 2022-03-26T23:15:05.308415 CSV,client2,39,9.00,19.50
@@ -341,7 +342,7 @@ LogFile:
       PatternDelta: (CSV),(\w+),(\d+),(\d+.\d+),(\d+.\d+)
       ###             1    2        3       4      5 <-- group numbers, using index starting from 1
       ###  skip groups 1, and group 2 which is client name, use group 2 for label, post values of groups 3,4,5 to web
-      PatternSkipGroups: 1,2
+      SkipGroups: 1,2
       ### 2022-03-26T23:15:05.308415 CSV,client2,39,9.00,19.50
       ###                             1   2       3   4    5 <-- group numbers
       ### variable and value posted to web server is of the form:
@@ -366,11 +367,11 @@ LogFile:
       ###                  ^^^ <-- extract this and post the data for this service name with that label
       ### using separate label name for these stats allows aggregation of stats per label name in dashboard
       ###  use 1st group value as variable prefix for the *_avrage metrics variable
-      PatternLabelGroup: 1
+      LabelGroup: 1
       #2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
       #                                               1     2               3    4      5    6     
       #                                                                    ^^^^^^^^ <-- SKIP posting this data
-      PatternSkipGroups: 3,4
+      SkipGroups: 3,4
       PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) (\w+) (\d+.\d+) dummy3
       ### variable and value posted to web server is of the form:
       ###  TestStatsWithLabel_:client1:key1_average=34.67
@@ -390,11 +391,11 @@ LogFile:
       PatternVariablePrefix: ValuePair client(\d)(\d)
       ###                                         ^^
       ###  use 2nd group value as variable prefix for the *_avrage metrics variable
-      PatternVariablePrefixGroup: 2
+      VariablePrefixGroup: 2
       # 2021-11-28T14:00:03.228652 ValuePair client11,key1=39,key2=100.00,key3=19.50
       #                                               1    2  3    4      5    6     
       #                                                       ^^^^^^^^ <-- SKIP posting this data
-      PatternSkipGroups: 3,4
+      SkipGroups: 3,4
       PatternAverage: (\w+)=(\d+)
       Priority: 1
 
@@ -406,26 +407,26 @@ LogFile:
       # 2022-05-30T15:17:58.938264 Trace 0000000000000001 Service1 test trace line 1
       # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
       # regex group:                1                                     2         3         4      5         6              7
-      PatternTraceTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Trace )([0-9a-fA-F]+)( )(Service1)( test trace line )(\d+)
+      PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Trace )([0-9a-fA-F]+)( )(Service1)( test trace line )(\d+)
       #                                                                                                                    ^^^^ <-- duration
       #                                                                                       ^^^^ <-- label
       #                                                                         ^^^^^^^^^^ <-- trace Id
       #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
       # group id where timestamp is present in trace log
-      PatternTraceTimeGroup: 1
+      TimeStampGroup: 1
       # log timestamp format to convert time using time.strptime(). 
       # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
       TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
       # all trace info in single line
-      PatternTraceSingleLine: True
+      TraceSingleLine: True
       # trace id group in log line
-      PatternTraceIdGroup: 3
+      TraceIdGroup: 3
       # trace name
-      PatternTraceLabelGroup: 5
+      TraceLabelGroup: 5
       # event duration is at this group id
-      PatternDurationGroup: 7
+      DurationGroup: 7
       ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
-      PatternDurationMultiplier: 1000
+      DurationMultiplier: 1000
       Priority: 1
 
     # Trace serviceName
@@ -438,27 +439,27 @@ LogFile:
       # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
       # regex group:             1                                      2          
       # regex group:                1                                     2         3         4     5           6     7      8      9   10  11
-      PatternTraceTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Trace )([0-9a-fA-F]+)( )(Service2)( account=)(\d+)( Name=)(\w+)(.*)(\d+)
+      PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Trace )([0-9a-fA-F]+)( )(Service2)( account=)(\d+)( Name=)(\w+)(.*)(\d+)
       #                                                                                                                                     ^^^^ <-- duration
       #                                                                                                             ^^^          ^^^  <-- skip groups
       #                                                                                       ^^^^ <-- label
       #                                                                         ^^^^^^^^^^ <-- trace Id
       #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
       # group id where timestamp is present in trace log
-      PatternTraceTimeGroup: 1
+      TimeStampGroup: 1
       # log timestamp format to convert time using time.strptime(). 
       # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
       TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
       # all trace info in single line
-      PatternTraceSingleLine: True
-      PatternTraceIdGroup: 3
-      PatternTraceLabelGroup: 5
+      TraceSingleLine: True
+      TraceIdGroup: 3
+      TraceLabelGroup: 5
       # do not post values of these groups, just mask them. Here, account number and name are MASKED
-      PatternSkipGroups: 7,9
+      SkipGroups: 7,9
       # event duration is at this group id
-      PatternDurationGroup: 11
+      DurationGroup: 11
       ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
-      PatternDurationMultiplier: 1000
+      DurationMultiplier: 1000
       Priority: 2
 
     # Trace serviceName
@@ -467,7 +468,7 @@ LogFile:
       DBDetails: DBType=zipkin
       LogFileName: JATest.log*
       # all trace info in single line
-      PatternTraceSingleLine: False
+      TraceSingleLine: False
       # log block of the form:
       # 2022-06-10T23:28:33.906468 Block1 Service3 test trace line
       # 2nd line of block 
@@ -475,21 +476,18 @@ LogFile:
       # 4th line of block 00000000000000cb
       # 5th line of block 
       # 6th line of block 
-      # 
-      PatternTraceBlockStart: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Block1 )(.*)
-      #
+      #                                     1                              2         3       4
+      PatternTraceBlockStart: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Block1 )(Service3 )(.*)
+      #                                                                           ^^^^^^^^ <-- label group
       #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
       # group id where timestamp is present in trace log
-      PatternTraceTimeGroup: 1
+      TimeStampGroup: 1
       # log timestamp format to convert time using time.strptime(). 
       # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
       TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
-
-      # regex group:        1           2           3
-      PatternTraceLabel: ( Block1 )( Service3 )(.*)
-      #                              ^^^^^^^^ <-- label group
-      # trace name
-      PatternTraceLabelGroup: 2
+      # trace label - trace label can be on it's own line or
+      #               can be part of traceId or traceBlockStart line
+      TraceLabelGroup: 3
       # 3rd line of block
       PatternTraceBlockContains: (3rd )(line of block)
       # 4th line of block 00000000000000c
@@ -497,18 +495,18 @@ LogFile:
       PatternTraceId: (.*)( block )([0-9a-fA-F]+)$
       #                             ^^^^^^^^^^^^ <--- trace id
       # trace id group in log line
-      PatternTraceIdGroup: 3
+      TraceIdGroup: 3
 
       # 5th line has SKIP words
       # 5th line of block account=1234 Name=JaaduVision
-      # regex groups: 1       2     3       4 
-      PatternSkip: (account=)(\d+)( Name=)(\w+)(.*)
-      PatternSkipGroups: 2,4
+      # regex groups: 1       2     3       4   5
+      PatternSkip: (.*)(account=)(\d+)( Name=)(\w+)(.*)
+      SkipGroups: 3,5
 
       ### Block end line, use at least two groups so that it goes through skip group checks
       PatternTraceBlockEnd: (6th line)( of block)
       ### add below word after timestamp, before traceId to the first line of the block so that
       ###   loki can identify trace id in timestamp line and link to trace record.
-      PatternTraceIdPrefix: Trace
+      TraceIdPrefix: Trace
       Priority: 2
 
