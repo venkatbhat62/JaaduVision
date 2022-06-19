@@ -2007,9 +2007,9 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                 ### Add trace id to current line at the end end with indexForTraceIdPrefix 
                                 ### This is needed so that loki can locate the log line using trace id with space around it
                                 if values[indexForTraceIdPrefix] != None:
-                                    stringToAppendAtTheEndOfCurrentLine =  r' {0} {1}'.format(values[indexForTraceIdPrefix], xlatedTraceId)   
+                                    stringToAppendAtTheEndOfCurrentLine =  r' {0}{1}'.format(values[indexForTraceIdPrefix], xlatedTraceId)   
                                 else:
-                                    stringToAppendAtTheEndOfCurrentLine =  r' TraceId:{0}'.format(xlatedTraceId)
+                                    stringToAppendAtTheEndOfCurrentLine =  r' TraceId={0}'.format(xlatedTraceId)
 
                         if tempTraceSingleLine == True or index == indexForTraceLabel or \
                             ( values[indexForTraceLabel] == None and index == indexForTraceBlockStart) :
@@ -2082,11 +2082,11 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                 ### add current trace block lines to logLines[key] with traceId prefixed at start of the line
                 ### this is to ensure loki can use the traceid to associate with tempo on starting line
                 if values[indexForTraceIdPrefix] != None:
-                    tempLogLineWithTraceId = r'{0} {1} {2}'.format(traceBlockLogLines[fileName].pop(0), \
+                    tempLogLineWithTraceId = r'{0} {1}{2}'.format(traceBlockLogLines[fileName].pop(0), \
                                 values[indexForTraceIdPrefix], \
                                 traceBlockTraceId[fileName] )
                 else:
-                    tempLogLineWithTraceId = r'{0} TraceId:{1}'.format( traceBlockLogLines[fileName].pop(0), \
+                    tempLogLineWithTraceId = r'{0} TraceId={1}'.format( traceBlockLogLines[fileName].pop(0), \
                                 traceBlockTraceId[fileName] )
 
                 logLines[key].append( tempLogLineWithTraceId )
