@@ -2279,6 +2279,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                     print(
                         'DEBUG-4 JAProcessLogFile() processing log line:' + tempLine + '\n')
 
+                patternMatched = patternLogMatched = patternTraceMatched = False
+
                 # search results are stored in logStats in below form
                 # key - service name
                 # values -  value1, presentFlag1, value2, presentFlag2,....
@@ -2289,8 +2291,6 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                 # search for pass, fail, count, stats patterns of each service associated with this log file
                 for key, values in JAStatsSpec[logFileName].items():
                     eventPriority = values[indexForPriority]
-
-                    patternMatched = patternLogMatched = patternTraceMatched = False
 
                     if averageCPUUsage > maxCPUUsageForEvents[eventPriority]:
                         if logEventPriorityLevel == maxCPUUsageLevels:
@@ -2305,12 +2305,12 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         index = 0
 
                         ### if current key has spec related to trace processing, 
-                        if values[indexForTraceProcessing] == True and maxTraceLines > 0:   
+                        if values[indexForTraceProcessing] == True and maxTraceLines > 0 and patternTraceMatched == False:   
                             if int(logTracesCount[key]) < maxTraceLines:
                                 patternTraceMatched = JAProcessLineForTrace( tempLine, fileName, key, values )
 
                         ## upon trace match, log line is collected, thus, no need to search for log line again
-                        if patternTraceMatched == False  and maxLogLines > 0 and values[indexForLogProcessing] == True:
+                        if patternTraceMatched == False  and maxLogLines > 0 and values[indexForLogProcessing] == True and patternLogMatched == False:
                             if int(logLinesCount[key]) < maxLogLines:
                                 patternLogMatched = JAProcessLineForLog( tempLine, fileName, key, values )
 
