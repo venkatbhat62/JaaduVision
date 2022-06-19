@@ -92,7 +92,7 @@ indexForTraceIdGroup = 18
 indexForTraceLabel = 19
 indexForTraceLabelGroup = 20
 
-indexForTraceDuration = 21
+indexForDuration = 21
 indexForDurationGroup = 22
 
 indexForDurationMultiplier = 23
@@ -797,10 +797,10 @@ try:
                 tempPatternList[indexForTraceLabelGroup] = int(str(value.get('PatternTraceLabelGroup')).strip())
                 tempPatternPresent[indexForTraceLabelGroup] = True
 
-            if value.get('PatternTraceDuration') != None:
+            if value.get('PatternDuration') != None:
                 ## need to send current log line with trace data
-                tempPatternList[indexForTraceDuration] = str(value.get('PatternTraceDuration')).strip()
-                tempPatternPresent[indexForTraceDuration] = True
+                tempPatternList[indexForDuration] = str(value.get('PatternDuration')).strip()
+                tempPatternPresent[indexForDuration] = True
 
             if value.get('DurationGroup') != None:
                 ## need to send current log line with trace data
@@ -969,8 +969,8 @@ try:
             logStats[key][indexForTraceLabelGroup*2] = None
             logStats[key][indexForTraceLabelGroup*2+1] = tempPatternPresent[indexForTraceLabelGroup]
 
-            logStats[key][indexForTraceDuration*2] = None
-            logStats[key][indexForTraceDuration*2+1] = tempPatternPresent[indexForTraceDuration]
+            logStats[key][indexForDuration*2] = None
+            logStats[key][indexForDuration*2+1] = tempPatternPresent[indexForDuration]
 
             logStats[key][indexForDurationGroup*2] = None
             logStats[key][indexForDurationGroup*2+1] = tempPatternPresent[indexForDurationGroup]
@@ -1889,7 +1889,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
             continue
 
         ### search for other patterns like indexForTraceId, indexForTraceBlockStart
-        #   PatternTraceTimeStamp, indexForTraceLabel, indexForTraceDuration
+        #   PatternTraceTimeStamp, indexForTraceLabel, indexForDuration
         searchPattern = r'{0}'.format(values[index])
         try:
             myResults = re.findall( searchPattern, tempLine)
@@ -1972,7 +1972,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                 tempTraceLine[fileName] =  r"{0},timestamp={1}".format(tempTraceLine[fileName], tempTimeStamp)
                                 traceBlockTimeStamp[fileName] = tempResult
 
-                        if tempTraceSingleLine == True or index == indexForTraceId:
+                        if tempTraceSingleLine == True or index == indexForTraceId or ( values[indexForTraceId] == None):
                             ### current line has trace id
                             if values[indexForTraceIdGroup] == groupNumber :
                                 ### current tempResult is the traceid field
@@ -1982,14 +1982,14 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                 tempAppendTraceLine = True
                                 traceBlockTraceId[fileName] = tempResult
 
-                        if tempTraceSingleLine == True or index == indexForTraceLabel or index == indexForTraceBlockStart :
+                        if tempTraceSingleLine == True or index == indexForTraceLabel or ( values[indexForTraceLabel] == None) :
                             ### trace label can be on it's own line or
                             ###   or can be part of traceId or traceBlockStart line
                             if values[indexForTraceLabelGroup] == groupNumber:
                                 tempTraceLine[fileName] = r"{0},label={1}".format(tempTraceLine[fileName],tempResult)
                                 tempAppendTraceLine = True
 
-                        if tempTraceSingleLine == True or index == indexForTraceDuration :
+                        if tempTraceSingleLine == True or index == indexForDuration or (values[indexForDuration] == None) :
                             ### trace duration can be on its own line or
                             ###  or can be part of traceId or traceBlockStart line
                             if values[indexForDurationGroup] == groupNumber:
@@ -1997,7 +1997,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                 tempDuration[fileName] = tempResult
                                 tempAppendTraceLine = True
 
-                        if tempTraceSingleLine == True or index == indexForSkip:
+                        if tempTraceSingleLine == True or index == indexForSkip or (values[indexForSkip] == None):
                             if values[indexForSkipGroups] != None:
                                 ### SKIP words can be on its own line or
                                 ###  or can be part of traceId or traceBlockStart line
