@@ -1935,6 +1935,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                     """
                     tempTraceLine[fileName] = r'id={0},name={1},serviceName={2}'.format( traceSpanId, fileName, key)
 
+                stringToAppendAtTheEndOfCurrentLine = ''
                 ### if pattern matches to single instance in line, len(myResults) will be 1
                 ###     myResults is of the form = [ (key1, value1, key2, value2....)]
                 ### if pattern matches to multiple instances in line, len(myResults) will be > 1
@@ -2003,12 +2004,11 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                 tempAppendTraceLine = True
                                 traceBlockTraceId[fileName] = tempResult
 
-                                ### if single line trace line and trace id is not at group 2, 
-                                ###   add timeStamp and trace id to current line so that
-                                ###   line follows standard layout 
+                                ### if single line trace line and indexForTraceIdPrefix has value
+                                ###   add trace id to current line at the end end with indexForTraceIdPrefix 
                                 ### This is needed so that loki can locate the log line using trace id with space around it
-                                if tempTraceSingleLine == True and groupNumber != 2:
-                                    tempLogLine = r'{0} {1} {2}'.format(traceBlockTimeStamp[fileName], tempResult, tempLogLine)    
+                                if tempTraceSingleLine == True and values[indexForTraceIdPrefix] != None:
+                                    stringToAppendAtTheEndOfCurrentLine =  r'{0} {1}'.format(values[indexForTraceIdPrefix], tempResult)   
 
                         if tempTraceSingleLine == True or index == indexForTraceLabel or \
                             ( values[indexForTraceLabel] == None and index == indexForTraceBlockStart) :
@@ -2043,6 +2043,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                             
                         ### append current word to form original line
                         tempLogLine = tempLogLine + r'{0}'.format(tempResult)
+                tempLogLine += stringToAppendAtTheEndOfCurrentLine
                 # found a matching pattern in current line, NO more search for any other pattern
                 ### get out of for loop
                 break
