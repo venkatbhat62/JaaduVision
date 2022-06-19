@@ -1867,7 +1867,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
     patternTraceMatched = False
 
     if debugLevel > 2 :
-        print( "DEBUG-3 JAProcessLineForTrace() processing log file:{0}, line:{1}, trace key:{2}, trace definition:{3}".format(fileName,tempLine,key, values))    
+        print( "\n\nDEBUG-3 JAProcessLineForTrace() processing log file:{0}, line:{1}, trace key:{2}, trace definition:{3}".format(fileName,tempLine,key, values))    
 
     ### if trace block processing is in progress, 
     #       proceed if current key passed match to traceBlockStartKey
@@ -2002,6 +2002,13 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                 tempTraceLine[fileName] = r'{0},traceId={1}'.format(tempTraceLine[fileName],tempResult)
                                 tempAppendTraceLine = True
                                 traceBlockTraceId[fileName] = tempResult
+
+                                ### if single line trace line and trace id is not at group 2, 
+                                ###   add timeStamp and trace id to current line so that
+                                ###   line follows standard layout 
+                                ### This is needed so that loki can locate the log line using trace id with space around it
+                                if tempTraceSingleLine == True and groupNumber != 2:
+                                    tempLogLine = r'{0} {1} {2}'.format(traceBlockTimeStamp[fileName], tempResult, tempLogLine)    
 
                         if tempTraceSingleLine == True or index == indexForTraceLabel or \
                             ( values[indexForTraceLabel] == None and index == indexForTraceBlockStart) :
