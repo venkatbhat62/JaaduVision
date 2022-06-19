@@ -1999,16 +1999,17 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                             if values[indexForTraceIdGroup] == groupNumber :
                                 ### current tempResult is the traceid field
                                 ### remove -, _, g to Z from trace id field
-                                tempResult = re.sub(r'-|_|[g-zG-Z]', "", tempResult)
-                                tempTraceLine[fileName] = r'{0},traceId={1}'.format(tempTraceLine[fileName],tempResult)
+                                xlatedTraceId = re.sub(r'-|_|[g-zG-Z]', "", tempResult)
+                                tempTraceLine[fileName] = r'{0},traceId={1}'.format(tempTraceLine[fileName],xlatedTraceId)
                                 tempAppendTraceLine = True
-                                traceBlockTraceId[fileName] = tempResult
-
-                                ### if single line trace line and indexForTraceIdPrefix has value
-                                ###   add trace id to current line at the end end with indexForTraceIdPrefix 
+                                traceBlockTraceId[fileName] = xlatedTraceId
+                                
+                                ### Add trace id to current line at the end end with indexForTraceIdPrefix 
                                 ### This is needed so that loki can locate the log line using trace id with space around it
-                                if tempTraceSingleLine == True and values[indexForTraceIdPrefix] != None:
-                                    stringToAppendAtTheEndOfCurrentLine =  r'{0} {1}'.format(values[indexForTraceIdPrefix], tempResult)   
+                                if values[indexForTraceIdPrefix] != None:
+                                    stringToAppendAtTheEndOfCurrentLine =  r' {0} {1}'.format(values[indexForTraceIdPrefix], xlatedTraceId)   
+                                else:
+                                    stringToAppendAtTheEndOfCurrentLine =  r' TraceId:{0}'.format(xlatedTraceId)
 
                         if tempTraceSingleLine == True or index == indexForTraceLabel or \
                             ( values[indexForTraceLabel] == None and index == indexForTraceBlockStart) :
@@ -2081,12 +2082,12 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                 ### add current trace block lines to logLines[key] with traceId prefixed at start of the line
                 ### this is to ensure loki can use the traceid to associate with tempo on starting line
                 if values[indexForTraceIdPrefix] != None:
-                    tempLogLineWithTraceId = r'{0} {1} {2} {3}'.format( traceBlockTimeStamp[fileName], \
+                    tempLogLineWithTraceId = r'{0} {1} {2}'.format(traceBlockLogLines[fileName].pop(0), \
                                 values[indexForTraceIdPrefix], \
-                                traceBlockTraceId[fileName], traceBlockLogLines[fileName].pop(0))
+                                traceBlockTraceId[fileName] )
                 else:
-                    tempLogLineWithTraceId = r'{0} {1} {2}'.format( traceBlockTimeStamp[fileName], \
-                                traceBlockTraceId[fileName], traceBlockLogLines[fileName].pop(0))
+                    tempLogLineWithTraceId = r'{0} TraceId:{1}'.format( traceBlockLogLines[fileName].pop(0), \
+                                traceBlockTraceId[fileName] )
 
                 logLines[key].append( tempLogLineWithTraceId )
                 if debugLevel > 3:
