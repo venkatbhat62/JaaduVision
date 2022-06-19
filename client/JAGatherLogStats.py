@@ -1949,7 +1949,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                     for tempResult in tempResults:
                         groupNumber += 1
 
-                        # if current pattern is PatternTraceTimeStamp   
+                        # if current pattern is PatternTimeStamp  of block start line where timestamp is expected to be present
                         if index == indexForTimeStamp or (values[indexForTimeStamp] == None \
                                 and index == indexForTraceBlockStart):
 
@@ -1992,7 +1992,8 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                 tempTraceLine[fileName] =  r"{0},timestamp={1}".format(tempTraceLine[fileName], tempTimeStamp)
                                 traceBlockTimeStamp[fileName] = tempResult
 
-                        if tempTraceSingleLine == True or index == indexForTraceId or ( values[indexForTraceId] == None):
+                        if tempTraceSingleLine == True or index == indexForTraceId or \
+                            ( values[indexForTraceId] == None and index == indexForTraceBlockStart):
                             ### current line has trace id
                             if values[indexForTraceIdGroup] == groupNumber :
                                 ### current tempResult is the traceid field
@@ -2002,14 +2003,16 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                 tempAppendTraceLine = True
                                 traceBlockTraceId[fileName] = tempResult
 
-                        if tempTraceSingleLine == True or index == indexForTraceLabel or ( values[indexForTraceLabel] == None) :
+                        if tempTraceSingleLine == True or index == indexForTraceLabel or \
+                            ( values[indexForTraceLabel] == None and index == indexForTraceBlockStart) :
                             ### trace label can be on it's own line or
                             ###   or can be part of traceId or traceBlockStart line
                             if values[indexForTraceLabelGroup] == groupNumber:
                                 tempTraceLine[fileName] = r"{0},label={1}".format(tempTraceLine[fileName],tempResult)
                                 tempAppendTraceLine = True
 
-                        if tempTraceSingleLine == True or index == indexForDuration or (values[indexForDuration] == None) :
+                        if tempTraceSingleLine == True or index == indexForDuration or \
+                            (values[indexForDuration] == None and index == indexForTraceBlockStart) :
                             ### trace duration can be on its own line or
                             ###  or can be part of traceId or traceBlockStart line
                             if values[indexForDurationGroup] == groupNumber:
@@ -2017,7 +2020,8 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                 tempDuration[fileName] = tempResult
                                 tempAppendTraceLine = True
 
-                        if tempTraceSingleLine == True or index == indexForSkip or (values[indexForSkip] == None):
+                        if tempTraceSingleLine == True or index == indexForSkip or \
+                            (values[indexForSkip] == None and index == indexForTraceBlockStart):
                             if values[indexForSkipGroups] != None:
                                 ### SKIP words can be on its own line or
                                 ###  or can be part of traceId or traceBlockStart line
