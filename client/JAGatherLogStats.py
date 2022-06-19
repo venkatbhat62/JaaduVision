@@ -1868,6 +1868,9 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
     tempAddNEWLINE = tempAppendTraceLine = False
     patternTraceMatched = False
 
+    if debugLevel > 2 :
+        print( "DEBUG-3 JAProcessLineForTrace() processing log file:{0}, line:{1}, trace definition:{2}".format(fileName,tempLine,values))    
+
     ### if trace block processing is in progress, 
     #       proceed if current key passed match to traceBlockStartKey
     
@@ -1881,6 +1884,8 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
     tempTraceSingleLine = values[indexForTraceSingleLine]
     if ( tempTraceSingleLine == True ) :
         tempLogLine = tempTraceLine[fileName] = ''
+        if debugLevel > 2 :
+            print( "DEBUG-3 JAProcessLineForTrace() trace definitions in single line for current key:{0}".format(key))    
 
     ### see whether current line match to any trace definitions
     for index in tracePatternIndexsList:
@@ -1891,6 +1896,10 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
         ### search for other patterns like indexForTraceId, indexForTraceBlockStart
         #   PatternTraceTimeStamp, indexForTraceLabel, indexForDuration
         searchPattern = r'{0}'.format(values[index])
+
+        if debugLevel > 3:
+            print("DEBUG-4 JAProcessLineForTrace() searching for the pattern:{0}".format(searchPattern) )
+
         try:
             myResults = re.findall( searchPattern, tempLine)
             patternMatchCount =  len(myResults)
@@ -1898,6 +1907,8 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                 
                 if index == indexForTraceBlockEnd:
                     if traceBlockInProgress[fileName] == key:
+                        if debugLevel > 3:
+                            print("DEBUG-4 JAProcessLineForTrace() End trace block:{0}".format(traceBlockInProgress[fileName]) )
                         ### trace block end pattern in current line
                         traceBlockInProgress[fileName] = None
                         tempAddNEWLINE = True
@@ -1910,6 +1921,9 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                     traceBlockTraceId[fileName] = traceBlockTimeStamp[fileName] = traceBlockLogLines[fileName] = []
                     traceBlockInProgress[fileName] = key
                     traceBlockContains[fileName] = False
+
+                    if debugLevel > 3:
+                        print("DEBUG-4 JAProcessLineForTrace() Start trace block:{0}".format(traceBlockInProgress[fileName]) )
 
                 groupNumber = 0
                 if tempTraceLine[fileName] == '':
@@ -1926,6 +1940,10 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                     patternMatchCount -= 1
 
                     tempResults = myResults.pop(0)
+
+                    if debugLevel > 3:
+                        print("DEBUG-4 JAProcessLineForTrace() pattern groups:{0}".format(tempResults) )
+
                     for tempResult in tempResults:
                         groupNumber += 1
 
@@ -2049,6 +2067,8 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                             values[indexForTraceIdPrefix], \
                             traceBlockTraceId[fileName], traceBlockLogLines[fileName].pop(0))
                 logLines[key].append( tempLogLineWithTraceId )
+                if debugLevel > 3:
+                    print("DEBUG-4 JAProcessLineForTrace() modified trace start line:{0}".format(tempLogLineWithTraceId) )
                 for line in traceBlockLogLines[fileName]:
                     logLines[key].append( line )
                     ### increment the logTracesCount
@@ -2069,10 +2089,16 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                 tempLogLine += '\n'
             ### DO NOT append __NEWLINE__ separator so that this line is logged as a group of log lines
             traceBlockLogLines[fileName].append(tempLogLine ) 
+            if debugLevel > 3:
+                print("DEBUG-4 JAProcessLineForTrace() inside trace block log line collected:{0}".format(tempLogLine) )
+
         else:
             ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
             ### Log lines group separator, used by script on Web Server to post log line groups separatly to Loki
             logLines[key].append(tempLogLine + "__NEWLINE__")
+            if debugLevel > 3:
+                print("DEBUG-4 JAProcessLineForTrace() single trace log line collected:{0}".format(tempLogLine + "__NEWLINE__") )
+
             ### increment the logLinesCount
             logLinesCount[key] += 1
             
@@ -2083,6 +2109,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                 logTracesCount[key] +=1 
                 tempTraceLine[fileName] = ''
                 tempAddNEWLINE = False
+
 
         tempLogLine = ''
 
