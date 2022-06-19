@@ -2044,7 +2044,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                             
                         ### append current word to form original line
                         tempLogLine = tempLogLine + r'{0}'.format(tempResult)
-                tempLogLine += stringToAppendAtTheEndOfCurrentLine
+                tempLogLine = tempLogLine + stringToAppendAtTheEndOfCurrentLine
                 # found a matching pattern in current line, NO more search for any other pattern
                 ### get out of for loop
                 break
