@@ -1869,7 +1869,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
     patternTraceMatched = False
 
     if debugLevel > 2 :
-        print( "DEBUG-3 JAProcessLineForTrace() processing log file:{0}, line:{1}, trace definition:{2}".format(fileName,tempLine,values))    
+        print( "DEBUG-3 JAProcessLineForTrace() processing log file:{0}, line:{1}, trace key:{2}, trace definition:{3}".format(fileName,tempLine,key, values))    
 
     ### if trace block processing is in progress, 
     #       proceed if current key passed match to traceBlockStartKey
