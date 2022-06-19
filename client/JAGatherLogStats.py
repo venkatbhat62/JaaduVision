@@ -2044,6 +2044,9 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
             values[index] = None
             continue
 
+    if debugLevel > 3:
+        print("DEBUG-4 JAProcessLineForTrace() timeStamp:{0}, traceId:{1}".format(traceBlockTimeStamp[fileName], traceBlockTraceId[fileName]) )
+
     if tempAppendTraceLine == True:
         if tempDuration[fileName] == None or tempDuration[fileName] == '':
             if traceBlockInProgress[fileName] == None:
