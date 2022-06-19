@@ -849,8 +849,6 @@ try:
                 ## need to send current log line with trace data
                 tempPatternList[indexForTraceIdPrefix] = str(value.get('TraceIdPrefix')).strip()
                 tempPatternPresent[indexForTraceIdPrefix] = True
-            else:
-                tempPatternList[indexForTraceIdPrefix] = ''
                 
             if value.get('PatternTraceBlockContains') != None:
                 ## need to send current log line with trace data
@@ -1918,7 +1916,8 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                 elif index == indexForTraceBlockStart:
                     tempAppendTraceLine = True
                     tempLogLine = tempTraceLine[fileName] = tempDuration[fileName] =  ''
-                    traceBlockTraceId[fileName] = traceBlockTimeStamp[fileName] = traceBlockLogLines[fileName] = []
+                    traceBlockTraceId[fileName] = traceBlockTimeStamp[fileName] = ''
+                    traceBlockLogLines[fileName] = []
                     traceBlockInProgress[fileName] = key
                     traceBlockContains[fileName] = False
 
@@ -2066,9 +2065,14 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
 
                 ### add current trace block lines to logLines[key] with traceId prefixed at start of the line
                 ### this is to ensure loki can use the traceid to associate with tempo on starting line
-                tempLogLineWithTraceId = r'{0} {1} {2} {3}'.format( traceBlockTimeStamp[fileName], \
-                            values[indexForTraceIdPrefix], \
-                            traceBlockTraceId[fileName], traceBlockLogLines[fileName].pop(0))
+                if values[indexForTraceIdPrefix] != None:
+                    tempLogLineWithTraceId = r'{0} {1} {2} {3}'.format( traceBlockTimeStamp[fileName], \
+                                values[indexForTraceIdPrefix], \
+                                traceBlockTraceId[fileName], traceBlockLogLines[fileName].pop(0))
+                else:
+                    tempLogLineWithTraceId = r'{0} {1} {2}'.format( traceBlockTimeStamp[fileName], \
+                                traceBlockTraceId[fileName], traceBlockLogLines[fileName].pop(0))
+
                 logLines[key].append( tempLogLineWithTraceId )
                 if debugLevel > 3:
                     print("DEBUG-4 JAProcessLineForTrace() modified trace start line:{0}".format(tempLogLineWithTraceId) )
