@@ -1924,6 +1924,9 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
 
                     if debugLevel > 3:
                         print("DEBUG-4 JAProcessLineForTrace() Start trace block:{0}".format(traceBlockInProgress[fileName]) )
+                else:
+                    if debugLevel > 3:
+                        print("DEBUG-4 JAProcessLineForTrace() processing single trace line definition:{0}, matched pattern:{1}".format(key, searchPattern)) 
 
                 groupNumber = 0
                 if tempTraceLine[fileName] == '':
@@ -1942,7 +1945,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                     tempResults = myResults.pop(0)
 
                     if debugLevel > 3:
-                        print("DEBUG-4 JAProcessLineForTrace() pattern groups:{0}".format(tempResults) )
+                        print("DEBUG-4 JAProcessLineForTrace() pattern groups matched:{0}".format(tempResults) )
 
                     for tempResult in tempResults:
                         groupNumber += 1
