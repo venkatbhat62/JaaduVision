@@ -1608,7 +1608,7 @@ def JAPostAllDataToWebServer():
                     print('DEBUG-1 JAPostAllDataToWebServer() Posted logs to web server:|{0}|, with result:|{1}|'.format(webServerURL, resultText))
 
             else:
-                errorMsg = 'ERROR JAPostAllDataToWebServer() error posting logs to web server:|{0}|, with result|{1}|'.format(webServerURL, resultText)
+                errorMsg = 'ERROR JAPostAllDataToWebServer() error posting logs to web server:|{0}|, with result|{1}|\nlogs:|{2}|'.format(webServerURL, resultText, tempLogLinesToPost)
                 print(errorMsg)
                 LogMsg(errorMsg, statsLogFileName, True)
                 break
@@ -1691,10 +1691,10 @@ def JAPostAllDataToWebServer():
             if logStatsPostSuccess == True:
                 numPostings += 1
                 if debugLevel > 0:
-                    print('DEBUG-1 JAPostAllDataToWebServer() Posted traces to web server:|{0}|, with result:|{1}|'.format(webServerURL, resultText))
+                    print('DEBUG-1 JAPostAllDataToWebServer() Posted traces to web server:|{0}|, with result:|{1}|\n'.format(webServerURL, resultText))
 
             else:
-                errorMsg = 'ERROR JAPostAllDataToWebServer() error posting trace to web server:|{0}|, with result|{1}|'.format(webServerURL, resultText)
+                errorMsg = 'ERROR JAPostAllDataToWebServer() error posting trace to web server:|{0}|, with result|{1}|\ntrace:|{2}|'.format(webServerURL, resultText, tempLogTracesToPost)
                 print(errorMsg)
                 LogMsg(errorMsg, statsLogFileName, True)
                 break
