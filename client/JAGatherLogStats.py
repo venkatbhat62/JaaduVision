@@ -2046,8 +2046,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                         tempLogLine = tempLogLine + r'{0}'.format(tempResult)
                 
                 ### remove \n from line
-                tempLogLine = tempLogLine.sub('\n','')
-                tempLogLine = tempLogLine + stringToAppendAtTheEndOfCurrentLine
+                tempLogLine = re.sub("\n$", '', tempLogLine) + stringToAppendAtTheEndOfCurrentLine
                 # found a matching pattern in current line, NO more search for any other pattern
                 ### get out of for loop
                 break
@@ -2084,7 +2083,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
 
                 ### remove \n from first line
                 firstLogLine = traceBlockLogLines[fileName].pop(0)
-                firstLogLine = firstLogLine.sub('\n','')
+                firstLogLine = re.sub("\n$", '', firstLogLine) 
 
                 ### add current trace block lines to logLines[key] with traceId prefixed at start of the line
                 ### this is to ensure loki can use the traceid to associate with tempo on starting line
