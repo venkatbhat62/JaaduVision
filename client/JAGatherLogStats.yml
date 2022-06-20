@@ -202,6 +202,10 @@ Environment:
      ###   if web server is not available, history stats older than this period will be discarded
      ###   
      RetryDurationInHours: 48
+     ### add below word at the end of the block start line or single trace line and print translated trace id without '-'
+     ###   loki can identify trace id in timestamp line and link to trace record.
+     TraceIdPrefix: TraceId=
+
 ### commands in execute section are executed before processing log files so that
 ###   any log file created by these execute commands can be processed properly.
 Execute:
@@ -404,10 +408,10 @@ LogFile:
       # post trace data to zipkin
       DBDetails: DBType=zipkin
       LogFileName: JATest.log*
-      # 2022-05-30T15:17:58.938264 Trace 0000000000000001 Service1 test trace line 1
+      # 2022-05-30T15:17:58.938264 TraceId=0000000000000001 Service1 test trace line 1
       # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
       # regex group:                1                                     2         3         4      5         6              7
-      PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Trace )([0-9a-fA-F]+)( )(Service1)( test trace line )(\d+)
+      PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( TraceId=)([0-9a-fA-F]+)( )(Service1)( test trace line )(\d+)
       #                                                                                                                    ^^^^ <-- duration
       #                                                                                       ^^^^ <-- label
       #                                                                         ^^^^^^^^^^ <-- trace Id
@@ -435,11 +439,11 @@ LogFile:
       DBDetails: DBType=zipkin
       LogFileName: JATest.log*
 
-      # 2022-05-30T15:17:58.938412 Trace 0000000000000001 Service2 account=1234 Name=JaaduVision test trace line 1
+      # 2022-05-30T15:17:58.938412 TraceId=0000000000000001 Service2 account=1234 Name=JaaduVision test trace line 1
       # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
       # regex group:             1                                      2          
       # regex group:                1                                     2         3         4     5           6     7      8      9   10  11
-      PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Trace )([0-9a-fA-F]+)( )(Service2)( account=)(\d+)( Name=)(\w+)(.*)(\d+)
+      PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( TraceId=)([0-9a-fA-F]+)( )(Service2)( account=)(\d+)( Name=)(\w+)(.*)(\d+)
       #                                                                                                                                     ^^^^ <-- duration
       #                                                                                                             ^^^          ^^^  <-- skip groups
       #                                                                                       ^^^^ <-- label
@@ -505,8 +509,8 @@ LogFile:
 
       ### Block end line, use at least two groups so that it goes through skip group checks
       PatternTraceBlockEnd: (6th line)( of block)
-      ### add below word after timestamp, before traceId to the first line of the block so that
+      ### add below word at the end of the block start line or single trace line and print translated trace id without '-'
       ###   loki can identify trace id in timestamp line and link to trace record.
-      TraceIdPrefix: Trace
+      TraceIdPrefix: TraceId=
       Priority: 2
 

@@ -266,6 +266,10 @@ dataMaskEnabled = None
 ### set this to a high enough number to collect trace in normal operation
 maxTraceLines = None
 
+### add below word at the end of the block start line or single trace line and print translated trace id without '-'
+###   loki can identify trace id in timestamp line and link to trace record.
+traceIdPrefix = None
+
 # list contains the max cpu usage levels for all events, priority 1,2,3 events
 # index 0 - for all events, index 1 for priority 1, index 3 for priority 3
 maxCPUUsageForEvents = [0, 0, 0, 0]
@@ -423,7 +427,7 @@ def JAGatherEnvironmentSpecs(key, values):
     # declare global variables
     global dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageForEvents, maxProcessingTimeForAllEvents
     global webServerURL, disableWarnings, verifyCertificate, debugLevel, maxLogLines, saveLogsOnWebServer
-    global DBDetails, retryDurationInHours, retryLogStatsBatchSize, maxTraceLines, dataMaskEnabled
+    global DBDetails, retryDurationInHours, retryLogStatsBatchSize, maxTraceLines, dataMaskEnabled, traceIdPrefix
 
     for myKey, myValue in values.items():
         if debugLevel > 1:
@@ -549,6 +553,10 @@ def JAGatherEnvironmentSpecs(key, values):
                         verifyCertificate = True
                     else:
                         verifyCertificate = myValue
+
+        elif myKey == 'TraceIdPrefix':
+            if myValue != None:
+                traceIdPrefix = myValue.strip()
 
     if debugLevel > 0:
         print('DEBUG-1 Parameters after reading configFile: {0}, WebServerURL: {1},  DataPostIntervalInSec: {2}, DataCollectDurationInSec: {3}, maxCPUUsageForEvents: {4}, maxProcessingTimeForAllEvents: {5}, DebugLevel: {6}'.format(
@@ -845,7 +853,12 @@ try:
                     tempPatternList[indexForTraceSingleLine] = False
                 tempPatternPresent[indexForTraceSingleLine] = True
 
-            if value.get('TraceIdPrefix') != None:
+            if value.get('TraceIdPrefix') == None:
+                ### no spec available for current key, use the gloabl definition if one present
+                if traceIdPrefix != None:
+                    tempPatternList[indexForTraceIdPrefix] = traceIdPrefix 
+                    tempPatternPresent[indexForTraceIdPrefix] = True   
+            else:
                 ## need to send current log line with trace data
                 tempPatternList[indexForTraceIdPrefix] = str(value.get('TraceIdPrefix')).strip()
                 tempPatternPresent[indexForTraceIdPrefix] = True
@@ -2090,10 +2103,10 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                 if values[indexForTraceIdPrefix] != None:
                     tempLogLineWithTraceId = r'{0} {1}{2}'.format(firstLogLine, \
                                 values[indexForTraceIdPrefix], \
-                                traceBlockTraceId[fileName] )
+                                traceBlockTraceId[fileName] ) + '\n'
                 else:
                     tempLogLineWithTraceId = r'{0} TraceId={1}'.format( firstLogLine, \
-                                traceBlockTraceId[fileName] )
+                                traceBlockTraceId[fileName] ) + '\n'
 
                 logLines[key].append( tempLogLineWithTraceId )
                 if debugLevel > 3:

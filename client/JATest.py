@@ -104,12 +104,12 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
 
             # generate log to test TracePattern line with timestamp, traceId both in the same line, not a log block
-            msg = "Trace {0:016x} Service1 test trace line {1}\n".format(traceId, count)
+            msg = "TraceId={0:016x} Service1 test trace line {1}\n".format(traceId, count)
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
             
             # generate log to test TraceBlockStart, and TraceBlockEnd sequence
             # here, the traceId is in TraceBlockStart line
-            msg = "Trace {0:016x} Service2 account=1234 Name=JaaduVision test trace line {1}\n".format(traceId, count)
+            msg = "TraceId={0:016x} Service2 account=1234 Name=JaaduVision test trace line {1}\n".format(traceId, count)
             JAGlobalLib.LogMsg(msg, testLogFileName, True)
             msg = " 2nd line of prev trace line {0:016x}\n".format(traceId, count)
             JAGlobalLib.LogMsg(msg, testLogFileName, True, False)
