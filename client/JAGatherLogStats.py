@@ -2044,6 +2044,9 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                             
                         ### append current word to form original line
                         tempLogLine = tempLogLine + r'{0}'.format(tempResult)
+                
+                ### remove \n from line
+                tempLogLine = tempLogLine.sub('\n','')
                 tempLogLine = tempLogLine + stringToAppendAtTheEndOfCurrentLine
                 # found a matching pattern in current line, NO more search for any other pattern
                 ### get out of for loop
@@ -2079,14 +2082,18 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                 ### Log lines group separator, used by script on Web Server to post log line groups separatly to Loki
                 traceBlockLogLines[fileName].append(tempLine + "__NEWLINE__")
 
+                ### remove \n from first line
+                firstLogLine = traceBlockLogLines[fileName].pop(0)
+                firstLogLine = firstLogLine.sub('\n','')
+
                 ### add current trace block lines to logLines[key] with traceId prefixed at start of the line
                 ### this is to ensure loki can use the traceid to associate with tempo on starting line
                 if values[indexForTraceIdPrefix] != None:
-                    tempLogLineWithTraceId = r'{0} {1}{2}'.format(traceBlockLogLines[fileName].pop(0), \
+                    tempLogLineWithTraceId = r'{0} {1}{2}'.format(firstLogLine, \
                                 values[indexForTraceIdPrefix], \
                                 traceBlockTraceId[fileName] )
                 else:
-                    tempLogLineWithTraceId = r'{0} TraceId={1}'.format( traceBlockLogLines[fileName].pop(0), \
+                    tempLogLineWithTraceId = r'{0} TraceId={1}'.format( firstLogLine, \
                                 traceBlockTraceId[fileName] )
 
                 logLines[key].append( tempLogLineWithTraceId )
