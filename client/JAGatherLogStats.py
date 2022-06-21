@@ -270,6 +270,9 @@ maxTraceLines = None
 ###   loki can identify trace id in timestamp line and link to trace record.
 traceIdPrefix = None
 
+### global timestamp format specification. if individual key does not have the spec, global definition will be used
+timeStampFormat = None
+
 # list contains the max cpu usage levels for all events, priority 1,2,3 events
 # index 0 - for all events, index 1 for priority 1, index 3 for priority 3
 maxCPUUsageForEvents = [0, 0, 0, 0]
@@ -427,7 +430,8 @@ def JAGatherEnvironmentSpecs(key, values):
     # declare global variables
     global dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageForEvents, maxProcessingTimeForAllEvents
     global webServerURL, disableWarnings, verifyCertificate, debugLevel, maxLogLines, saveLogsOnWebServer
-    global DBDetails, retryDurationInHours, retryLogStatsBatchSize, maxTraceLines, dataMaskEnabled, traceIdPrefix
+    global DBDetails, retryDurationInHours, retryLogStatsBatchSize, maxTraceLines, dataMaskEnabled
+    global timeStampFormat, traceIdPrefix
 
     for myKey, myValue in values.items():
         if debugLevel > 1:
@@ -557,6 +561,10 @@ def JAGatherEnvironmentSpecs(key, values):
         elif myKey == 'TraceIdPrefix':
             if myValue != None:
                 traceIdPrefix = myValue.strip()
+
+        elif myKey == 'TimeStampFormat':
+            if myValue != None:
+                timeStampFormat = myValue.strip()
 
     if debugLevel > 0:
         print('DEBUG-1 Parameters after reading configFile: {0}, WebServerURL: {1},  DataPostIntervalInSec: {2}, DataCollectDurationInSec: {3}, maxCPUUsageForEvents: {4}, maxProcessingTimeForAllEvents: {5}, DebugLevel: {6}'.format(
@@ -830,7 +838,11 @@ try:
                 tempPatternList[indexForTimeStampGroup] = int(str(value.get('TimeStampGroup')).strip())
                 tempPatternPresent[indexForTimeStampGroup] = True
 
-            if value.get('TimeStampFormat') != None:
+            if value.get('TimeStampFormat') == None:
+                if timeStampFormat != None:
+                    tempPatternList[indexForTimeStampFormat]  = timeStampFormat
+                    tempPatternPresent[indexForTimeStampFormat] = True
+            else:
                 ## need to send current log line with trace data
                 tempPatternList[indexForTimeStampFormat] = str(value.get('TimeStampFormat')).strip()
                 tempPatternPresent[indexForTimeStampFormat] = True
@@ -2016,13 +2028,15 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                 tempTraceLine[fileName] = r'{0},traceId={1}'.format(tempTraceLine[fileName],xlatedTraceId)
                                 tempAppendTraceLine = True
                                 traceBlockTraceId[fileName] = xlatedTraceId
-                                
-                                ### Add trace id to current line at the end end with indexForTraceIdPrefix 
-                                ### This is needed so that loki can locate the log line using trace id with space around it
-                                if values[indexForTraceIdPrefix] != None:
-                                    stringToAppendAtTheEndOfCurrentLine =  r' {0}{1}'.format(values[indexForTraceIdPrefix], xlatedTraceId)   
-                                else:
-                                    stringToAppendAtTheEndOfCurrentLine =  r' TraceId={0}'.format(xlatedTraceId)
+
+                                ### 1st line of trace block will get the traceId later, DO NOT add here for that condition                                
+                                if index != indexForTraceBlockStart:
+                                    ### Add trace id to current line at the end end with indexForTraceIdPrefix 
+                                    ### This is needed so that loki can locate the log line using trace id with space around it
+                                    if values[indexForTraceIdPrefix] != None:
+                                        stringToAppendAtTheEndOfCurrentLine =  r' {0}{1}'.format(values[indexForTraceIdPrefix], xlatedTraceId)   
+                                    else:
+                                        stringToAppendAtTheEndOfCurrentLine =  r' TraceId={0}'.format(xlatedTraceId)
 
                         if tempTraceSingleLine == True or index == indexForTraceLabel or \
                             ( values[indexForTraceLabel] == None and index == indexForTraceBlockStart) :

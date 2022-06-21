@@ -205,6 +205,9 @@ Environment:
      ### add below word at the end of the block start line or single trace line and print translated trace id without '-'
      ###   loki can identify trace id in timestamp line and link to trace record.
      TraceIdPrefix: TraceId=
+     # log timestamp format to convert time using time.strptime(). 
+     # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
+     TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
 
 ### commands in execute section are executed before processing log files so that
 ###   any log file created by these execute commands can be processed properly.
@@ -486,9 +489,9 @@ LogFile:
       #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
       # group id where timestamp is present in trace log
       TimeStampGroup: 1
-      # log timestamp format to convert time using time.strptime(). 
-      # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
-      TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
+      # commented below so that it will use global definition
+      # TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
+      #
       # trace label - trace label can be on it's own line or
       #               can be part of traceId or traceBlockStart line
       TraceLabelGroup: 3
