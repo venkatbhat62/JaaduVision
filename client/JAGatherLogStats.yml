@@ -208,6 +208,11 @@ Environment:
      # log timestamp format to convert time using time.strptime(). 
      # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
      TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
+     ## id - self-if of a component, used to indicate relationship between various components in a perticular message flow
+     ##  this id can be specified in other components definition as parentId if message from this host goes to that host
+     TraceId: 1234
+     ### if parentId is not defined, it will default to selfId or TraceId
+     #TraceParentId:
 
 ### commands in execute section are executed before processing log files so that
 ###   any log file created by these execute commands can be processed properly.
@@ -241,14 +246,14 @@ LogFile:
 
     ApacheGrafana:
       LogFileName: /var/log/apache2/access.log*
-      PatternPass: /grafana(.*)HTTP/\d.\d" [2..|3..]
-      PatternFail: /grafana(.*)HTTP/\d.\d" [4..|5..]
+      PatternPass: \/grafana(.*)HTTP\/\d.\d" [2..|3..]
+      PatternFail: \/grafana(.*)HTTP\/\d.\d" [4..|5..]
       Priority: 2
   
     ApachePrometheus:
       LogFileName: /var/log/apache2/access.log*
-      PatternPass: /prometheus(.*)HTTP/\d.\d" [2..|3..]
-      PatternFail: /prometheus(.*)HTTP/\d.\d" [4..|5..]
+      PatternPass: \/prometheus(.*)HTTP\/\d.\d" [2..|3..]
+      PatternFail: \/prometheus(.*)HTTP\/\d.\d" [4..|5..]
       Priority: 2
 
     ApacheSaveStats:
@@ -265,8 +270,8 @@ LogFile:
       ###                   ^^^^^^^^^ <-- this will be separated by web service as label and 
       ###                                  data gets posted to influxb with label client=client1 ApacheSaveStatsPass <count>
       ###                                   This allows further filtering in grafana based on client IP address
-      PatternPass: /JASaveStats.py(.*)HTTP/\d.\d" [2..|3..]
-      PatternFail: /JASaveStats.py(.*)HTTP/\d.\d" [4..|5..]
+      PatternPass: \/JASaveStats.py(.*)HTTP\/\d.\d" [2\d\d|3\d\d]
+      PatternFail: \/JASaveStats.py(.*)HTTP\/\d.\d" [4\d\d|5\d\d]
       Priority: 1
 
     ApacheError:
@@ -411,11 +416,12 @@ LogFile:
       # post trace data to zipkin
       DBDetails: DBType=zipkin
       LogFileName: JATest.log*
-      # 2022-05-30T15:17:58.938264 TraceId=0000000000000001 Service1 test trace line 1
+      # 2022-05-30T15:17:58.938264 TraceId=0000000000000001 Service1 status=202 test trace line 1
       # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
-      # regex group:                1                                     2         3         4      5         6              7
-      PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( TraceId=)([0-9a-fA-F]+)( )(Service1)( test trace line )(\d+)
-      #                                                                                                                    ^^^^ <-- duration
+      # regex group:                1                                 2         3          4      5         6      7      8               9
+      PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( TraceId=)([0-9a-fA-F]+)( )(Service1)( status=)(\d+)( test trace line )(\d+)
+      #                                                                                                                                  ^^^^ <-- duration
+      #                                                                                                           ^^^^  <-- status code
       #                                                                                       ^^^^ <-- label
       #                                                                         ^^^^^^^^^^ <-- trace Id
       #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
@@ -430,8 +436,11 @@ LogFile:
       TraceIdGroup: 3
       # trace name
       TraceLabelGroup: 5
+      ## group where status code is present
+      TraceStatusGroup: 7
+      PatternTraceStatus: (202|404)
       # event duration is at this group id
-      DurationGroup: 7
+      DurationGroup: 9
       ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
       DurationMultiplier: 1000
       Priority: 1
@@ -478,7 +487,7 @@ LogFile:
       TraceSingleLine: False
       # log block of the form:
       # 2022-06-10T23:28:33.906468 Block1 Service3 test trace line
-      # 2nd line of block 
+      # 2nd line of block status=404
       # 3rd line of block 
       # 4th line of block 00000000000000cb
       # 5th line of block 
@@ -495,6 +504,14 @@ LogFile:
       # trace label - trace label can be on it's own line or
       #               can be part of traceId or traceBlockStart line
       TraceLabelGroup: 3
+
+      ### line with status code
+      # 2nd line of block status=404
+      # regex group:               1                  2
+      PatternTraceBlockStatus: (2nd line of block status=)(\d+)
+      TraceStatusGroup: 2
+      PatternTraceStatus: (202|404)
+
       # 3rd line of block
       PatternTraceBlockContains: (3rd )(line of block)
       # 4th line of block 00000000000000c

@@ -109,10 +109,14 @@ indexForTraceBlockContains = 31
 indexForLogProcessing = 32
 indexForTraceProcessing = 33
 indexForStatsProcessing = 34
+indexForTraceParentId   = 35
+indexForTraceStatus     = 36
+indexForTraceStatusGroup = 37
+indexForTraceBlockStatus  = 38
 
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
-maxPatternIndex = 35
+maxPatternIndex = 39
 
 ### while processing log line, process each line when index match to below list item
 ### this is to speed up the processing
@@ -148,13 +152,15 @@ logPatternIndexsList = [
     indexForTimeStamp
 ]
 ### include any pattern spec associated with trace processing. DO NOT include TimeStamp here.
+# trace log line will be parsed if any of these are present for a key definition
 specForTraceProcessing = [
     indexForTraceId,
     indexForTraceBlockStart,
     indexForTraceIdGroup,
-    indexForTraceSingleLine
+    indexForTraceSingleLine,
 ]
 
+## include any patterns to be matched in trace line
 tracePatternIndexsList = [
     indexForTimeStamp,
     indexForTraceId,
@@ -162,7 +168,8 @@ tracePatternIndexsList = [
     indexForTraceBlockStart,
     indexForTraceBlockEnd,
     indexForSkip,
-    indexForTraceBlockContains
+    indexForTraceBlockContains,
+    indexForTraceBlockStatus
 ]
 
 ### index used while processing Execute command spec
@@ -238,7 +245,8 @@ retryDurationInHours = None
 ### send 100 lines at a time to web serve while retrying
 retryLogStatsBatchSize = 100
 
-traceSpanId = 0
+traceId = 0
+traceParentId = None
 
 ### YYYYMMDD will be appended to this name to make daily file where retry stats are kept
 retryLogStatsFileNamePartial = "JARetryLogStats."
@@ -431,7 +439,7 @@ def JAGatherEnvironmentSpecs(key, values):
     global dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageForEvents, maxProcessingTimeForAllEvents
     global webServerURL, disableWarnings, verifyCertificate, debugLevel, maxLogLines, saveLogsOnWebServer
     global DBDetails, retryDurationInHours, retryLogStatsBatchSize, maxTraceLines, dataMaskEnabled
-    global timeStampFormat, traceIdPrefix
+    global timeStampFormat, traceIdPrefix, traceId, traceParentId
 
     for myKey, myValue in values.items():
         if debugLevel > 1:
@@ -566,6 +574,16 @@ def JAGatherEnvironmentSpecs(key, values):
             if myValue != None:
                 timeStampFormat = myValue.strip()
 
+        elif myKey == "TraceId":
+            if myValue != None:
+                traceId = myValue.strip()
+        elif myKey == "TraceParentId":
+            if myValue != None:
+                traceParentId = myValue.strip()
+            else:
+                ### use traceId as parentId
+                traceParentId = traceId
+
     if debugLevel > 0:
         print('DEBUG-1 Parameters after reading configFile: {0}, WebServerURL: {1},  DataPostIntervalInSec: {2}, DataCollectDurationInSec: {3}, maxCPUUsageForEvents: {4}, maxProcessingTimeForAllEvents: {5}, DebugLevel: {6}'.format(
             configFile, webServerURL, dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageForEvents, maxProcessingTimeForAllEvents, debugLevel))
@@ -681,6 +699,10 @@ try:
             statsLogFileName = "JAGatherLogStats.log"
         if cacheLogFileName == None:
             cacheLogFileName = "JAGatherLogStats.cache"
+
+        if traceParentId == None:
+            ### use self-id as parent id
+            traceParentId =  traceId
 
         dateTimeFormatType = None
         # read spec for each log file
@@ -880,6 +902,32 @@ try:
                 tempPatternList[indexForTraceBlockContains] = str(value.get('PatternTraceBlockContains')).strip()
                 tempPatternPresent[indexForTraceBlockContains] = True
 
+            if value.get('TraceParentId') != None:
+                ## need to send current log line with trace data
+                tempPatternList[indexForTraceParentId] = str(value.get('TraceParentId')).strip()
+                tempPatternPresent[indexForTraceParentId] = True
+            else:
+                ### NO parent id available, put global parent id as parent id
+                tempPatternList[indexForTraceParentId] = traceParentId
+                tempPatternPresent[indexForTraceParentId] = True
+
+            if value.get('TraceStatusGroup') != None:
+                ## status group id in regex groups, where status field is present
+                tempPatternList[indexForTraceStatusGroup] = int(str(value.get('TraceStatusGroup')).strip())
+                tempPatternPresent[indexForTraceStatusGroup] = True
+
+            if value.get('PatternTraceStatus') != None:
+                ## if status value match to this regex spec, collect the trace log
+                # this is to skip trace line with success status codes and focus on failure traces
+                tempPatternList[indexForTraceStatus] = str(value.get('PatternTraceStatus')).strip()
+                tempPatternPresent[indexForTraceStatus] = True
+
+            if value.get('PatternTraceBlockStatus') != None:
+                ## if status value match to this regex spec, collect the trace log
+                # this is to skip trace line with success status codes and focus on failure traces
+                tempPatternList[indexForTraceBlockStatus] = str(value.get('PatternTraceBlockStatus')).strip()
+                tempPatternPresent[indexForTraceBlockStatus] = True
+
             ### if DBDetails available per service definition, store that.
             if value.get('DBDetails') != None:
                 ### initialize it with default DBDetails. This is to inherit any value that is not specified locally.
@@ -1021,6 +1069,18 @@ try:
 
             logStats[key][indexForTraceBlockContains*2] = None
             logStats[key][indexForTraceBlockContains*2+1] = tempPatternPresent[indexForTraceBlockContains]
+
+            logStats[key][indexForTraceParentId*2] = None
+            logStats[key][indexForTraceParentId*2+1] = tempPatternPresent[indexForTraceParentId]
+
+            logStats[key][indexForTraceStatus*2] = None
+            logStats[key][indexForTraceStatus*2+1] = tempPatternPresent[indexForTraceStatus]
+
+            logStats[key][indexForTraceStatusGroup*2] = None
+            logStats[key][indexForTraceStatusGroup*2+1] = tempPatternPresent[indexForTraceStatusGroup]
+
+            logStats[key][indexForTraceBlockStatus*2] = None
+            logStats[key][indexForTraceBlockStatus*2+1] = tempPatternPresent[indexForTraceBlockStatus]
 
             ### initialize logLines[key] list to empty list
             logLines[key] = []
@@ -1882,10 +1942,11 @@ traceBlockTimeStamp = defaultdict(dict)
 traceBlockTraceId =  defaultdict(dict)
 traceBlockStartLine = defaultdict(dict)
 traceBlockContains = defaultdict(dict)
+traceStatusMatch = defaultdict(dict)
 
 def JAProcessLineForTrace( tempLine, fileName, key, values ):
 
-    global tracePatternIndexsList, logTracesCount, maxTraceLines, tempTraceLine, traceSpanId, traceBlockStartKey
+    global tracePatternIndexsList, logTracesCount, maxTraceLines, tempTraceLine, traceId, traceBlockStartKey
     global tempLogLine , tempDuration
 
     tempAddNEWLINE = tempAppendTraceLine = False
@@ -1945,6 +2006,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                     traceBlockLogLines[fileName] = []
                     traceBlockInProgress[fileName] = key
                     traceBlockContains[fileName] = False
+                    traceStatusMatch[fileName] = False
 
                     if debugLevel > 3:
                         print("DEBUG-4 JAProcessLineForTrace() Start trace block:{0}".format(traceBlockInProgress[fileName]) )
@@ -1958,7 +2020,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                     trace data to be posted to the web server is in the form
                     id=<number>,timestamp=<logTimeInMicroSec>,duration=<inMicroSec>,name=logFileName,serviceName=key
                     """
-                    tempTraceLine[fileName] = r'id={0},name={1},serviceName={2}'.format( traceSpanId, fileName, key)
+                    tempTraceLine[fileName] = r'id={0},parentId={1},name={2},serviceName={3}'.format( traceId, values[indexForTraceParentId], fileName, key)
 
                 stringToAppendAtTheEndOfCurrentLine = ''
                 ### if pattern matches to single instance in line, len(myResults) will be 1
@@ -2038,6 +2100,31 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                     else:
                                         stringToAppendAtTheEndOfCurrentLine =  r' TraceId={0}'.format(xlatedTraceId)
 
+                        if  (tempTraceSingleLine == True or index == indexForTraceBlockStatus) or \
+                            (values[indexForTraceBlockStatus] == None and index == indexForTraceBlockStart ):
+                            ### current line has status code
+                            if values[indexForTraceStatusGroup] == groupNumber and values[indexForTraceStatus] != None:
+                                ### current tempResult is the status field
+                                ### check whether the current status match to regex specified
+                                try:
+                                    tempStatusCode = re.match( values[indexForTraceStatus], tempResult)
+                                    if tempStatusCode != None:
+                                        ### status match, collect current trace line or trace block
+                                        tempAppendTraceLine = True
+                                        traceStatusMatch[fileName] = True
+                                        tempTraceLine[fileName] = r'{0},status={1}'.format(tempTraceLine[fileName],tempResult)
+                                    else:
+                                        # status DOES not match to desired spec, DO NOT collect corrent trace line or trace block
+                                        traceStatusMatch[fileName] = False
+
+                                except re.error as err:
+                                    errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(values[indexForTraceStatus],err)
+                                    print(errorMsg)
+                                    LogMsg(errorMsg, statsLogFileName, True)
+                                    ### discard this pattern so that no need to check this again
+                                    values[index] = None
+                                    continue
+
                         if tempTraceSingleLine == True or index == indexForTraceLabel or \
                             ( values[indexForTraceLabel] == None and index == indexForTraceBlockStart) :
                             ### trace label can be on it's own line or
@@ -2090,87 +2177,89 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
         print("DEBUG-4 JAProcessLineForTrace() timeStamp:{0}, traceId:{1}".format(traceBlockTimeStamp[fileName], traceBlockTraceId[fileName]) )
 
     if tempAppendTraceLine == True:
-        if tempDuration[fileName] == None or tempDuration[fileName] == '':
-            if traceBlockInProgress[fileName] == None:
-                ### default to 1000 (1ms)
-                tempTraceLine[fileName] = tempTraceLine[fileName] + r",duration={0}\n".format(1000)                   
-        
-        if ( tempAddNEWLINE == True) :
-
-            tempIncludeCurrentBlock = True
-            if values[indexForTraceBlockContains] != None :
-                if traceBlockContains[fileName] == False:
-                    tempIncludeCurrentBlock = False
-
-            if tempIncludeCurrentBlock == True:
-                ### remove \n, it will be added later when ___NEWLINE__ is appended
-                tempLine = re.sub("\n$", '', tempLogLine) 
-                ### Log lines group separator, used by script on Web Server to post log line groups separatly to Loki
-                traceBlockLogLines[fileName].append(tempLine + "__NEWLINE__")
-
-                ### remove \n from first line
-                firstLogLine = traceBlockLogLines[fileName].pop(0)
-                firstLogLine = re.sub("\n$", '', firstLogLine) 
-
-                ### add current trace block lines to logLines[key] with traceId prefixed at start of the line
-                ### this is to ensure loki can use the traceid to associate with tempo on starting line
-                if values[indexForTraceIdPrefix] != None:
-                    tempLogLineWithTraceId = r'{0} {1}{2}'.format(firstLogLine, \
-                                values[indexForTraceIdPrefix], \
-                                traceBlockTraceId[fileName] ) + '\n'
-                else:
-                    tempLogLineWithTraceId = r'{0} TraceId={1}'.format( firstLogLine, \
-                                traceBlockTraceId[fileName] ) + '\n'
-
-                logLines[key].append( tempLogLineWithTraceId )
-                if debugLevel > 3:
-                    print("DEBUG-4 JAProcessLineForTrace() modified trace start line:{0}".format(tempLogLineWithTraceId) )
-                for line in traceBlockLogLines[fileName]:
-                    logLines[key].append( line )
-                    ### increment the logTracesCount
-                    logLinesCount[key] += 1
-                
-                logTraces[key].append( tempTraceLine[fileName])
-                logTracesCount[key] +=1 
-
-            tempTraceLine[fileName] = ''
-            tempAddNEWLINE = False
-
-        elif key == traceBlockInProgress[fileName]:
-            if tempLogLine == '':
-                ### if no match occured, tempLogLine will be empty.
-                ###  use the passed line as is.
-                tempLogLine = tempLine
-            else:
-                tempLogLine += '\n'
-            ### DO NOT append __NEWLINE__ separator so that this line is logged as a group of log lines
-            traceBlockLogLines[fileName].append(tempLogLine ) 
-            if debugLevel > 3:
-                print("DEBUG-4 JAProcessLineForTrace() inside trace block log line collected:{0}".format(tempLogLine) )
-
-        else:
-            ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
-            ### Log lines group separator, used by script on Web Server to post log line groups separatly to Loki
-            logLines[key].append(tempLogLine + "__NEWLINE__")
-            if debugLevel > 3:
-                print("DEBUG-4 JAProcessLineForTrace() single trace log line collected:{0}".format(tempLogLine + "__NEWLINE__") )
-
-            ### increment the logLinesCount
-            logLinesCount[key] += 1
+        if (values[indexForTraceStatus] == None) or (values[indexForTraceStatus] != None and traceStatusMatch[fileName] == True) :
+            ### trace status check is not needed or status check matched, collect this trace.
+            if tempDuration[fileName] == None or tempDuration[fileName] == '':
+                if traceBlockInProgress[fileName] == None:
+                    ### default to 1000 (1ms)
+                    tempTraceLine[fileName] = tempTraceLine[fileName] + r",duration={0}\n".format(1000)                   
             
-            ### all trace definitions in single line with regex group corresponding to that line
-            ###   no other log line to process, add current trace info.
-            if values[indexForTraceSingleLine] == True :
-                logTraces[key].append( tempTraceLine[fileName])
-                logTracesCount[key] +=1 
+            if ( tempAddNEWLINE == True) :
+
+                tempIncludeCurrentBlock = True
+                if values[indexForTraceBlockContains] != None :
+                    if traceBlockContains[fileName] == False:
+                        tempIncludeCurrentBlock = False
+
+                if tempIncludeCurrentBlock == True:
+                    ### remove \n, it will be added later when ___NEWLINE__ is appended
+                    tempLine = re.sub("\n$", '', tempLogLine) 
+                    ### Log lines group separator, used by script on Web Server to post log line groups separatly to Loki
+                    traceBlockLogLines[fileName].append(tempLine + "__NEWLINE__")
+
+                    ### remove \n from first line
+                    firstLogLine = traceBlockLogLines[fileName].pop(0)
+                    firstLogLine = re.sub("\n$", '', firstLogLine) 
+
+                    ### add current trace block lines to logLines[key] with traceId prefixed at start of the line
+                    ### this is to ensure loki can use the traceid to associate with tempo on starting line
+                    if values[indexForTraceIdPrefix] != None:
+                        tempLogLineWithTraceId = r'{0} {1}{2}'.format(firstLogLine, \
+                                    values[indexForTraceIdPrefix], \
+                                    traceBlockTraceId[fileName] ) + '\n'
+                    else:
+                        tempLogLineWithTraceId = r'{0} TraceId={1}'.format( firstLogLine, \
+                                    traceBlockTraceId[fileName] ) + '\n'
+
+                    logLines[key].append( tempLogLineWithTraceId )
+                    if debugLevel > 3:
+                        print("DEBUG-4 JAProcessLineForTrace() modified trace start line:{0}".format(tempLogLineWithTraceId) )
+                    for line in traceBlockLogLines[fileName]:
+                        logLines[key].append( line )
+                        ### increment the logTracesCount
+                        logLinesCount[key] += 1
+                    
+                    logTraces[key].append( tempTraceLine[fileName])
+                    logTracesCount[key] +=1 
+
                 tempTraceLine[fileName] = ''
                 tempAddNEWLINE = False
 
+            elif key == traceBlockInProgress[fileName]:
+                if tempLogLine == '':
+                    ### if no match occured, tempLogLine will be empty.
+                    ###  use the passed line as is.
+                    tempLogLine = tempLine
+                else:
+                    tempLogLine += '\n'
+                ### DO NOT append __NEWLINE__ separator so that this line is logged as a group of log lines
+                traceBlockLogLines[fileName].append(tempLogLine ) 
+                if debugLevel > 3:
+                    print("DEBUG-4 JAProcessLineForTrace() inside trace block log line collected:{0}".format(tempLogLine) )
 
-        tempLogLine = ''
+            else:
+                ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
+                ### Log lines group separator, used by script on Web Server to post log line groups separatly to Loki
+                logLines[key].append(tempLogLine + "__NEWLINE__")
+                if debugLevel > 3:
+                    print("DEBUG-4 JAProcessLineForTrace() single trace log line collected:{0}".format(tempLogLine + "__NEWLINE__") )
 
-        ### do not search for any more trace patterns (trace line pattern matching stops at first match)
-        patternTraceMatched = True
+                ### increment the logLinesCount
+                logLinesCount[key] += 1
+                
+                ### all trace definitions in single line with regex group corresponding to that line
+                ###   no other log line to process, add current trace info.
+                if values[indexForTraceSingleLine] == True :
+                    logTraces[key].append( tempTraceLine[fileName])
+                    logTracesCount[key] +=1 
+                    tempTraceLine[fileName] = ''
+                    tempAddNEWLINE = False
+
+
+            tempLogLine = ''
+
+            ### do not search for any more trace patterns (trace line pattern matching stops at first match)
+            patternTraceMatched = True
 
     return patternTraceMatched
 
@@ -2212,7 +2301,7 @@ def JAProcessLineForLog( tempLine, fileName, key, values ):
     return patternLogMatched
 
 def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, gatherLogStatsEnabled, debugLevel):
-    global averageCPUUsage, thisHostName, logEventPriorityLevel, statsPatternIndexsList, traceSpanId
+    global averageCPUUsage, thisHostName, logEventPriorityLevel, statsPatternIndexsList, traceId
     logFileNames = JAGlobalLib.JAFindModifiedFiles(
         logFileName, startTimeInSec, debugLevel, thisHostName)
 
@@ -2664,26 +2753,30 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             tempListVarName = ':{0}:'.format( labelPrefix)
                                             ### prepare variable name to be used in list
                                             numStats = 0
-                                            ### make a copy of current list values
-                                            tempListStats = list(logStats[key][logStatsKeyValueIndexEven])
-                                            if debugLevel > 3:
-                                                print("DEBUG-4 JAProcessLogFile() processing line with PatternLabel:{0}, tempListStats:{1}".format(tempListVarName, tempListStats))
-                                            
-                                            appendCurrentValueToList = False
-                                            indexToCurrentKeyInTempStats = 0
 
                                             try:
-                                                tempIndexToCurrentKeyInTempStats = tempListStats.index( tempListVarName )
-                                                if tempIndexToCurrentKeyInTempStats >= 0 :
-                                                    ### this is the case of couting pass, fail, count
-                                                    ###   increment conut
-                                                    tempListStats[tempIndexToCurrentKeyInTempStats+1] += 1
+                                                ### make a copy of current list values
+                                                tempListStats = list(logStats[key][logStatsKeyValueIndexEven])
+                                                if debugLevel > 3:
+                                                    print("DEBUG-4 JAProcessLogFile() processing line with PatternLabel:{0}, tempListStats:{1}".format(tempListVarName, tempListStats))
+                                                appendCurrentValueToList = False
+                                                indexToCurrentKeyInTempStats = 0
 
-                                            except ValueError:
-                                                ### value is NOT present in tempStats list, append it
-                                                tempListStats.append(tempListVarName)
-                                                ## start with stats value of 1 for this label
-                                                tempListStats.append(1)
+                                                try:
+                                                    tempIndexToCurrentKeyInTempStats = tempListStats.index( tempListVarName )
+                                                    if tempIndexToCurrentKeyInTempStats >= 0 :
+                                                        ### this is the case of couting pass, fail, count
+                                                        ###   increment conut
+                                                        tempListStats[tempIndexToCurrentKeyInTempStats+1] += 1
+
+                                                except ValueError:
+                                                    ### value is NOT present in tempStats list, append it
+                                                    tempListStats.append(tempListVarName)
+                                                    ## start with stats value of 1 for this label
+                                                    tempListStats.append(1)
+                                            except:
+                                                print("ERROR internal error - key:{0}, logStatsKeyValueIndexEven:{1}, logStats[key][logStatsKeyValueIndexEven]:{2}, labelPrefix:{3}".format(\
+                                                    key, logStatsKeyValueIndexEven, logStats[key][logStatsKeyValueIndexEven], labelPrefix))  
 
                                         elif ( index != indexForTimeStamp and \
                                                index != indexForSkip and \

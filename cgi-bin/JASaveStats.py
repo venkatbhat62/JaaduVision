@@ -443,6 +443,10 @@ try:
 
                     traceParameters = {}
                 
+                    ### assign default values so that these can be checked later
+                    traceParameters['status'] = None
+                    traceParameters['parentId'] = None
+
                     for item in items:
                         ### expect the item in the form paramName=value
                         ### separate paramName and store it in metricsVariablesToBePosted hash
@@ -450,18 +454,23 @@ try:
                         variableName = variableNameAndValues[0]
                         if len(variableNameAndValues) > 1:
                             traceParameters[variableName] = variableNameAndValues[1] 
-
+                    if traceParameters['parentId'] == None:
+                        traceParameters['parentId'] = traceParameters['id']
+                    if traceParameters['status'] == None:
+                        traceParameters['status'] = "200"
                     try:
                         payload = [{
-                            "id": "1234",
+                            "id": traceParameters['id'],
                             "traceId":  traceParameters['traceId'] ,
                             "timestamp": int(traceParameters['timestamp']),
                             "duration": int(traceParameters['duration']),
-                            "name":  traceParameters['name'] ,
+                            "name":  traceParameters['name'],
+                            "parentId": traceParameters['parentId'],
                             "tags": {
                                 "instance": hostName,
-                                "http.method": "GET",
-                                "http.path": "/api"
+                                "status.code": traceParameters['status']
+                                #"http.method": "GET",
+                                #"http.path": "/api"
                             },
                             "localEndpoint": {
                                 "serviceName":  traceParameters['serviceName'] 
