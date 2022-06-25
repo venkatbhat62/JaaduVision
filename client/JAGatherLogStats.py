@@ -113,10 +113,10 @@ indexForTraceParentId   = 35
 indexForTraceStatus     = 36
 indexForTraceStatusGroup = 37
 indexForTraceBlockStatus  = 38
-
+indexForDebugLevel = 39
 ### keep this one higher than patternIndex values above
 ## it is used to initialize list later.
-maxPatternIndex = 39
+maxPatternIndex = 40
 
 ### while processing log line, process each line when index match to below list item
 ### this is to speed up the processing
@@ -928,6 +928,15 @@ try:
                 tempPatternList[indexForTraceBlockStatus] = str(value.get('PatternTraceBlockStatus')).strip()
                 tempPatternPresent[indexForTraceBlockStatus] = True
 
+            if value.get('DebugLevel') != None:
+                # per key debug level
+                tempPatternList[indexForDebugLevel] = int(str(value.get('DebugLevel')).strip())
+                tempPatternPresent[indexForDebugLevel] = True
+            else:
+                ### use global debug level
+                tempPatternList[indexForDebugLevel] = debugLevel
+                tempPatternPresent[indexForDebugLevel] = True
+
             ### if DBDetails available per service definition, store that.
             if value.get('DBDetails') != None:
                 ### initialize it with default DBDetails. This is to inherit any value that is not specified locally.
@@ -1081,6 +1090,9 @@ try:
 
             logStats[key][indexForTraceBlockStatus*2] = None
             logStats[key][indexForTraceBlockStatus*2+1] = tempPatternPresent[indexForTraceBlockStatus]
+
+            logStats[key][indexForDebugLevel*2] = None
+            logStats[key][indexForDebugLevel*2+1] = tempPatternPresent[indexForDebugLevel]
 
             ### initialize logLines[key] list to empty list
             logLines[key] = []
@@ -1944,7 +1956,7 @@ traceBlockStartLine = defaultdict(dict)
 traceBlockContains = defaultdict(dict)
 traceStatusMatch = defaultdict(dict)
 
-def JAProcessLineForTrace( tempLine, fileName, key, values ):
+def JAProcessLineForTrace( tempLine, fileName, key, values, keyDebugLevel ):
 
     global tracePatternIndexsList, logTracesCount, maxTraceLines, tempTraceLine, traceId, traceBlockStartKey
     global tempLogLine , tempDuration
@@ -1952,7 +1964,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
     tempAddNEWLINE = tempAppendTraceLine = False
     patternTraceMatched = False
 
-    if debugLevel > 2 :
+    if keyDebugLevel > 2 :
         print( "\n\nDEBUG-3 JAProcessLineForTrace() processing log file:{0}, line:{1}, trace key:{2}, trace definition:{3}".format(fileName,tempLine,key, values))    
 
     ### if trace block processing is in progress, 
@@ -1968,7 +1980,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
     tempTraceSingleLine = values[indexForTraceSingleLine]
     if ( tempTraceSingleLine == True ) :
         tempLogLine = tempTraceLine[fileName] = ''
-        if debugLevel > 2 :
+        if keyDebugLevel > 2 :
             print( "DEBUG-3 JAProcessLineForTrace() trace definitions in single line for current key:{0}".format(key))    
 
     ### see whether current line match to any trace definitions
@@ -1981,7 +1993,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
         #   PatternTraceTimeStamp, indexForTraceLabel, indexForDuration
         searchPattern = r'{0}'.format(values[index])
 
-        if debugLevel > 3:
+        if keyDebugLevel > 3:
             print("DEBUG-4 JAProcessLineForTrace() searching for the pattern:{0}".format(searchPattern) )
 
         try:
@@ -1991,7 +2003,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                 
                 if index == indexForTraceBlockEnd:
                     if traceBlockInProgress[fileName] == key:
-                        if debugLevel > 3:
+                        if keyDebugLevel > 3:
                             print("DEBUG-4 JAProcessLineForTrace() End trace block:{0}".format(traceBlockInProgress[fileName]) )
                         ### trace block end pattern in current line
                         traceBlockInProgress[fileName] = None
@@ -2008,10 +2020,10 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                     traceBlockContains[fileName] = False
                     traceStatusMatch[fileName] = False
 
-                    if debugLevel > 3:
+                    if keyDebugLevel > 3:
                         print("DEBUG-4 JAProcessLineForTrace() Start trace block:{0}".format(traceBlockInProgress[fileName]) )
                 else:
-                    if debugLevel > 3:
+                    if keyDebugLevel > 3:
                         print("DEBUG-4 JAProcessLineForTrace() processing single trace line definition:{0}, matched pattern:{1}".format(key, searchPattern)) 
 
                 groupNumber = 0
@@ -2031,7 +2043,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
 
                     tempResults = myResults.pop(0)
 
-                    if debugLevel > 3:
+                    if keyDebugLevel > 3:
                         print("DEBUG-4 JAProcessLineForTrace() pattern groups matched:{0}".format(tempResults) )
 
                     for tempResult in tempResults:
@@ -2173,7 +2185,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
             values[index] = None
             continue
 
-    if debugLevel > 3:
+    if keyDebugLevel > 3:
         print("DEBUG-4 JAProcessLineForTrace() timeStamp:{0}, traceId:{1}".format(traceBlockTimeStamp[fileName], traceBlockTraceId[fileName]) )
 
     if tempAppendTraceLine == True:
@@ -2212,7 +2224,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                                     traceBlockTraceId[fileName] ) + '\n'
 
                     logLines[key].append( tempLogLineWithTraceId )
-                    if debugLevel > 3:
+                    if keyDebugLevel > 3:
                         print("DEBUG-4 JAProcessLineForTrace() modified trace start line:{0}".format(tempLogLineWithTraceId) )
                     for line in traceBlockLogLines[fileName]:
                         logLines[key].append( line )
@@ -2234,14 +2246,14 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
                     tempLogLine += '\n'
                 ### DO NOT append __NEWLINE__ separator so that this line is logged as a group of log lines
                 traceBlockLogLines[fileName].append(tempLogLine ) 
-                if debugLevel > 3:
+                if keyDebugLevel > 3:
                     print("DEBUG-4 JAProcessLineForTrace() inside trace block log line collected:{0}".format(tempLogLine) )
 
             else:
                 ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
                 ### Log lines group separator, used by script on Web Server to post log line groups separatly to Loki
                 logLines[key].append(tempLogLine + "__NEWLINE__")
-                if debugLevel > 3:
+                if keyDebugLevel > 3:
                     print("DEBUG-4 JAProcessLineForTrace() single trace log line collected:{0}".format(tempLogLine + "__NEWLINE__") )
 
                 ### increment the logLinesCount
@@ -2263,7 +2275,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values ):
 
     return patternTraceMatched
 
-def JAProcessLineForLog( tempLine, fileName, key, values ):
+def JAProcessLineForLog( tempLine, fileName, key, values, keyDebugLevel ):
 
     patternLogMatched = False
 
@@ -2278,6 +2290,8 @@ def JAProcessLineForLog( tempLine, fileName, key, values ):
         ### search for matching PatternLog regardless of whether stats type pattern is found or not.
         try:
             if re.search(searchPattern, tempLine) != None:
+                if ( keyDebugLevel > 1 ):
+                    print("DEBUG-2 JAProcessLineForLog() pattern:{0}, matched to log line:{1}".format(searchPattern, tempLine))
                 ### matching pattern found, collect this log line
                 ### remove \n from the line, it will be added when __NEWLINE__ is appended
                 tempLine = re.sub("\n$",'',tempLine)
@@ -2434,6 +2448,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                 for key, values in JAStatsSpec[logFileName].items():
                     eventPriority = values[indexForPriority]
 
+                    keyDebugLevel = values[indexForDebugLevel]
+
                     if averageCPUUsage > maxCPUUsageForEvents[eventPriority]:
                         if logEventPriorityLevel == maxCPUUsageLevels:
                             ### first time log file processing skipped, store current event priorityy
@@ -2449,12 +2465,12 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         ### if current key has spec related to trace processing, 
                         if values[indexForTraceProcessing] == True and maxTraceLines > 0 and patternTraceMatched == False:   
                             if int(logTracesCount[key]) < maxTraceLines:
-                                patternTraceMatched = JAProcessLineForTrace( tempLine, fileName, key, values )
+                                patternTraceMatched = JAProcessLineForTrace( tempLine, fileName, key, values, keyDebugLevel )
 
                         ## upon trace match, log line is collected, thus, no need to search for log line again
                         if patternTraceMatched == False  and maxLogLines > 0 and values[indexForLogProcessing] == True and patternLogMatched == False:
                             if int(logLinesCount[key]) < maxLogLines:
-                                patternLogMatched = JAProcessLineForLog( tempLine, fileName, key, values )
+                                patternLogMatched = JAProcessLineForLog( tempLine, fileName, key, values, keyDebugLevel )
 
                         ### if current key does not have any stats processing spec, skip it
                         if values[indexForStatsProcessing] != True:
@@ -2559,7 +2575,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                     if index == indexForPatternAverage :
                                         sampleCountList = list(logStats[key][logStatsKeyValueIndexEven])
 
-                                    if debugLevel > 3:
+                                    if keyDebugLevel > 3:
                                         print("DEBUG-4 JAProcessLogFile() processing line with PatternDelta, PatternSum or PatternAverage, search result:{0}\n Previous values:{1}".format(myResults, tempStats))
                                     tempKey = ''
                                     appendCurrentValueToList = False
@@ -2736,7 +2752,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                     ### store tempStats as list
                                     logStats[key][logStatsKeyValueIndexOdd] = list(tempStats)
 
-                                    if debugLevel > 3:
+                                    if keyDebugLevel > 3:
                                         print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, numSamples:{2}, stats: {3}'.format(
                                             key, values[index], logStats[key][logStatsKeyValueIndexEven], logStats[key][logStatsKeyValueIndexOdd] ))
                                     ### get out of the loop
@@ -2757,7 +2773,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             try:
                                                 ### make a copy of current list values
                                                 tempListStats = list(logStats[key][logStatsKeyValueIndexEven])
-                                                if debugLevel > 3:
+                                                if keyDebugLevel > 3:
                                                     print("DEBUG-4 JAProcessLogFile() processing line with PatternLabel:{0}, tempListStats:{1}".format(tempListVarName, tempListStats))
                                                 appendCurrentValueToList = False
                                                 indexToCurrentKeyInTempStats = 0
@@ -2784,7 +2800,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                             ### matching pattern found without any label, increment the count 
                                             logStats[key][logStatsKeyValueIndexEven] += 1
 
-                                        if debugLevel > 3:
+                                        if keyDebugLevel > 3:
                                             print('DEBUG-4 JAProcessLogFile() key: {0}, found pattern:|{1}|, stats: {2}'.format(
                                                     key, values[index], logStats[key][logStatsKeyValueIndexEven] ))
                                         ### get out of the loop
