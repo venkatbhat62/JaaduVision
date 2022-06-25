@@ -362,7 +362,7 @@ try:
                 """
                 ### regular expression definition for timestamp string at the start of line
                 # with T separator
-                myTimeStampRegexT = re.compile(r'(\d\d\d\d-\d\d-\d\d[T ]\d\d:\d\d:\d\d[\.,]\d+)') 
+                myTimeStampRegexT = re.compile(r'(\d\d\d\d-\d\d-\d\d[T| ]\d\d:\d\d:\d\d[\.|,]\d+)') 
                 # with space separator 
                 #myTimeStampRegexSpace = re.compile(r'(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d+)') 
 
