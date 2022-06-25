@@ -2188,7 +2188,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values, keyDebugLevel ):
     if keyDebugLevel > 3:
         print("DEBUG-4 JAProcessLineForTrace() timeStamp:{0}, traceId:{1}".format(traceBlockTimeStamp[fileName], traceBlockTraceId[fileName]) )
 
-    if tempAppendTraceLine == True and traceBlockTraceId[fileName] != '':
+    if tempAppendTraceLine == True :
         if (values[indexForTraceStatus] == None) or (values[indexForTraceStatus] != None and traceStatusMatch[fileName] == True) :
             ### trace status check is not needed or status check matched, collect this trace.
             if tempDuration[fileName] == None or tempDuration[fileName] == '':
@@ -2202,7 +2202,10 @@ def JAProcessLineForTrace( tempLine, fileName, key, values, keyDebugLevel ):
                 if values[indexForTraceBlockContains] != None :
                     if traceBlockContains[fileName] == False:
                         tempIncludeCurrentBlock = False
-
+                if traceBlockTraceId[fileName] == '':
+                    ### traceId not found for this block, DO NOT save the lines
+                    tempIncludeCurrentBlock = False
+                    
                 if tempIncludeCurrentBlock == True:
                     ### remove \n, it will be added later when ___NEWLINE__ is appended
                     tempLine = re.sub("\n$", '', tempLogLine) 
