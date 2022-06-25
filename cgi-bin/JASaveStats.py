@@ -444,8 +444,10 @@ try:
                     traceParameters = {}
                 
                     ### assign default values so that these can be checked later
-                    traceParameters['status'] = None
-                    traceParameters['parentId'] = None
+                    traceParameters['status'] = '200'
+                    traceParameters['parentId'] = traceParameters['id'] = '9999'
+                    traceParameters['duration'] = '1000'
+                    traceParameters['serviceName'] = 'NA'
 
                     for item in items:
                         ### expect the item in the form paramName=value
@@ -454,10 +456,6 @@ try:
                         variableName = variableNameAndValues[0]
                         if len(variableNameAndValues) > 1:
                             traceParameters[variableName] = variableNameAndValues[1] 
-                    if traceParameters['parentId'] == None:
-                        traceParameters['parentId'] = traceParameters['id']
-                    if traceParameters['status'] == None:
-                        traceParameters['status'] = "200"
                     try:
                         payload = [{
                             "id": traceParameters['id'],
@@ -488,15 +486,7 @@ try:
                             returnResult = returnResult + "ERROR posting trace to zipkin, traceToPost:{0}, returnResult:{1}".format(payload, err)
                             errorPostingZipkin = True
                     except:
-                        returnResult += 'ERROR Data not posted to zipkin, '
-                        if traceParameters['timestamp'] == None:
-                            returnResult = returnResult + " missing timestamp"
-                        if traceParameters['traceId'] == None:
-                            returnResult = returnResult + " missing traceId"
-                        if traceParameters['duration'] == None:
-                            returnResult = returnResult + " missing duration"
-                        if traceParameters['serviceName'] == None:
-                            returnResult = returnResult + " missing serviceName"
+                        returnResult += 'ERROR timestamp data not posted to zipkin, items passed:{0}'.format(items)
                         errorPostingZipkin = True
                         
             else:
