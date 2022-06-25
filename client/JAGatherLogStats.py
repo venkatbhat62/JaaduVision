@@ -2188,7 +2188,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values, keyDebugLevel ):
     if keyDebugLevel > 3:
         print("DEBUG-4 JAProcessLineForTrace() timeStamp:{0}, traceId:{1}".format(traceBlockTimeStamp[fileName], traceBlockTraceId[fileName]) )
 
-    if tempAppendTraceLine == True:
+    if tempAppendTraceLine == True and traceBlockTraceId[fileName] != '':
         if (values[indexForTraceStatus] == None) or (values[indexForTraceStatus] != None and traceStatusMatch[fileName] == True) :
             ### trace status check is not needed or status check matched, collect this trace.
             if tempDuration[fileName] == None or tempDuration[fileName] == '':
