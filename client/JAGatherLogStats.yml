@@ -213,6 +213,8 @@ Environment:
      TraceId: 1234
      ### if parentId is not defined, it will default to selfId or TraceId
      #TraceParentId:
+     # default timestamp format for all logs, can override it later for each log file that has diff format
+     PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)
 
 ### commands in execute section are executed before processing log files so that
 ###   any log file created by these execute commands can be processed properly.

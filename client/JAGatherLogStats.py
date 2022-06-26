@@ -280,6 +280,8 @@ traceIdPrefix = None
 
 ### global timestamp format specification. if individual key does not have the spec, global definition will be used
 timeStampFormat = None
+### global timestamp pattern, defined in common section, this can be overriden for each log file with spec in key section
+patternTimeStamp = "(^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)"
 
 # list contains the max cpu usage levels for all events, priority 1,2,3 events
 # index 0 - for all events, index 1 for priority 1, index 3 for priority 3
@@ -439,7 +441,7 @@ def JAGatherEnvironmentSpecs(key, values):
     global dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageForEvents, maxProcessingTimeForAllEvents
     global webServerURL, disableWarnings, verifyCertificate, debugLevel, maxLogLines, saveLogsOnWebServer
     global DBDetails, retryDurationInHours, retryLogStatsBatchSize, maxTraceLines, dataMaskEnabled
-    global timeStampFormat, traceIdPrefix, traceId, traceParentId
+    global timeStampFormat, traceIdPrefix, traceId, traceParentId, patternTimeStamp
 
     for myKey, myValue in values.items():
         if debugLevel > 1:
@@ -583,6 +585,9 @@ def JAGatherEnvironmentSpecs(key, values):
             else:
                 ### use traceId as parentId
                 traceParentId = traceId
+        elif myKey == "PatternTimeStamp" :
+            if myValue != None:
+                patternTimeStamp = myValue.strip()
 
     if debugLevel > 0:
         print('DEBUG-1 Parameters after reading configFile: {0}, WebServerURL: {1},  DataPostIntervalInSec: {2}, DataCollectDurationInSec: {3}, maxCPUUsageForEvents: {4}, maxProcessingTimeForAllEvents: {5}, DebugLevel: {6}'.format(
@@ -853,6 +858,10 @@ try:
             if value.get('PatternTimeStamp') != None:
                 ## need to send current log line with trace data
                 tempPatternList[indexForTimeStamp] = str(value.get('PatternTimeStamp')).strip()
+                tempPatternPresent[indexForTimeStamp] = True
+            elif tempPatternList[indexForPatternLog] != None:
+                ### for pattern log, use global patternTimeStamp
+                tempPatternList[indexForTimeStamp] = patternTimeStamp
                 tempPatternPresent[indexForTimeStamp] = True
 
             if value.get('TimeStampGroup') != None:
@@ -2295,18 +2304,59 @@ def JAProcessLineForLog( tempLine, fileName, key, values, keyDebugLevel ):
             if re.search(searchPattern, tempLine) != None:
                 if ( keyDebugLevel > 1 ):
                     print("DEBUG-2 JAProcessLineForLog() pattern:{0}, matched to log line:{1}".format(searchPattern, tempLine))
-                ### matching pattern found, collect this log line
-                ### remove \n from the line, it will be added when __NEWLINE__ is appended
-                tempLine = re.sub("\n$",'',tempLine)
-                ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
-                logLines[key].append(tempLine + "__NEWLINE__")
-                ### increment the logLinesCount
-                logLinesCount[key] += 1
-                ### do not search for any more log patterns (log line pattern matching stops at first match)
-                patternLogMatched = True
-                ### no more processing needed for current log line
-                break
 
+                try:
+                    tempPatternTimeStamp = r'{0}'.format(values[indexForTimeStamp])
+                    ### convert timestamp to standard format
+                    myResults = re.search(tempPatternTimeStamp, tempLine )
+                    if myResults != None:
+                        ## timestamp is in expected format
+                        if  values[indexForTimeStampGroup] != None:
+                            tempResult = myResults.group(values[indexForTimeStampGroup]) 
+                        else:
+                            ## assumt time is group 1 (start of line)
+                            tempResult = myResults.group(1)                    
+                        originalTimeStamp = tempResult
+                        # ensure the dateTimeString has 6 digits in fraction space, needed for loki time format
+                        if ( tempPatternTimeStamp == '(^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)' or tempPatternTimeStamp == '(^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d+)' or \
+                            tempPatternTimeStamp == '(^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d,\d+)' or tempPatternTimeStamp == '(^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d,\d+)' ) :
+                            # 2022-06-05 12:48:00.000000
+                            # 01234567890123456789012345 - length 26
+                            # 2022-06-05 12:48:00.000
+                            # 01234567890123456789012    - length 23            
+                            if len(tempResult) == 23 :
+                                tempResult = tempResult + "000"
+                        elif ( tempPatternTimeStamp == '(^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d)' or tempPatternTimeStamp == '(^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d)'  ) :
+                            ### loki needs the time stamp with fraction second upto microseconds
+                            ###  add ".000000" to get time with only up to seconds to get in microseconds
+                            tempResult = tempResult + ".000000" 
+                        
+                        ### TBD add logic to handle other time formats here 
+                        
+                        ### replace space separator between date and time with T, loki needs in isoformat
+                        tempResult = tempResult.replace(" ", "T")
+                        ### replace comma with .
+                        tempResult = tempResult.replace(",", ".")
+                        tempLine = re.sub(originalTimeStamp, tempResult, tempLine)
+
+                    ### matching pattern found, collect this log line
+                    ### remove \n from the line, it will be added when __NEWLINE__ is appended
+                    tempLine = re.sub("\n$",'',tempLine)
+                    ### store log lines if number of log lines to be collected within a sampling interval is under maxLogLines
+                    logLines[key].append(tempLine + "__NEWLINE__")
+                    ### increment the logLinesCount
+                    logLinesCount[key] += 1
+                    ### do not search for any more log patterns (log line pattern matching stops at first match)
+                    patternLogMatched = True
+                    ### no more processing needed for current log line
+                    break
+                except re.error as err:
+                    errorMsg = "ERROR invalid timestamp pattern:|{0}|, regular expression error:|{1}|".format(tempPatternTimeStamp,err)
+                    print(errorMsg)
+                    LogMsg(errorMsg, statsLogFileName, True)
+                    ### discard this pattern so that no need to check this again
+                    values[index] = None
+                    continue                    
         except re.error as err:
             errorMsg = "ERROR invalid pattern:|{0}|, regular expression error:|{1}|".format(searchPattern,err)
             print(errorMsg)
