@@ -38,7 +38,8 @@ JASaveStats:
     ## organization - get this from influxdb configuration
     InfluxdbOrg: havembha
     ##
-
+    NumberOfThreads: 5
+    
     #
 # used while posting data to pushgateway, loki
 JADisableWarnings: True
