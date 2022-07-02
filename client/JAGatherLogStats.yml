@@ -185,7 +185,8 @@ Environment:
      ### do not verify web server certificate, defaults to True
      VerifyCertificate: False
      # post stats to below web server
-     WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+     #WebServerURL: https://192.168.1.159:443/cgi-bin/JASaveStats.py
+     WebServerURL: https://192.168.1.159:443/JaaduVision/
      ### debug level 0, no debug, 1 to 4, 4 being max details
      DebugLevel: 0
      ### DBDetails - optional, defaults to Prometheus, if present, applies to all service types or measurements 
@@ -446,6 +447,7 @@ LogFile:
       ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
       DurationMultiplier: 1000
       Priority: 1
+      # DebugLevel: 4
 
     # Trace serviceName
     TestTraceWithSkipGroups:
@@ -479,6 +481,7 @@ LogFile:
       ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
       DurationMultiplier: 1000
       Priority: 2
+      # DebugLevel: 4
 
     # Trace serviceName
     TestTraceBlock:
@@ -535,4 +538,5 @@ LogFile:
       ###   loki can identify trace id in timestamp line and link to trace record.
       TraceIdPrefix: TraceId=
       Priority: 2
+      # DebugLevel: 4
 

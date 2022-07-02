@@ -2875,7 +2875,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
                     ## if log pattern or stats pattern matched, get out of the for loop
                     ## once a given line matched to a log or stats pattern, search for matching pattern stops
-                    if patternMatched == True or patternLogMatched == True or patternTraceMatched == True:
+                    if patternMatched == True and (patternLogMatched == True or patternTraceMatched == True):
                         break
 
 

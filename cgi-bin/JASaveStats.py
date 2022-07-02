@@ -637,8 +637,8 @@ try:
                 else:
                     if debugLevel > 0:
                         print("DEBUG-1 JASaveStats.py data: {0} posted to influxdb with returnStatus:|{1}|".format(influxdbDataArrayToPost, tempReturnResult ))
-                        if fpo != None:
-                            fpo.write("influxDataArrayToPost:|{0}|, returnResult:|{1}|".format(influxdbDataArrayToPost, tempReturnResult))
+                    if fpo != None:
+                        fpo.write("influxDataArrayToPost:|{0}|, returnResult:|{1}|".format(influxdbDataArrayToPost, tempReturnResult))
                 
             except Exception as err:
                 returnResult = returnResult + "ERROR posting data to influxDB, returnResult:{0}".format(err)
