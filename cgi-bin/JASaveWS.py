@@ -128,14 +128,20 @@ class Handler(BaseHTTPRequestHandler):
         returnResult=''
         JASaveStatsStartTime = datetime.now()
 
-        self.data_string = self.rfile.read(int(self.headers['Content-Length']))
-        postedData = simplejson.loads(self.data_string)
+        contentLength = int(self.headers['Content-Length'])
+        if contentLength > 0:
+            self.data_string = self.rfile.read(contentLength))
+            postedData = simplejson.loads(self.data_string)
+        else:
+            JASaveStatsError('ERROR zero content posted')
+            return
 
         ### prepare server side fileName to store data
         if JADirStats != None:
             if postedData['fileName'] == None:
                 ### if valid JADirStats is present, expect fileName to be passed to save the data locally 
                 JASaveStatsError('fileName not passed')
+                return
             else:
                 fileName = JADirStats + '/' + postedData['fileName']
         else:
@@ -146,6 +152,7 @@ class Handler(BaseHTTPRequestHandler):
         ### get the parameters passed
         if postedData['jobName'] == None:
             JASaveStatsError('jobName not passed')
+            return
         else:
             jobName = postedData['jobName']
             if jobName == 'loki':
@@ -155,6 +162,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if postedData['hostName'] == None:
             JASaveStatsError('hostName not passed')
+            return
         else:
             hostName = postedData['hostName']
 
