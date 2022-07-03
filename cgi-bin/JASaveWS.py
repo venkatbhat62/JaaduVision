@@ -133,6 +133,7 @@ class Handler(BaseHTTPRequestHandler):
             self.data_string = self.rfile.read(contentLength).decode('utf-8')
             try:
                 postedData = json.loads(self.data_string)
+                print("DEBUG-2 read content length:{0}\n".format(contentLength))
             except:
                 print("ERROR content length:{0}, content type:{1}, content:|{2}|\n".format(contentLength, contentType, self.data_string ))
                 return
