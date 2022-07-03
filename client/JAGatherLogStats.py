@@ -1272,6 +1272,9 @@ try:
 except:
     useRequests = False
 
+### ??? remove this later
+# useRequests = False
+
 def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
     """
     Post data to web server
@@ -1349,7 +1352,8 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
                     errorMsg = "ERROR Unknwon error:{0}".format( err )
                     print(errorMsg)
                     LogMsg(errorMsg, statsLogFileName, True)
-
+        else:
+            print("ERROR posting data:{0}\n".format(tempLogStatsToPost))
 
     return logStatsPostSuccess
 
@@ -1470,7 +1474,7 @@ def JAPostAllDataToWebServer():
                         ### successful posting, increment count
                         numPostings += 1
                         print('INFO JAPostAllDataToWebServer() DBType:|{0}|, posted data to web server:|{1}|'.format(prevDBType, webServerURL))
-
+                    
                     postData = False
                 ### prepare tempLogStatsToPost with fixed data for next posting
                 tempLogStatsToPost = logStatsToPost.copy()
