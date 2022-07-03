@@ -1300,7 +1300,7 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
 
     else:
         try:
-            result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
+            result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
                                     "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             resultText = result.stdout.decode('utf-8').split('\n')
         except Exception as err:
@@ -1685,7 +1685,7 @@ def JAPostAllDataToWebServer():
                     resultText = ["500 ERROR requests.post() Error posting logs to web server, exception raised","error:{0}".format(err)]
             else:
                 try:
-                    result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
+                    result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
                                             "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     resultText = result.stdout.decode('utf-8').split('\n')
                     
@@ -1771,7 +1771,7 @@ def JAPostAllDataToWebServer():
                     resultText = ["500 ERROR requests.post() Error posting traces to web server, exception raised","error:{0}".format(err)]
             else:
                 try:
-                    result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H',
+                    result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
                                             "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     resultText = result.stdout.decode('utf-8').split('\n')
                     

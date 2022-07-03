@@ -2093,7 +2093,7 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
         
   else:
     try:
-        result =  subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Content-Type: application/json", '-d', data],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        result =  subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H', "Content-Type: application/json", '-d', data],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         returnStatus = result.stdout.decode('utf-8').split('\n')
         errorMsg = 'INFO - subprocess.run(curl) posted data to web server {0} with result {1}'.format(webServerURL, returnStatus )
         print(errorMsg)
