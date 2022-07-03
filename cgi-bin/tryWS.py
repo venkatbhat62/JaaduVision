@@ -23,6 +23,7 @@ def simple_app(environ, start_response):
     except:
         response_body = "error"
     print(response_body)
+    print("\nresponse size:{0}\n".format(request_body_size))
     return [b"hello"] 
 
 class ThreadingWSGIServer(ThreadingMixIn, WSGIServer): 
