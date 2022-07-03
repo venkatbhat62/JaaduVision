@@ -130,7 +130,7 @@ class Handler(BaseHTTPRequestHandler):
 
         contentLength = int(self.headers['Content-Length'])
         if contentLength > 0:
-            self.data_string = self.rfile.read(contentLength))
+            self.data_string = self.rfile.read(contentLength)
             postedData = simplejson.loads(self.data_string)
         else:
             JASaveStatsError('ERROR zero content posted')
