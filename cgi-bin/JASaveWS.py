@@ -128,13 +128,13 @@ class Handler(BaseHTTPRequestHandler):
         JASaveStatsStartTime = datetime.now()
 
         contentLength = int(self.headers['Content-Length'])
-        if contentLength > 0:
+        if contentLength > 3:
             self.data_string = self.rfile.read(contentLength)
             tempDataString = str(self.data_string).strip("'<>() ").replace('\'', '\"')
             try:
                 postedData = json.loads(self.data_string)
             except:
-                print("ERROR content length:{0}, content:|{1}|\n".format(contentLength, self.data_string )
+                print("ERROR content length:{0}, content:|{1}|\n".format(contentLength, self.data_string ))
                 return
         else:
             JASaveStatsError('ERROR zero content posted')
