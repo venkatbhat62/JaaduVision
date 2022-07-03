@@ -41,7 +41,6 @@ import JAGlobalLib
 from collections import defaultdict
 from urllib.parse import urlparse
 from urllib.parse import parse_qs
-import simplejson
 import random
 from influxdb_client import InfluxDBClient, WriteOptions
 from influxdb_client.client.write_api import SYNCHRONOUS
@@ -131,7 +130,8 @@ class Handler(BaseHTTPRequestHandler):
         contentLength = int(self.headers['Content-Length'])
         if contentLength > 0:
             self.data_string = self.rfile.read(contentLength)
-            postedData = simplejson.loads(self.data_string)
+            tempDataString = str(self.data_string).strip("'<>() ").replace('\'', '\"')
+            postedData = json.loads(tempDataString)
         else:
             JASaveStatsError('ERROR zero content posted')
             return
