@@ -130,8 +130,7 @@ class Handler(BaseHTTPRequestHandler):
         contentLength = int(self.headers['Content-Length'])
         contentType = self.headers['Content-Type']
         if contentLength > 0:
-            self.data_string = self.rfile.read(contentLength)
-            # tempDataString = str(self.data_string).strip("'<>() ").replace('\'', '\"')
+            self.data_string = self.rfile.read(contentLength).decode('utf-8')
             try:
                 postedData = json.loads(self.data_string)
             except:
