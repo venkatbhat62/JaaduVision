@@ -313,7 +313,7 @@ class Handler(BaseHTTPRequestHandler):
                         ### save data locally if fileName is specified
                         fpo = open( fileName, 'a')
                         if debugLevel > 0:
-                            self.wfile.write(('DEBUG-1 JASaveWS.py fileName: {0}, postToLoki {1}'.format(fileName, postToLoki)).encode())
+                            self.wfile.write(('DEBUG-1 JASaveWS.py fileName: {0}, postToLoki {1}\n'.format(fileName, postToLoki)).encode())
                     except OSError as err:
                         fpo = None
                         self.wfile.write(("507 {0}, ERROR opening file to save data on web server".format(err)).encode())
@@ -673,7 +673,7 @@ class Handler(BaseHTTPRequestHandler):
             JASaveStatsError("{0}".format(err) )
 
         if len(returnResult) == 0:
-            returnResult='PASS - Saved data'
+            returnResult='PASS - Saved data, postToLoki:{0}, postToZipkin:{1}, JADBTypeInfludb:{2}'.format( postToLoki, postToZipkin, JADBTypeInfludb)
 
         ### print status and get out
         JASaveStatsExit(self, str(returnResult), 200, JASaveStatsStartTime )

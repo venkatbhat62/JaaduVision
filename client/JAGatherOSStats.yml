@@ -24,11 +24,11 @@ Environment:
     UAT:
         ## UAT environment uses the values defined under "All" environment for the variables DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
         HostName: (...)(u)(...)([0-9][0-9])
-        WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+        # WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
     Prod:
         ## Prod environment uses the values defined under "All" environment for the variables DataPostIntervalInSec, DataCollectDurationInSec, DisableWarnings, VerifyCertificate
         HostName: (...)(p)(...)([0-9][0-9])
-        WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+        # WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
     All:
         # values defined here will be used for other environments if local definition is not available.
         # post data to web server per this interval. if sampling interval is 10, post interval is 60,
@@ -41,8 +41,8 @@ Environment:
         ### do not verify web server certificate, defaults to True
         VerifyCertificate: False
         # post stats to below web server
-        WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
-
+        # WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+        WebServerURL: https://192.168.1.159:443/JaaduVision/
 ### if target host has psutil python module installed, use the field names as defined in python documentation
 ###   Fields: values that can be read using that psutil function
 ###   Refer to Python documentation https://psutil.readthedocs.io/en/latest/
