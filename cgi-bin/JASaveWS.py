@@ -131,7 +131,11 @@ class Handler(BaseHTTPRequestHandler):
         if contentLength > 0:
             self.data_string = self.rfile.read(contentLength)
             tempDataString = str(self.data_string).strip("'<>() ").replace('\'', '\"')
-            postedData = json.loads(tempDataString)
+            try:
+                postedData = json.loads(self.data_string)
+            except:
+                JASaveStatsError( self.data_string )
+                return
         else:
             JASaveStatsError('ERROR zero content posted')
             return
