@@ -134,7 +134,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 postedData = json.loads(self.data_string)
             except:
-                JASaveStatsError( self.data_string )
+                print("ERROR content length:{0}, content:|{1}|\n".format(contentLength, self.data_string )
                 return
         else:
             JASaveStatsError('ERROR zero content posted')
