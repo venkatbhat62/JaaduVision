@@ -1,6 +1,12 @@
 from wsgiref.simple_server import make_server, WSGIServer
 from socketserver import ThreadingMixIn
 from time import sleep
+import os,sys,json,re
+from datetime import datetime
+import yaml
+import requests
+import JAGlobalLib, JAInfluxdbLib
+from collections import defaultdict
 
 # Every WSGI application must have an application object - a callable
 # object that accepts two arguments. For that purpose, we're going to
@@ -24,6 +30,13 @@ def simple_app(environ, start_response):
         response_body = "error"
     print(response_body)
     print("\nresponse size:{0}\n".format(request_body_size))
+
+    reqBody = sys.stdin.read(request_body_size)
+    postedData = defaultdict(dict)
+    postedData = json.loads(reqBody)
+
+    print("CGI method body:{0}\n".format(reqBody))
+
     return [b"hello"] 
 
 class ThreadingWSGIServer(ThreadingMixIn, WSGIServer): 
