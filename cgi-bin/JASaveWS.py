@@ -64,14 +64,14 @@ def JAInfluxdbWriteData( self, bucket, data, debugLevel=0):
             result = self.influxDBWriteClient.write(record=data,bucket=bucket, org=org,protocol='line')
             if result != None:
                 returnStatus = "<Response [500]>" 
-                self.wfile.write(("_Status_ERROR_ Could not insert record to influxdb, data:{0}, result:|{1}|".format(data, result )).encode())
+                self.wfile.write(("_Status_ERROR_ Could not insert record to influxdb, data:{0}, result:|{1}|\n".format(data, result )).encode())
             else:
                 statusCode = True
                 if debugLevel > 0:
-                    self.wfile.write(("_Status_PASS_ data written to influxdb:|{0}, status:{1}|".format( data, returnStatus )).encode())
+                    self.wfile.write(("_Status_PASS_ data written to influxdb:|{0}, status:{1}|\n".format( data, returnStatus )).encode())
 
         except Exception as err:
-           self.wfile.write(("_Status_ERROR_ JAInfluxdbWriteData() Could not insert record to influxdb, error:{0}".format(err ) ).encode())
+           self.wfile.write(("_Status_ERROR_ JAInfluxdbWriteData() Could not insert record to influxdb, error:{0}\n".format(err ) ).encode())
            returnStatus = "<Response [500]>"
     else:
         returnStatus = "_Status_ERROR_ InfluxDB Write Client not present, check InfluxDB config"
@@ -90,11 +90,10 @@ def JASaveStatsExit(self, reason, statusCode, JASaveStatsStartTime):
 
     self.send_response(statusCode)
     self.end_headers()
-    self.wfile.write(message.encode())
     JASaveStatsEndTime = datetime.now()
     JASaveStatsDuration = JASaveStatsEndTime - JASaveStatsStartTime
     JASaveStatsDurationInSec = JASaveStatsDuration.total_seconds()
-    message = r'{0}, response time:{1} sec\n'.format( reason, JASaveStatsDurationInSec)
+    message = r'{0}, response time:{1} sec\n'.format( message, JASaveStatsDurationInSec)
 
     JAGlobalLib.LogMsg(message, JALogFileName, True)
     self.wfile.write(message.encode())
