@@ -1311,12 +1311,11 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
 
     resultLength = len(resultText)
     if resultLength > 1 :
-        try:
-            if resultLength > 80 :
-                statusLine = resultText[-80:]   
-                if re.search(r'\[2..\]', statusLine) == None :
-                    if re.search(r'4\d\d |5\d\d ', statusLine) != None:
-                        logStatsPostSuccess = False 
+        try:            
+            statusLine = resultText[-80:]   
+            if re.search(r'\[2..\]', statusLine) == None :
+                if re.search(r'4\d\d |5\d\d ', statusLine) != None:
+                    logStatsPostSuccess = False 
             else:   
                 matches = re.findall(r'<Response \[2\d\d\]>', resultText, re.MULTILINE)
                 if len(matches) == 0:
@@ -1459,11 +1458,10 @@ def JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests):
     resultLength = len(resultText)
     if resultLength > 1 :
         try:
-            if resultLength > 80 :
-                statusLine = resultText[-80:]   
-                if re.search(r'\[2..\]', statusLine) == None :
-                    if re.search(r'4\d\d |5\d\d ', statusLine) != None:
-                        logStatsPostSuccess = False 
+            statusLine = resultText[-80:]   
+            if re.search(r'\[2..\]', statusLine) == None :
+                if re.search(r'4\d\d |5\d\d ', statusLine) != None:
+                    logStatsPostSuccess = False 
             else:   
                 matches = re.findall(r'Response \[2\d\d\]', resultText, re.MULTILINE)
                 if len(matches) == 0:
@@ -1515,11 +1513,10 @@ def JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests):
     resultLength = len(resultText)
     if resultLength > 1 :
         try:
-            if resultLength > 80 :
-                statusLine = resultText[-80:]   
-                if re.search(r'\[2..\]', statusLine) == None :
-                    if re.search(r'4\d\d |5\d\d ', statusLine) != None:
-                        logStatsPostSuccess = False 
+            statusLine = resultText[-80:]   
+            if re.search(r'\[2..\]', statusLine) == None :
+                if re.search(r'4\d\d |5\d\d ', statusLine) != None:
+                    logStatsPostSuccess = False 
             else:   
                 matches = re.findall(r'Response \[2\d\d\]', resultText, re.MULTILINE)
                 if len(matches) == 0:
