@@ -1414,6 +1414,129 @@ def JAPrepareStatsToPost(key, indexToLogStats, postFix, tempValue, tempValues ):
 
     return returnResult
 
+
+def JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests):
+    global debugLevel, logLinesCount, maxLogLines, logLines
+    global webServerURL, verifyCertificate, logLinesToPost, logEventPriorityLevel
+
+    if int(logLinesCount[key]) > maxLogLines:
+        ### show total number of lines seen
+        ###  lines exceeding maxLogLines are not collected in logLines[]
+        tempLogLinesToPost[key] += ',' + "..... {0} total lines in this sampling interval .....".format( logLinesCount[key] )
+
+    ### empty the list
+    logLines[key] = []
+
+    if debugLevel > 1:
+        print('DEBUG-2 JAPostAllDataToWebServer() logLinesToPost: {0}'.format(tempLogLinesToPost))
+
+    data = json.dumps(tempLogLinesToPost)
+
+    if useRequests == True:
+        import requests
+
+        if disableWarnings == True:
+            requests.packages.urllib3.disable_warnings()
+
+        try:
+            # post interval elapsed, post the data to web server
+            returnResult = requests.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
+            resultText = returnResult.text
+        
+        except requests.exceptions.RequestException as err:
+            resultText = ["500 ERROR requests.post() Error posting logs to web server, exception raised","error:{0}".format(err)]
+    else:
+        try:
+            result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
+                                    "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            resultText = result.stdout.decode('utf-8').split('\n')
+            
+        except Exception as err:
+            resultText = ["500 subprocess.run() Error posting logs to web server, exception raised","error:{0}".format(err)]
+
+    logStatsPostSuccess = True
+    resultLength = len(resultText)
+    if resultLength > 1 :
+        try:
+            statusLine = resultText[resultLength-2]   
+            if re.search(r'\[2..\]', statusLine) == None :
+                if re.search(r'4\d\d |5\d\d ', statusLine) != None:
+                    logStatsPostSuccess = False 
+                else:   
+                    matches = re.findall(r'Response \[2\d\d\]', resultText, re.MULTILINE)
+                    if len(matches) == 0:
+                        logStatsPostSuccess = False
+        except :
+            logStatsPostSuccess = False
+    else:
+        logStatsPostSuccess = False
+
+    if logStatsPostSuccess == True:
+        if debugLevel > 0:
+            print('DEBUG-1 JAPostAllDataToWebServer() Posted logs to web server:|{0}|, with result:|{1}|'.format(webServerURL, resultText))
+    else:
+        errorMsg = 'ERROR JAPostAllDataToWebServer() error posting logs to web server:|{0}|, with result|{1}|\nlogs:|{2}|'.format(webServerURL, resultText, tempLogLinesToPost)
+        print(errorMsg)
+        LogMsg(errorMsg, statsLogFileName, True)
+
+    return  logStatsPostSuccess   
+
+def JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests):
+    if debugLevel > 1:
+        print('DEBUG-2 JAPostAllDataToWebServer() logLinesToPost: {0}'.format(tempLogTracesToPost))
+
+    data = json.dumps(tempLogTracesToPost)
+
+    if useRequests == True:
+        import requests
+
+        if disableWarnings == True:
+            requests.packages.urllib3.disable_warnings()
+
+        try:
+            # post interval elapsed, post the data to web server
+            returnResult = requests.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
+            resultText = returnResult.text
+        
+        except requests.exceptions.RequestException as err:
+            resultText = ["500 ERROR requests.post() Error posting traces to web server, exception raised","error:{0}".format(err)]
+    else:
+        try:
+            result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
+                                    "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            resultText = result.stdout.decode('utf-8').split('\n')
+            
+        except Exception as err:
+            resultText = ["500 subprocess.run() Error posting trace to web server, exception raised","error:{0}".format(err)]
+
+    logStatsPostSuccess = True
+    resultLength = len(resultText)
+    if resultLength > 1 :
+        try:
+            statusLine = resultText[resultLength-2]   
+            if re.search(r'\[2..\]', statusLine) == None :
+                if re.search(r'4\d\d |5\d\d ', statusLine) != None:
+                    logStatsPostSuccess = False 
+                else:   
+                    matches = re.findall(r'Response \[2\d\d\]', resultText, re.MULTILINE)
+                    if len(matches) == 0:
+                        logStatsPostSuccess = False
+        except :
+            logStatsPostSuccess = False
+    else:
+        logStatsPostSuccess = False
+    
+    if logStatsPostSuccess == True:
+        if debugLevel > 0:
+            print('DEBUG-1 JAPostAllDataToWebServer() Posted traces to web server:|{0}|, with result:|{1}|\n'.format(webServerURL, resultText))
+
+    else:
+        errorMsg = 'ERROR JAPostAllDataToWebServer() error posting trace to web server:|{0}|, with result|{1}|\ntrace:|{2}|'.format(webServerURL, resultText, tempLogTracesToPost)
+        print(errorMsg)
+        LogMsg(errorMsg, statsLogFileName, True)
+        
+    return logStatsPostSuccess
+
 """
 def JAPostAllDataToWebServer()
 This function posts all data to web server
@@ -1452,6 +1575,8 @@ def JAPostAllDataToWebServer():
     ### post logEventPriorityLevel with environment specific DBDetails.
     tempLogStatsToPost['logEventPriorityLevel'] = 'timeStamp={0},logEventPriorityLevel={1}'.format(timeStamp, logEventPriorityLevel)
 
+    maxSendBufferSize = 1000
+    
     # sampling interval elapsed
     # push current sample stats to the data to be posted to the web server
     # key - service name
@@ -1489,7 +1614,24 @@ def JAPostAllDataToWebServer():
                     if prevDBType != 'Prometheus' :
                         if debugLevel > 0:
                             print("DEBUG-1 Better to add other DBDetails for :|{0}|".format(logStats[key][indexForDBDetails*2]))
+        
+        if postData == True :
+            if sys.getsizeof(tempLogStatsToPost) > maxSendBufferSize :
+            ### send the data to web server
+                if prevDBType == 'Influxdb' :
+                    storeUponFailure = True
+                else:
+                    storeUponFailure = False
 
+                if JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure) == True:
+                    ### successful posting, increment count
+                    numPostings += 1
+                    print('INFO JAPostAllDataToWebServer() DBType:|{0}|, posted data to web server:|{1}|'.format(prevDBType, webServerURL))
+                
+                postData = False
+                ### prepare tempLogStatsToPost with fixed data for next posting
+                tempLogStatsToPost = logStatsToPost.copy()
+        
         tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
 
         # 2022-03-27 JAPrepareStatsToPost() debug this later           
@@ -1638,8 +1780,6 @@ def JAPostAllDataToWebServer():
 
     numPostings = 0
 
-    logStatsPostSuccess = True
-
     if maxLogLines > 0:
         ### logs collection is enabled, post the logs collected
         # key - service name
@@ -1659,69 +1799,17 @@ def JAPostAllDataToWebServer():
             for line in lines:
                 # line = line.rstrip('\n')
                 tempLogLinesToPost[key] += line
+                if sys.getsizeof(tempLogLinesToPost) > maxSendBufferSize :
+                    if JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests) == True:
+                        ### successful posting, increment count
+                        numPostings += 1
+                    tempLogLinesToPost = logLinesToPost.copy()
+                    tempLogLinesToPost[key] = ''
 
-            if int(logLinesCount[key]) > maxLogLines:
-                ### show total number of lines seen
-                ###  lines exceeding maxLogLines are not collected in logLines[]
-                tempLogLinesToPost[key] += ',' + "..... {0} total lines in this sampling interval .....".format( logLinesCount[key] )
-            logLinesCount[key] = 0
-
-            ### empty the list
-            logLines[key] = []
-
-            if debugLevel > 1:
-                print('DEBUG-2 JAPostAllDataToWebServer() logLinesToPost: {0}'.format(tempLogLinesToPost))
-
-            data = json.dumps(tempLogLinesToPost)
-
-            if useRequests == True:
-                import requests
-
-                if disableWarnings == True:
-                    requests.packages.urllib3.disable_warnings()
-
-                try:
-                    # post interval elapsed, post the data to web server
-                    returnResult = requests.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
-                    resultText = returnResult.text
-                
-                except requests.exceptions.RequestException as err:
-                    resultText = ["500 ERROR requests.post() Error posting logs to web server, exception raised","error:{0}".format(err)]
-            else:
-                try:
-                    result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
-                                            "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    resultText = result.stdout.decode('utf-8').split('\n')
-                    
-                except Exception as err:
-                    resultText = ["500 subprocess.run() Error posting logs to web server, exception raised","error:{0}".format(err)]
-
-            resultLength = len(resultText)
-            if resultLength > 1 :
-                try:
-                    statusLine = resultText[resultLength-2]   
-                    if re.search(r'\[2..\]', statusLine) == None :
-                        if re.search(r'4\d\d |5\d\d ', statusLine) != None:
-                            logStatsPostSuccess = False 
-                        else:   
-                            matches = re.findall(r'Response \[2\d\d\]', resultText, re.MULTILINE)
-                            if len(matches) == 0:
-                                logStatsPostSuccess = False
-                except :
-                    logStatsPostSuccess = False
-            else:
-                logStatsPostSuccess = False
-            
-            if logStatsPostSuccess == True:
+            if JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests) == True:
+                ### successful posting, increment count
                 numPostings += 1
-                if debugLevel > 0:
-                    print('DEBUG-1 JAPostAllDataToWebServer() Posted logs to web server:|{0}|, with result:|{1}|'.format(webServerURL, resultText))
-
-            else:
-                errorMsg = 'ERROR JAPostAllDataToWebServer() error posting logs to web server:|{0}|, with result|{1}|\nlogs:|{2}|'.format(webServerURL, resultText, tempLogLinesToPost)
-                print(errorMsg)
-                LogMsg(errorMsg, statsLogFileName, True)
-                break
+            logLinesCount[key] = 0
 
         ### print result
         errorMsg = "INFO JAPostAllDataToWebServer() DBType:|Loki|, posted {0} log lines to web server: {1}\n".format(numPostings, webServerURL)
@@ -1730,7 +1818,6 @@ def JAPostAllDataToWebServer():
 
 
     numPostings = 0
-    logStatsPostSuccess = True
 
     if maxTraceLines > 0:
         ### trace collection is enabled, post the traces collected
@@ -1749,65 +1836,18 @@ def JAPostAllDataToWebServer():
             for trace in traces:
                 # line = line.rstrip('\n')
                 tempLogTracesToPost[key] += trace
+                if sys.getsizeof(tempLogTracesToPost) > maxSendBufferSize :
+                    if JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests) == True:
+                        numPostings += 1
+                    tempLogTracesToPost = logTracesToPost.copy()
+                    tempLogTracesToPost[key] = ''
 
             logTracesCount[key] = 0
-
             ### empty the list
             logTraces[key] = []
 
-            if debugLevel > 1:
-                print('DEBUG-2 JAPostAllDataToWebServer() logLinesToPost: {0}'.format(tempLogTracesToPost))
-
-            data = json.dumps(tempLogTracesToPost)
-
-            if useRequests == True:
-                import requests
-
-                if disableWarnings == True:
-                    requests.packages.urllib3.disable_warnings()
-
-                try:
-                    # post interval elapsed, post the data to web server
-                    returnResult = requests.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
-                    resultText = returnResult.text
-                
-                except requests.exceptions.RequestException as err:
-                    resultText = ["500 ERROR requests.post() Error posting traces to web server, exception raised","error:{0}".format(err)]
-            else:
-                try:
-                    result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
-                                            "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    resultText = result.stdout.decode('utf-8').split('\n')
-                    
-                except Exception as err:
-                    resultText = ["500 subprocess.run() Error posting trace to web server, exception raised","error:{0}".format(err)]
-
-            resultLength = len(resultText)
-            if resultLength > 1 :
-                try:
-                    statusLine = resultText[resultLength-2]   
-                    if re.search(r'\[2..\]', statusLine) == None :
-                        if re.search(r'4\d\d |5\d\d ', statusLine) != None:
-                            logStatsPostSuccess = False 
-                        else:   
-                            matches = re.findall(r'Response \[2\d\d\]', resultText, re.MULTILINE)
-                            if len(matches) == 0:
-                                logStatsPostSuccess = False
-                except :
-                    logStatsPostSuccess = False
-            else:
-                logStatsPostSuccess = False
-            
-            if logStatsPostSuccess == True:
+            if JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests) == True:
                 numPostings += 1
-                if debugLevel > 0:
-                    print('DEBUG-1 JAPostAllDataToWebServer() Posted traces to web server:|{0}|, with result:|{1}|\n'.format(webServerURL, resultText))
-
-            else:
-                errorMsg = 'ERROR JAPostAllDataToWebServer() error posting trace to web server:|{0}|, with result|{1}|\ntrace:|{2}|'.format(webServerURL, resultText, tempLogTracesToPost)
-                print(errorMsg)
-                LogMsg(errorMsg, statsLogFileName, True)
-                break
 
         ### print result
         errorMsg = "INFO JAPostAllDataToWebServer() DBType:|zipkin|, posted {0} trace lines to web server: {1}\n".format(numPostings, webServerURL)
