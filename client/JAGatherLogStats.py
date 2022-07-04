@@ -1312,7 +1312,7 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
     resultLength = len(resultText)
     if resultLength > 1 :
         try:
-            statusLine = resultText[resultLength-1]   
+            statusLine = resultText[resultLength-2]   
             if re.search(r'\[2..\]', statusLine) == None :
                 if re.search(r'4\d\d |5\d\d ', statusLine) != None:
                     logStatsPostSuccess = False 
