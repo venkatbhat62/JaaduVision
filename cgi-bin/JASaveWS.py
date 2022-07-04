@@ -749,6 +749,10 @@ with open('JAGlobalVars.yml','r') as file:
 addr = ('', 9060)
 sock = socket.socket (socket.AF_INET, socket.SOCK_STREAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+### set receive buffer size to 32K
+RECV_BUF_SIZE = 32768
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, RECV_BUF_SIZE) 
 sock.bind(addr)
 sock.listen(5)
                                                                                                                    
