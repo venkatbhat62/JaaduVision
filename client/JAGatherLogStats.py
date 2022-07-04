@@ -1632,26 +1632,39 @@ def JAPostAllDataToWebServer():
                 ### prepare tempLogStatsToPost with fixed data for next posting
                 tempLogStatsToPost = logStatsToPost.copy()
         
-        tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
-
+        timeStampAdded = False
+        
         # 2022-03-27 JAPrepareStatsToPost() debug this later           
         if values[indexForPatternPass*2+1] == True:
+            if timeStampAdded == False:
+                tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
+                timeStampAdded = True
+
             tempLogStatsToPost[key] += ",{0}_pass={1:.2f}".format(key,float(values[indexForPatternPass*2]) / floatDataPostIntervalInSec)
             logStats[key][indexForPatternPass*2] = 0
             # tempLogStatsToPost[key] += JAPrepareStatsToPost(key,indexForPatternPass,"pass",values[indexForPatternPass*2], values[indexForPatternPass*2+1])
             postData = True
         if values[indexForPatternFail*2+1] == True:
+            if timeStampAdded == False:
+                tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
+                timeStampAdded = True
             tempLogStatsToPost[key] += ",{0}_fail={1:.2f}".format(key,float(values[indexForPatternFail*2]) / floatDataPostIntervalInSec)
             logStats[key][indexForPatternFail*2] = 0
             # tempLogStatsToPost[key] += JAPrepareStatsToPost(key,indexForPatternFail,"fail",values[indexForPatternFail*2], values[indexForPatternFail*2+1])
             postData = True
         if values[indexForPatternCount*2+1] == True:
+            if timeStampAdded == False:
+                tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
+                timeStampAdded = True
             tempLogStatsToPost[key] += ",{0}_count={1:.2f}".format(key, float(values[indexForPatternCount*2])/ floatDataPostIntervalInSec)
             logStats[key][indexForPatternCount*2] = 0
             # tempLogStatsToPost[key] += JAPrepareStatsToPost(key,indexForPatternCount,"count",values[indexForPatternCount*2], values[indexForPatternCount*2+1])
             postData = True
 
         if values[indexForPatternSum*2] > 0 :
+            if timeStampAdded == False:
+                tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
+                timeStampAdded = True
             postData = True
             ### sample count is non-zero, stats has value to post
             tempResults = list(values[indexForPatternSum*2+1])
@@ -1683,6 +1696,9 @@ def JAPostAllDataToWebServer():
             logStats[key][indexForPatternSum*2+1] = []
 
         if values[indexForPatternDelta*2] > 0 :
+            if timeStampAdded == False:
+                tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
+                timeStampAdded = True
             postData = True
             ### sample count is non-zero, stats has value to post
             tempResults = list(values[indexForPatternDelta*2+1])
@@ -1725,6 +1741,9 @@ def JAPostAllDataToWebServer():
         ### relative position of these sample count map to same position in values[indexForPatternAverage*2+1]
         sampleCountList = list( values[indexForPatternAverage*2])               
         if len(sampleCountList) > 0 :
+            if timeStampAdded == False:
+                tempLogStatsToPost[key] = 'timeStamp=' + timeStamp
+                timeStampAdded = True
             postData = True
             ### sample count is non-zero, stats has value to post
             tempResults = list(values[indexForPatternAverage*2+1])
