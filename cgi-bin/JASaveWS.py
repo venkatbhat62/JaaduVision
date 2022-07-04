@@ -80,9 +80,11 @@ def JAInfluxdbWriteData( self, bucket, data, debugLevel=0):
 
 def JASaveStatsExit(self, reason, statusCode, JASaveStatsStartTime):
     if re.match('^ERROR ', reason):
-        message='ERROR JASaveWS.py() ' + reason + '<Response [500]>'
+        message='ERROR JASaveWS.py() ' + reason + ' <Response [500]>'
+        print("ERROR {0}\n".format( reason ))
+
     elif re.match('^PASS ', reason):
-        message='PASS  JASaveWS.py() ' + reason + '<Response [200]>'
+        message='PASS  JASaveWS.py() ' + reason + ' <Response [200]>'
     else:
         message='      JASaveWS.py() ' + reason
 
@@ -130,7 +132,7 @@ class Handler(BaseHTTPRequestHandler):
         contentLength = int(self.headers['Content-Length'])
         contentType = self.headers['Content-Type']
         if contentLength > 0:
-            self.data_string = self.rfile.read(contentLength).decode('utf-8')
+            self.data_string = self.rfile.read(contentLength)
             try:
                 postedData = json.loads(self.data_string)
                 print("DEBUG-2 read content length:{0}\n".format(contentLength))
@@ -508,8 +510,9 @@ class Handler(BaseHTTPRequestHandler):
                                  returnResult = returnResult + "ERROR posting trace to zipkin, traceToPost:{0}, returnResult:{1}".format(payload, err)
                                  errorPostingZipkin = True
                         except:
-                           returnResult += 'ERROR timestamp data not posted to zipkin, items passed:{0}'.format(items)
-                           errorPostingZipkin = True
+                            if ( len(items) > 1 ) :
+                                returnResult += 'ERROR timestamp data not posted to zipkin, items passed:{0}'.format(items)
+                                errorPostingZipkin = True
 
                 ### post stats
                 else:

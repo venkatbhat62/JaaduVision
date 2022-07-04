@@ -1353,7 +1353,7 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
                     print(errorMsg)
                     LogMsg(errorMsg, statsLogFileName, True)
         else:
-            print("ERROR posting data:{0}\n".format(tempLogStatsToPost))
+            print("ERROR JAPostDataToWebServer() posting data:{0}\n".format(tempLogStatsToPost))
 
     return logStatsPostSuccess
 
