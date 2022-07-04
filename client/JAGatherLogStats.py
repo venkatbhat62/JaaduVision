@@ -1428,7 +1428,7 @@ def JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests):
     logLines[key] = []
 
     if debugLevel > 1:
-        print('DEBUG-2 JAPostAllDataToWebServer() logLinesToPost: {0}'.format(tempLogLinesToPost))
+        print('DEBUG-2 JAPostLogLinesToWebServer() logLinesToPost: {0}'.format(tempLogLinesToPost))
 
     data = json.dumps(tempLogLinesToPost)
 
@@ -1473,9 +1473,9 @@ def JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests):
 
     if logStatsPostSuccess == True:
         if debugLevel > 0:
-            print('DEBUG-1 JAPostAllDataToWebServer() Posted logs to web server:|{0}|, with result:|{1}|'.format(webServerURL, resultText))
+            print('DEBUG-1 JAPostLogLinesToWebServer() Posted logs to web server:|{0}|, with result:|{1}|'.format(webServerURL, resultText))
     else:
-        errorMsg = 'ERROR JAPostAllDataToWebServer() error posting logs to web server:|{0}|, with result|{1}|\nlogs:|{2}|'.format(webServerURL, resultText, tempLogLinesToPost)
+        errorMsg = 'ERROR JAPostLogLinesToWebServer() error posting logs to web server:|{0}|, with result|{1}|\nlogsSize:{2},logs:|{3}|'.format(webServerURL, resultText, sys.getsizeof(tempLogLinesToPost), tempLogLinesToPost)
         print(errorMsg)
         LogMsg(errorMsg, statsLogFileName, True)
 
@@ -1483,7 +1483,7 @@ def JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests):
 
 def JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests):
     if debugLevel > 1:
-        print('DEBUG-2 JAPostAllDataToWebServer() logLinesToPost: {0}'.format(tempLogTracesToPost))
+        print('DEBUG-2 JAPostTraceLinesToWebServer() logLinesToPost: {0}'.format(tempLogTracesToPost))
 
     data = json.dumps(tempLogTracesToPost)
 
@@ -1528,10 +1528,10 @@ def JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests):
     
     if logStatsPostSuccess == True:
         if debugLevel > 0:
-            print('DEBUG-1 JAPostAllDataToWebServer() Posted traces to web server:|{0}|, with result:|{1}|\n'.format(webServerURL, resultText))
+            print('DEBUG-1 JAPostTraceLinesToWebServer() Posted traces to web server:|{0}|, with result:|{1}|\n'.format(webServerURL, resultText))
 
     else:
-        errorMsg = 'ERROR JAPostAllDataToWebServer() error posting trace to web server:|{0}|, with result|{1}|\ntrace:|{2}|'.format(webServerURL, resultText, tempLogTracesToPost)
+        errorMsg = 'ERROR JAPostTraceLinesToWebServer() error posting trace to web server:|{0}|, with result|{1}|\ntraceSize:{2}, trace:|{3}|'.format(webServerURL, resultText, sys.getsizeof(tempLogTracesToPost), tempLogTracesToPost)
         print(errorMsg)
         LogMsg(errorMsg, statsLogFileName, True)
         
@@ -1809,6 +1809,8 @@ def JAPostAllDataToWebServer():
             if JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests) == True:
                 ### successful posting, increment count
                 numPostings += 1
+            else:
+                break
             logLinesCount[key] = 0
 
         ### print result
@@ -1839,6 +1841,8 @@ def JAPostAllDataToWebServer():
                 if sys.getsizeof(tempLogTracesToPost) > maxSendBufferSize :
                     if JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests) == True:
                         numPostings += 1
+                    else:
+                        break
                     tempLogTracesToPost = logTracesToPost.copy()
                     tempLogTracesToPost[key] = ''
 
