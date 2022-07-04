@@ -1314,7 +1314,7 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
         try:            
             statusLine = resultText[-80:]   
             if re.search(r'\[2\d\d\]', statusLine) == None :
-                if re.search(r'4\d\d |5\d\d ', statusLine) != None:
+                if re.search(r'\[4\d\d\]|\[5\d\d\]', statusLine) != None:
                     logStatsPostSuccess = False 
             else:   
                 matches = re.findall(r'<Response \[2\d\d\]>', resultText, re.MULTILINE)
@@ -1460,7 +1460,7 @@ def JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests):
         try:
             statusLine = resultText[-80:]   
             if re.search(r'\[2\d\d\]', statusLine) == None :
-                if re.search(r'4\d\d |5\d\d ', statusLine) != None:
+                if re.search(r'\[4\d\d\]|\[5\d\d\]', statusLine) != None:
                     logStatsPostSuccess = False 
             else:   
                 matches = re.findall(r'Response \[2\d\d\]', resultText, re.MULTILINE)
@@ -1515,7 +1515,7 @@ def JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests):
         try:
             statusLine = resultText[-80:]   
             if re.search(r'\[2\d\d\]', statusLine) == None :
-                if re.search(r'4\d\d |5\d\d ', statusLine) != None:
+                if re.search(r'\[4\d\d\]|\[5\d\d\]', statusLine) != None:
                     logStatsPostSuccess = False 
             else:   
                 matches = re.findall(r'Response \[2\d\d\]', resultText, re.MULTILINE)
