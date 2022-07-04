@@ -93,7 +93,7 @@ def JASaveStatsExit(self, reason, statusCode, JASaveStatsStartTime):
     JASaveStatsEndTime = datetime.now()
     JASaveStatsDuration = JASaveStatsEndTime - JASaveStatsStartTime
     JASaveStatsDurationInSec = JASaveStatsDuration.total_seconds()
-    message = r'{0}, response time:{1} sec\n'.format( message, JASaveStatsDurationInSec)
+    message = r'{0}, response time:{1} sec'.format( message, JASaveStatsDurationInSec)
 
     JAGlobalLib.LogMsg(message, JALogFileName, True)
     self.wfile.write(message.encode())
