@@ -2002,6 +2002,9 @@ Execute command if elapsed time is greater than IntervalInSec specified for that
 def JAProcessCommands( logFileProcessingStartTime, debugLevel):
     global averageCPUUsage, thisHostName, logEventPriorityLevel, maxProcessingTimeForAllEvents
     
+    if len(JAExecuteCommandSpec.keys()) <= 0 :
+        return
+
     for key in JAExecuteCommandSpec.keys():
         # if elapsed time is greater than max time for all events, SKIP processing log file for events
         tempCurrentTime = time.time()
