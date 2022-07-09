@@ -38,7 +38,7 @@ import os,sys,json,re
 from datetime import datetime
 import yaml
 import requests
-import JAGlobalLib 
+import JAGlobalLib
 from collections import defaultdict
 from urllib.parse import urlparse
 from urllib.parse import parse_qs
@@ -46,39 +46,47 @@ import random
 from influxdb_client import InfluxDBClient, WriteOptions
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-def JAInfluxdbWriteData( bucket, data, debugLevel=0):
+
+def JAInfluxdbWriteData( url, token, org, bucket, data, debugLevel=0):
+
     statusCode = False
     returnStatus = ''
+    try:
+        _client = InfluxDBClient(url=url, token=token, org=org)
+    except Exception as err:
+        returnStatus = "ERROR {0}".format(err)
+        return statusCode, returnStatus
 
     """
     _write_client = _client.write_api(write_options=WriteOptions(batch_size=500,
-    flush_interval=10_000,
-    jitter_interval=2_000,
-    retry_interval=5_000,
-    max_retries=5,
-    max_retry_delay=30_000,
-    exponential_base=2))
+                                      flush_interval=10_000,
+                                      jitter_interval=2_000,
+                                      retry_interval=5_000,
+                                      max_retries=5,
+                                      max_retry_delay=30_000,
+                                      exponential_base=2))
     """
-    
-    if influxDBWriteClient != None:
-        try:
-            result = influxDBWriteClient.write(record=data,bucket=bucket, org=org,protocol='line')
-            if result != None:
-                returnStatus = "<Response [500]>" 
-                returnResult += ("_Status_ERROR_ Could not insert record to influxdb, data:{0}, result:|{1}|".format(data, result ))
-            else:
-                statusCode = True
-                if debugLevel > 0:
-                    returnResult += ("_Status_PASS_ data written to influxdb:|{0}, status:{1}|".format( data, returnStatus ))
+    try:
+        _write_client = _client.write_api(write_options=SYNCHRONOUS)
+    except Exception as err:
+        returnStatus = "ERROR {0}".format(err)
+        return statusCode, returnStatus
+    try:
+        result = _write_client.write(record=data,bucket=bucket, org=org,protocol='line')
+        if result != None:
+            returnStatus = "<Response [500]>" 
+        else:
+            statusCode = True
 
-        except Exception as err:
-           returnResult += ("_Status_ERROR_ JAInfluxdbWriteData() Could not insert record to influxdb, error:{0}".format(err ) )
-           returnStatus = "<Response [500]>"
-    else:
-        returnStatus = "_Status_ERROR_ InfluxDB Write Client not present, check InfluxDB config"
-
+        if debugLevel > 0:
+            print("_Status_PASS_ data written to influxdb:|{0}, status:{1}|".format( data, returnStatus ))
+    except Exception as err:
+        print("_Status_ERROR_ JAInfluxdbWriteData() Could not insert record to influxdb, error:{0}".format(err ) )
+        returnStatus = "<Response [500]>"
+    _write_client.close()
     return statusCode, returnStatus
 
+    
 def JASaveStatsExit( reason, statusCode, JASaveStatsStartTime):
     if re.match('^ERROR ', reason):
         message='ERROR JASaveWS.py() ' + reason + '<Response [500]>'
@@ -649,7 +657,8 @@ def simple_app(environ, start_response):
             if postData == True :
                 if JADBTypeInfludb == True :
                     try:
-                        tempStatus, tempReturnResult = JAInfluxdbWriteData(JAInfluxdbBucket, influxdbDataArrayToPost, debugLevel)
+                        ## url, token, org, bucket, data, debugLevel=0):
+                        tempStatus, tempReturnResult = JAInfluxdbWriteData(JAInfluxdbURL, JAInfluxdbOrg, JAInfluxdbBucket, influxdbDataArrayToPost, debugLevel)
                         if tempStatus == False:
                             returnResult = returnResult + "ERROR posting data to influxDB, returnResult:{0}".format(tempReturnResult)
                         else:
