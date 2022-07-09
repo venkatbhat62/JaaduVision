@@ -1252,7 +1252,7 @@ if saveLogsOnWebServer == True:
     logLinesToPost['saveLogsOnWebServer'] = "yes"
 
 headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-
+requestSession = None
 try:
     if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
         import importlib
@@ -1260,6 +1260,11 @@ try:
         try:
             if importlib.util.find_spec("requests") != None:
                 useRequests = True
+                import requests
+                requestSession = requests.session()
+                if disableWarnings == True:
+                    requestSession.packages.urllib3.disable_warnings()
+
             else:
                 useRequests = False
 
@@ -1282,11 +1287,6 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
     """
     global webServerURL, verifyCertificate, debugLevel, headers, retryLogStatsFileHandleCurrent, fileNameRetryStatsPost
     logStatsPostSuccess = True
-    if useRequests == True:
-        import requests
-
-        if disableWarnings == True:
-            requests.packages.urllib3.disable_warnings()
 
     data = json.dumps(tempLogStatsToPost)
     if debugLevel > 1:
@@ -1295,11 +1295,11 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
     if useRequests == True:
         try:
             # post interval elapsed, post the data to web server
-            returnResult = requests.post(
+            returnResult = requestSession.post(
                 webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
             resultText = returnResult.text
-        except requests.exceptions.RequestException as err:
-            resultText = ["500 requests.post() Error posting data to web server {0}, exception raised","error:{1}".format(webServerURL, err)]
+        except requestSession.exceptions.RequestException as err:
+            resultText = ["500 requestSession.post() Error posting data to web server {0}, exception raised","error:{1}".format(webServerURL, err)]
 
     else:
         try:
@@ -1433,18 +1433,13 @@ def JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests):
     data = json.dumps(tempLogLinesToPost)
 
     if useRequests == True:
-        import requests
-
-        if disableWarnings == True:
-            requests.packages.urllib3.disable_warnings()
-
         try:
             # post interval elapsed, post the data to web server
-            returnResult = requests.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
+            returnResult = requestSession.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
             resultText = returnResult.text
         
-        except requests.exceptions.RequestException as err:
-            resultText = ["500 ERROR requests.post() Error posting logs to web server, exception raised","error:{0}".format(err)]
+        except requestSession.exceptions.RequestException as err:
+            resultText = ["500 ERROR requestSession.post() Error posting logs to web server, exception raised","error:{0}".format(err)]
     else:
         try:
             result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
@@ -1488,18 +1483,13 @@ def JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests):
     data = json.dumps(tempLogTracesToPost)
 
     if useRequests == True:
-        import requests
-
-        if disableWarnings == True:
-            requests.packages.urllib3.disable_warnings()
-
         try:
             # post interval elapsed, post the data to web server
-            returnResult = requests.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
+            returnResult = requestSession.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
             resultText = returnResult.text
         
-        except requests.exceptions.RequestException as err:
-            resultText = ["500 ERROR requests.post() Error posting traces to web server, exception raised","error:{0}".format(err)]
+        except requestSession.exceptions.RequestException as err:
+            resultText = ["500 ERROR requestSession.post() Error posting traces to web server, exception raised","error:{0}".format(err)]
     else:
         try:
             result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
