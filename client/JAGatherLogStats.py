@@ -1108,7 +1108,7 @@ try:
             # initialize logTraces[key] list to empty list
             logTraces[key] = []
 
-        if len( JAStats['Execute'].items() ) > 0 :
+        try:
             ### process execute command section
             ### Execute:
             ###    Health:
@@ -1131,7 +1131,10 @@ try:
                     JAExecuteCommandSpec[key][indexForCommandPriority] = str(value.get('Priority')).strip()
                 else:
                     JAExecuteCommandSpec[key][indexForCommandPriority] = 3
-
+        except:
+            if debugLevel > 1 :
+                print("DEBUG-2 No execute command to process")
+                
 except OSError as err:
     JAStatsExit('ERROR - Can not open configFile:|' +
                 configFile + '|' + "OS error: {0}".format(err) + '\n')
