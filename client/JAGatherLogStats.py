@@ -2279,7 +2279,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values, keyDebugLevel ):
                             ### trace duration can be on its own line or
                             ###  or can be part of traceId or traceBlockStart line
                             if values[indexForDurationGroup] == groupNumber:
-                                tempTraceLine[fileName] = r"{0},duration={1}\n".format(tempTraceLine[fileName],tempResult)
+                                tempTraceLine[fileName] = r"{0},duration={1}__NEWLINE__".format(tempTraceLine[fileName],tempResult)
                                 tempDuration[fileName] = tempResult
                                 tempAppendTraceLine = True
 
@@ -2323,7 +2323,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values, keyDebugLevel ):
             if tempDuration[fileName] == None or tempDuration[fileName] == '':
                 if traceBlockInProgress[fileName] == None:
                     ### default to 1000 (1ms)
-                    tempTraceLine[fileName] = tempTraceLine[fileName] + r",duration={0}\n".format(1000)                   
+                    tempTraceLine[fileName] = tempTraceLine[fileName] + r",duration={0}__NEWLINE__".format(1000)                   
             
             if ( tempAddNEWLINE == True) :
 
@@ -2345,7 +2345,7 @@ def JAProcessLineForTrace( tempLine, fileName, key, values, keyDebugLevel ):
                     firstLogLine = traceBlockLogLines[fileName].pop(0)
                     firstLogLine = re.sub("\n$", '', firstLogLine) 
 
-                    ### add current trace block lines to logLines[key] with traceId prefixed at start of the line
+                    ### add current trace block lines to logLines[key] with traceId prefixed at the end of the line
                     ### this is to ensure loki can use the traceid to associate with tempo on starting line
                     if values[indexForTraceIdPrefix] != None:
                         tempLogLineWithTraceId = r'{0} {1}{2}'.format(firstLogLine, \
