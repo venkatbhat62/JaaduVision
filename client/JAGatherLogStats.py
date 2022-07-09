@@ -1676,7 +1676,7 @@ def JAPostAllDataToWebServer():
                         tempResultSum = float(tempResult) / floatDataPostIntervalInSec
                         tempLogStatsToPost[key] += ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultSum)                        
                     except:
-                        tempLogStatsToPost[key] += ",{0}_{1}_sum={2}".format( key, paramName, tempResult)
+                        tempLogStatsToPost[key] = "{0},{1}_{2}_sum={3}".format( tempLogStatsToPost[key], key, paramName, tempResult)
 
                     if postData == True :
                         if sys.getsizeof(tempLogStatsToPost) > maxSendBufferSize :
@@ -1729,7 +1729,7 @@ def JAPostAllDataToWebServer():
                         tempLogStatsToPost[key] += ",{0}_{1}_delta={2:.2f}".format( key, paramName, tempResultDelta)
                     except:
                         ### not a numeric value, store it as is
-                        tempLogStatsToPost[key] += ",{0}_{1}_delta={2}".format( key, paramName, tempResult)
+                        tempLogStatsToPost[key] = "{0},{1}_{2}_delta={3}".format( tempLogStatsToPost[key], key, paramName, tempResult)
 
                     if postData == True :
                         if sys.getsizeof(tempLogStatsToPost) > maxSendBufferSize :
@@ -1789,7 +1789,7 @@ def JAPostAllDataToWebServer():
                         tempLogStatsToPost[key] += ",{0}_{1}_average={2:.2f}".format( key, paramName, tempResultAverage)
                     except:
                         ### not a numeric value, store it as is
-                        tempLogStatsToPost[key] += ",{0}_{1}_average={2}".format( key, paramName, tempResult)
+                        tempLogStatsToPost[key] = "{0},{1}_{2}_average={3}".format( tempLogStatsToPost[key], key, paramName, tempResult)
 
                     if postData == True :
                         if sys.getsizeof(tempLogStatsToPost) > maxSendBufferSize :
