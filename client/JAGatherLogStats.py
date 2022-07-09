@@ -1134,7 +1134,7 @@ try:
         except:
             if debugLevel > 1 :
                 print("DEBUG-2 No execute command to process")
-                
+
 except OSError as err:
     JAStatsExit('ERROR - Can not open configFile:|' +
                 configFile + '|' + "OS error: {0}".format(err) + '\n')
@@ -1285,6 +1285,7 @@ except:
 # useRequests = False
 
 def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
+    global requestSession
     """
     Post data to web server
     Returns True up on success, False upon failure
@@ -1294,8 +1295,9 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
 
     data = json.dumps(tempLogStatsToPost)
     if debugLevel > 1:
-        print('DEBUG-2 JAPostDataToWebServer() logStatsToPost: {0}'.format(tempLogStatsToPost))
-
+        print('DEBUG-2 JAPostDataToWebServer() tempLogStatsToPost: {0}'.format(tempLogStatsToPost))
+    if debugLevel > 0:
+        print('DEBUG-1 JAPostDataToWebServer() size of tempLogStatsToPost: {0}'.format(sys.getsizeof(tempLogStatsToPost)))
     if useRequests == True:
         try:
             # post interval elapsed, post the data to web server
@@ -1422,6 +1424,7 @@ def JAPrepareStatsToPost(key, indexToLogStats, postFix, tempValue, tempValues ):
 def JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests):
     global debugLevel, logLinesCount, maxLogLines, logLines
     global webServerURL, verifyCertificate, logLinesToPost, logEventPriorityLevel
+    global requestSession
 
     if int(logLinesCount[key]) > maxLogLines:
         ### show total number of lines seen
@@ -1432,7 +1435,9 @@ def JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests):
     logLines[key] = []
 
     if debugLevel > 1:
-        print('DEBUG-2 JAPostLogLinesToWebServer() logLinesToPost: {0}'.format(tempLogLinesToPost))
+        print('DEBUG-2 JAPostLogLinesToWebServer() tempLogLinesToPost: {0}'.format(tempLogLinesToPost))
+    if debugLevel > 0:
+        print('DEBUG-1 JAPostLogLinesToWebServer() size of tempLogLinesToPost: {0}'.format(sys.getsizeof(tempLogLinesToPost)))
 
     data = json.dumps(tempLogLinesToPost)
 
@@ -1481,8 +1486,11 @@ def JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests):
     return  logStatsPostSuccess   
 
 def JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests):
+    global requestSession
     if debugLevel > 1:
-        print('DEBUG-2 JAPostTraceLinesToWebServer() logLinesToPost: {0}'.format(tempLogTracesToPost))
+        print('DEBUG-2 JAPostTraceLinesToWebServer() tempLogTracesToPost: {0}'.format(tempLogTracesToPost))
+    if debugLevel > 0:
+        print('DEBUG-1 JAPostTraceLinesToWebServer() size of tempLogTracesToPost: {0}'.format(sys.getsizeof(tempLogTracesToPost)))
 
     data = json.dumps(tempLogTracesToPost)
 
