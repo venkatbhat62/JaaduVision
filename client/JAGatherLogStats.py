@@ -1108,28 +1108,29 @@ try:
             # initialize logTraces[key] list to empty list
             logTraces[key] = []
 
-        ### process execute command section
-        ### Execute:
-        ###    Health:
-        ###    #execute below command to gather application stats, output to log file
-        ###    Command: ps -ef |grep JATest.py |grep -v grep |wc -l > Health.log
-        ###    IntervalInSec: 60
-        ###    Priority: 2
-        for key, value in JAStats['Execute'].items():
+        if len( JAStats['Execute'].items() ) > 0 :
+            ### process execute command section
+            ### Execute:
+            ###    Health:
+            ###    #execute below command to gather application stats, output to log file
+            ###    Command: ps -ef |grep JATest.py |grep -v grep |wc -l > Health.log
+            ###    IntervalInSec: 60
+            ###    Priority: 2
+            for key, value in JAStats['Execute'].items():
 
-            if value.get('Command') != None:
-                ## store the command as list so that it can be passed to run function later
-                tempCommand = str(value.get('Command')).strip()
-                JAExecuteCommandSpec[key][indexForCommand] = tempCommand.split()
+                if value.get('Command') != None:
+                    ## store the command as list so that it can be passed to run function later
+                    tempCommand = str(value.get('Command')).strip()
+                    JAExecuteCommandSpec[key][indexForCommand] = tempCommand.split()
 
-            if value.get('IntervalInSec') != None:
-                JAExecuteCommandSpec[key][indexForIntervalInSec] = int(value.get('IntervalInSec'))
-                JAExecuteCommandSpec[key][indexForLastExecutionTime] = None            
+                if value.get('IntervalInSec') != None:
+                    JAExecuteCommandSpec[key][indexForIntervalInSec] = int(value.get('IntervalInSec'))
+                    JAExecuteCommandSpec[key][indexForLastExecutionTime] = None            
 
-            if value.get('Priority') != None:
-                JAExecuteCommandSpec[key][indexForCommandPriority] = str(value.get('Priority')).strip()
-            else:
-                JAExecuteCommandSpec[key][indexForCommandPriority] = 3
+                if value.get('Priority') != None:
+                    JAExecuteCommandSpec[key][indexForCommandPriority] = str(value.get('Priority')).strip()
+                else:
+                    JAExecuteCommandSpec[key][indexForCommandPriority] = 3
 
 except OSError as err:
     JAStatsExit('ERROR - Can not open configFile:|' +
