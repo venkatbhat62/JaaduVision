@@ -1,7 +1,7 @@
 from wsgiref.simple_server import make_server, WSGIServer
 from socketserver import ThreadingMixIn
 from time import sleep
-import os,sys,json,re
+import os,sys,json,re,time
 from datetime import datetime
 import yaml
 import requests
@@ -23,21 +23,36 @@ def simple_app(environ, start_response):
         request_body_size = int(environ['CONTENT_LENGTH'])
         request_body = environ['wsgi.input'].read(request_body_size)
     except (TypeError, ValueError):
-        request_body = "0"
+        try:
+            bytesRead = 0
+            request_body = ''
+            while ( bytesRead < request_body_size):
+                bytesToRead = request_body_size - bytesRead
+                if bytesToRead > 1400  :
+                     bytesToRead = 1400
+                tempRequestBody = environ['wsgi.input'].read(bytesToRead)
+                bytesRead += bytesToRead 
+                print("DEBUG bytesRead:{0}, tempRequestBody: {1}".format( bytesRead, tempRequestBody ))
+                time.sleep(1)
+                request_body += tempRequestBody
+
+        except (TypeError, ValueError):
+            request_body = "0"
     try:
         response_body = str(request_body)
     except:
         response_body = "error"
     print(response_body)
-    print("\nresponse size:{0}\n".format(request_body_size))
+    print("\nenviorn method: posted data size:{0}\n".format(request_body_size))
+    return [b"hello"] 
 
     reqBody = sys.stdin.read(request_body_size)
     postedData = defaultdict(dict)
     postedData = json.loads(reqBody)
 
-    print("CGI method body:{0}\n".format(reqBody))
+    bodySize = len(reqBody)
+    print("CGI method body size:{0}\n".format(bodySize))
 
-    return [b"hello"] 
 
 class ThreadingWSGIServer(ThreadingMixIn, WSGIServer): 
         pass
