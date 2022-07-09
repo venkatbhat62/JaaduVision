@@ -61,7 +61,7 @@ def JAInfluxdbWriteData( self, bucket, data, debugLevel=0):
     
     if self.influxDBWriteClient != None:
         try:
-            result = self.influxDBWriteClient.write(record=data,bucket=bucket, org=org,protocol='line')
+            result = self.influxDBWriteClient.write(record=data,bucket=bucket, org=JAInfluxdbOrg,protocol='line')
             if result != None:
                 returnStatus = "<Response [500]>" 
                 self.wfile.write(("_Status_ERROR_ Could not insert record to influxdb, data:{0}, result:|{1}|\n".format(data, result )).encode())

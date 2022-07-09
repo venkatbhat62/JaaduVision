@@ -1575,7 +1575,7 @@ def JAPostAllDataToWebServer():
     ### post logEventPriorityLevel with environment specific DBDetails.
     tempLogStatsToPost['logEventPriorityLevel'] = 'timeStamp={0},logEventPriorityLevel={1}'.format(timeStamp, logEventPriorityLevel)
 
-    maxSendBufferSize = 1000
+    maxSendBufferSize = 800
     
     # sampling interval elapsed
     # push current sample stats to the data to be posted to the web server
@@ -1687,6 +1687,22 @@ def JAPostAllDataToWebServer():
                         tempLogStatsToPost[key] += ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultSum)                        
                     except:
                         tempLogStatsToPost[key] += ",{0}_{1}_sum={2}".format( key, paramName, tempResult)
+
+                    if postData == True :
+                        if sys.getsizeof(tempLogStatsToPost) > maxSendBufferSize :
+                        ### send the data to web server
+                            if prevDBType == 'Influxdb' :
+                                storeUponFailure = True
+                            else:
+                                storeUponFailure = False
+
+                            if JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure) == True:
+                                ### successful posting, increment count
+                                numPostings += 1
+                                print('INFO JAPostAllDataToWebServer() DBType:|{0}|, posted data to web server:|{1}|'.format(prevDBType, webServerURL))
+                            
+                            ### prepare tempLogStatsToPost with fixed data for next posting
+                            tempLogStatsToPost = logStatsToPost.copy()
                 else:
                     ### current index has param name
                     paramName = tempResult
@@ -1724,6 +1740,22 @@ def JAPostAllDataToWebServer():
                     except:
                         ### not a numeric value, store it as is
                         tempLogStatsToPost[key] += ",{0}_{1}_delta={2}".format( key, paramName, tempResult)
+
+                    if postData == True :
+                        if sys.getsizeof(tempLogStatsToPost) > maxSendBufferSize :
+                        ### send the data to web server
+                            if prevDBType == 'Influxdb' :
+                                storeUponFailure = True
+                            else:
+                                storeUponFailure = False
+
+                            if JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure) == True:
+                                ### successful posting, increment count
+                                numPostings += 1
+                                print('INFO JAPostAllDataToWebServer() DBType:|{0}|, posted data to web server:|{1}|'.format(prevDBType, webServerURL))
+                            
+                            ### prepare tempLogStatsToPost with fixed data for next posting
+                            tempLogStatsToPost = logStatsToPost.copy()
 
                 else:
                     ### current index has param name
@@ -1768,6 +1800,22 @@ def JAPostAllDataToWebServer():
                     except:
                         ### not a numeric value, store it as is
                         tempLogStatsToPost[key] += ",{0}_{1}_average={2}".format( key, paramName, tempResult)
+
+                    if postData == True :
+                        if sys.getsizeof(tempLogStatsToPost) > maxSendBufferSize :
+                        ### send the data to web server
+                            if prevDBType == 'Influxdb' :
+                                storeUponFailure = True
+                            else:
+                                storeUponFailure = False
+
+                            if JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure) == True:
+                                ### successful posting, increment count
+                                numPostings += 1
+                                print('INFO JAPostAllDataToWebServer() DBType:|{0}|, posted data to web server:|{1}|'.format(prevDBType, webServerURL))
+                            
+                            ### prepare tempLogStatsToPost with fixed data for next posting
+                            tempLogStatsToPost = logStatsToPost.copy()
 
                 else:
                     ### current index has param name
