@@ -137,17 +137,17 @@ class Handler(BaseHTTPRequestHandler):
                 print("DEBUG-2 read content length:{0}\n".format(contentLength))
             except:
                 print("ERROR content length:{0}, content type:{1}, content:|{2}|\n".format(contentLength, contentType, self.data_string ))
-                JASaveStatsError('Not able to read contents, size:{0}'.format(contentLength))
+                JASaveStatsError(self, 'ERROR Not able to read contents, size:{0}'.format(contentLength), 413, JASaveStatsStartTime)
                 return
         else:
-            JASaveStatsError('ERROR zero content posted')
+            JASaveStatsError(self, 'ERROR zero content posted', 503, JASaveStatsStartTime)
             return
 
         ### prepare server side fileName to store data
         if JADirStats != None:
             if postedData['fileName'] == None:
                 ### if valid JADirStats is present, expect fileName to be passed to save the data locally 
-                JASaveStatsError('fileName not passed')
+                JASaveStatsError(self, 'ERROR fileName not passed', 400, JASaveStatsStartTime)
                 return
             else:
                 fileName = JADirStats + '/' + postedData['fileName']
@@ -158,7 +158,7 @@ class Handler(BaseHTTPRequestHandler):
 
         ### get the parameters passed
         if postedData['jobName'] == None:
-            JASaveStatsError('jobName not passed')
+            JASaveStatsError(self, 'ERROR jobName not passed', 400, JASaveStatsStartTime)
             return
         else:
             jobName = postedData['jobName']
@@ -168,7 +168,7 @@ class Handler(BaseHTTPRequestHandler):
                 postToZipkin = True
 
         if postedData['hostName'] == None:
-            JASaveStatsError('hostName not passed')
+            JASaveStatsError(self, 'ERROR hostName not passed', 400, JASaveStatsStartTime)
             return
         else:
             hostName = postedData['hostName']
