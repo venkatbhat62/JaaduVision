@@ -131,12 +131,13 @@ class Handler(BaseHTTPRequestHandler):
         contentLength = int(self.headers['Content-Length'])
         contentType = self.headers['Content-Type']
         if contentLength > 0:
-            self.data_string = self.rfile.read(contentLength)
             try:
+                self.data_string = self.rfile.read(contentLength)
                 postedData = json.loads(self.data_string)
                 print("DEBUG-2 read content length:{0}\n".format(contentLength))
             except:
                 print("ERROR content length:{0}, content type:{1}, content:|{2}|\n".format(contentLength, contentType, self.data_string ))
+                JASaveStatsError('Not able to read contents, size:{0}'.format(contentLength))
                 return
         else:
             JASaveStatsError('ERROR zero content posted')
