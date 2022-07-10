@@ -42,7 +42,7 @@ Environment:
         VerifyCertificate: False
         # post stats to below web server
         # WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
-        WebServerURL: https://192.168.1.159:443/JaaduVision/
+        WebServerURL: https://192.168.1.160:443/JaaduVision/
 ### if target host has psutil python module installed, use the field names as defined in python documentation
 ###   Fields: values that can be read using that psutil function
 ###   Refer to Python documentation https://psutil.readthedocs.io/en/latest/

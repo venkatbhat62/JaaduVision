@@ -2056,38 +2056,44 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
 
   ### Now post the data to web server
   import json
-  headers= {'Content-type': 'application/json', 'Accept': 'text/plain'} 
+  headers= {'Content-type': 'application/json', 
+        'Accept': 'text/plain', 
+        'Connection': "keep-alive",
+        'Keep-Alive': "timeout=60" } 
+
   if sys.version_info >= (3,3):
     import importlib
     try:
-          importlib.util.find_spec("requests")
-          importlib.util.find_spec("json")
-          import requests
-          import json
-          useRequests = True
+        importlib.util.find_spec("requests")
+        importlib.util.find_spec("json")
+        import requests
+        from urllib3.exceptions import InsecureRequestWarning
+        from urllib3 import disable_warnings
+
+        requestSession = requests.session()
+        if disableWarnings == True:
+            disable_warnings(InsecureRequestWarning)
+
+        useRequests = True
     except ImportError:
-          useRequests = False
+        useRequests = False
   else:
     useRequests = False
 
-  import json
   data = json.dumps(tempOSStatsToPost)
   if useRequests == True:
-    import requests
 
     if debugLevel > 1:
         print ('DEBUG-2 OSStatsToPost:{0}'.format( tempOSStatsToPost) )
-    if disableWarnings == True:
-        requests.packages.urllib3.disable_warnings()
     
     try:
-        returnResult = requests.post( webServerURL, data, verify=verifyCertificate, headers=headers)
-        errorMsg = 'INFO requests.post() posted data to web server {0} with result:{1}'.format(webServerURL, returnResult.text)
+        returnResult = requestSession.post( webServerURL, data, verify=verifyCertificate, headers=headers, timeout=10)
+        errorMsg = 'INFO requestSession.post() posted data to web server {0} with result:{1}'.format(webServerURL, returnResult.text)
         print(errorMsg)
         JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
      
-    except requests.exceptions.RequestException as err:
-        errorMsg = "500 ERROR requests.post() error posting data to web server {0}, exception raised, {1}".format(webServerURL, err)
+    except requestSession.exceptions.RequestException as err:
+        errorMsg = "<Response [500]> ERROR requestSession.post() error posting data to web server {0}, exception raised, {1}".format(webServerURL, err)
         print(errorMsg)
         JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
         
@@ -2099,7 +2105,7 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
         print(errorMsg)
         JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
     except Exception as err:
-        errorMsg = "500 ERROR subprocess.run(curl) posting data to web server {0}, exception raised, {1}".format(webServerURL, err)
+        errorMsg = "<Response [500]> ERROR subprocess.run(curl) posting data to web server {0}, exception raised, {1}".format(webServerURL, err)
         print(errorMsg)
         JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
 
