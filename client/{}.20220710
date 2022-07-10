@@ -170,4 +170,32 @@ PASS  JASaveWS.py() PASS - Saved data, postToLoki:False, postToZipkin:False, JAD
 Server: BaseHTTP/0.6 Python/3.9.7
 Date: Sun, 10 Jul 2022 20:17:36 GMT
 
-PASS  JASaveWS.py() PASS - Saved data, postToLoki:False, postToZipkin:False, JADBTypeInfludb:False <Response [200]>, response time:0.000635 sec
+PASS  JASaveWS.py() PASS - Saved data, postToLoki:False, postToZipkin:False, JADBTypeInfludb:False <Response [200]>, response time:0.000635 sec2022-07-10T20:18:00.770102 INFO requestSession.post() posted data to web server https://192.168.1.160:443/JaaduVision/ with result:Content-type: text/html; charset=utf-8HTTP/1.0 200 OK
+Server: BaseHTTP/0.6 Python/3.9.7
+Date: Sun, 10 Jul 2022 20:18:06 GMT
+
+PASS  JASaveWS.py() PASS - Saved data, postToLoki:False, postToZipkin:False, JADBTypeInfludb:False <Response [200]>, response time:0.000806 sec2022-07-10T20:18:30.761619 INFO requestSession.post() posted data to web server https://192.168.1.160:443/JaaduVision/ with result:Content-type: text/html; charset=utf-8HTTP/1.0 200 OK
+Server: BaseHTTP/0.6 Python/3.9.7
+Date: Sun, 10 Jul 2022 20:18:36 GMT
+
+PASS  JASaveWS.py() PASS - Saved data, postToLoki:False, postToZipkin:False, JADBTypeInfludb:False <Response [200]>, response time:0.000469 sec2022-07-10T20:19:00.778932 INFO requestSession.post() posted data to web server https://192.168.1.160:443/JaaduVision/ with result:Content-type: text/html; charset=utf-8HTTP/1.0 200 OK
+Server: BaseHTTP/0.6 Python/3.9.7
+Date: Sun, 10 Jul 2022 20:19:06 GMT
+
+PASS  JASaveWS.py() PASS - Saved data, postToLoki:False, postToZipkin:False, JADBTypeInfludb:False <Response [200]>, response time:0.000541 sec2022-07-10T20:19:30.774679 INFO requestSession.post() posted data to web server https://192.168.1.160:443/JaaduVision/ with result:Content-type: text/html; charset=utf-8HTTP/1.0 200 OK
+Server: BaseHTTP/0.6 Python/3.9.7
+Date: Sun, 10 Jul 2022 20:19:36 GMT
+
+PASS  JASaveWS.py() PASS - Saved data, postToLoki:False, postToZipkin:False, JADBTypeInfludb:False <Response [200]>, response time:0.000818 sec2022-07-10T20:20:00.781186 INFO requestSession.post() posted data to web server https://192.168.1.160:443/JaaduVision/ with result:Content-type: text/html; charset=utf-8HTTP/1.0 200 OK
+Server: BaseHTTP/0.6 Python/3.9.7
+Date: Sun, 10 Jul 2022 20:20:06 GMT
+
+PASS  JASaveWS.py() PASS - Saved data, postToLoki:False, postToZipkin:False, JADBTypeInfludb:False <Response [200]>, response time:0.000736 sec2022-07-10T20:20:30.819532 INFO requestSession.post() posted data to web server https://192.168.1.160:443/JaaduVision/ with result:Content-type: text/html; charset=utf-8HTTP/1.0 200 OK
+Server: BaseHTTP/0.6 Python/3.9.7
+Date: Sun, 10 Jul 2022 20:20:36 GMT
+
+PASS  JASaveWS.py() PASS - Saved data, postToLoki:False, postToZipkin:False, JADBTypeInfludb:False <Response [200]>, response time:0.000375 sec2022-07-10T20:21:00.850024 INFO requestSession.post() posted data to web server https://192.168.1.160:443/JaaduVision/ with result:Content-type: text/html; charset=utf-8HTTP/1.0 200 OK
+Server: BaseHTTP/0.6 Python/3.9.7
+Date: Sun, 10 Jul 2022 20:21:06 GMT
+
+PASS  JASaveWS.py() PASS - Saved data, postToLoki:False, postToZipkin:False, JADBTypeInfludb:False <Response [200]>, response time:0.000705 sec2022-07-10T20:21:00.851018 PASS  Processing time this program: 1.25, programExecTime: 300.236923456192, processing duration:300.439987 sec

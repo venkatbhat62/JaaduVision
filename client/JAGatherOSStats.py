@@ -2087,7 +2087,7 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
         print ('DEBUG-2 OSStatsToPost:{0}'.format( tempOSStatsToPost) )
     
     try:
-        returnResult = requestSession.post( webServerURL, data, verify=verifyCertificate, headers=headers, timeout=10)
+        returnResult = requestSession.post( webServerURL, data, verify=verifyCertificate, headers=headers, timeout=60)
         errorMsg = 'INFO requestSession.post() posted data to web server {0} with result:{1}'.format(webServerURL, returnResult.text)
         print(errorMsg)
         JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
