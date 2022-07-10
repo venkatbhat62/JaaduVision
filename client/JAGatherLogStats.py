@@ -1225,6 +1225,7 @@ logStatsToPost['componentName'] = componentName
 logStatsToPost['platformName'] = platformName
 logStatsToPost['siteName'] = siteName
 logStatsToPost['environment'] = environment
+sizeOfLogStatsToPost = sys.getsizeof(logStatsToPost)
 
 # data to be posted to the web server
 # pass fileName containing thisHostName and current dateTime in YYYYMMDD form
@@ -1237,6 +1238,7 @@ logLinesToPost['componentName'] = componentName
 logLinesToPost['platformName'] = platformName
 logLinesToPost['siteName'] = siteName
 logLinesToPost['environment'] = environment
+sizeOfLogLinesToPost = sys.getsizeof(logLinesToPost)
 
 # data to be posted to web server for trace
 logTracesToPost['jobName'] = 'zipkin'
@@ -1248,6 +1250,7 @@ logTracesToPost['componentName'] = componentName
 logTracesToPost['platformName'] = platformName
 logTracesToPost['siteName'] = siteName
 logTracesToPost['environment'] = environment
+sizeOfTracesToPost = sys.getsizeof(logTracesToPost)
 
 
 ### if log lines are to be saved on web server, send that parameter as part of posting
@@ -1257,6 +1260,7 @@ if saveLogsOnWebServer == True:
 
 headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
 requestSession = None
+useRequests = False
 try:
     if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
         import importlib
@@ -1275,11 +1279,11 @@ try:
             importlib.util.find_spec("json")
             
         except ImportError:
-            useRequests = False
-    else:
-        useRequests = False
+            print("WARN import error, NOT using requests to post")
+  
 except:
-    useRequests = False
+    if useRequests == False:
+        print("WARN not able to determin python release level, NOT using requests to post")
 
 ### ??? remove this later
 # useRequests = False
@@ -1578,7 +1582,8 @@ def JAPostAllDataToWebServer():
     tempLogStatsToPost['logEventPriorityLevel'] = 'timeStamp={0},logEventPriorityLevel={1}'.format(timeStamp, logEventPriorityLevel)
 
     maxSendBufferSize = 800
-    
+    sizeOfBufferToPost = sizeOfLogStatsToPost
+
     # sampling interval elapsed
     # push current sample stats to the data to be posted to the web server
     # key - service name
@@ -1605,6 +1610,7 @@ def JAPostAllDataToWebServer():
                     postData = False
                 ### prepare tempLogStatsToPost with fixed data for next posting
                 tempLogStatsToPost = logStatsToPost.copy()
+                sizeOfBufferToPost = sizeOfLogStatsToPost
 
                 prevDBType = tempLogStatsToPost['DBType'] = logStats[key][indexForDBDetails*2]['DBType']
                 try:
@@ -1618,7 +1624,7 @@ def JAPostAllDataToWebServer():
                             print("DEBUG-1 Better to add other DBDetails for :|{0}|".format(logStats[key][indexForDBDetails*2]))
         
         if postData == True :
-            if sys.getsizeof(tempLogStatsToPost) > maxSendBufferSize :
+            if sizeOfBufferToPost > maxSendBufferSize :
             ### send the data to web server
                 if prevDBType == 'Influxdb' :
                     storeUponFailure = True
@@ -1633,7 +1639,8 @@ def JAPostAllDataToWebServer():
                 postData = False
                 ### prepare tempLogStatsToPost with fixed data for next posting
                 tempLogStatsToPost = logStatsToPost.copy()
-        
+                sizeOfBufferToPost = sizeOfLogStatsToPost
+
         timeStampAdded = False
         
         # 2022-03-27 JAPrepareStatsToPost() debug this later           
@@ -1678,6 +1685,10 @@ def JAPostAllDataToWebServer():
             ### divide the valueX with sampling interval to get tps value
             index = 0
             paramName = ''
+
+            ### add size of key data so far
+            sizeOfBufferToPost += sys.getsizeof(tempLogStatsToPost[key])
+            
             while index < len(tempResults):
                 tempResult = tempResults[index]
                 if debugLevel > 3:
@@ -1686,12 +1697,16 @@ def JAPostAllDataToWebServer():
                     try:
                         ### divide the valueX with sampling interval to get tps value
                         tempResultSum = float(tempResult) / floatDataPostIntervalInSec
-                        tempLogStatsToPost[key] += ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultSum)                        
+                        tempString = ",{0}_{1}_sum={2:.2f}".format( key, paramName, tempResultSum)                        
                     except:
-                        tempLogStatsToPost[key] = "{0},{1}_{2}_sum={3}".format( tempLogStatsToPost[key], key, paramName, tempResult)
+                        tempString = ",{0}_{1}_sum={2}".format( key, paramName, tempResult)
+
+                    tempLogStatsToPost[key] += tempString
+                    sizeOfBufferToPost += len(tempString)
 
                     if postData == True :
-                        if sys.getsizeof(tempLogStatsToPost) > maxSendBufferSize :
+                        
+                        if  sizeOfBufferToPost > maxSendBufferSize :
                         ### send the data to web server
                             if prevDBType == 'Influxdb' :
                                 storeUponFailure = True
@@ -1705,6 +1720,7 @@ def JAPostAllDataToWebServer():
                             
                             ### prepare tempLogStatsToPost with fixed data for next posting
                             tempLogStatsToPost = logStatsToPost.copy()
+                            sizeOfBufferToPost = sizeOfLogStatsToPost
                 else:
                     ### current index has param name
                     paramName = tempResult
@@ -1738,13 +1754,16 @@ def JAPostAllDataToWebServer():
                     try:
                         ### divide the valueX with sampling interval to get tps value
                         tempResultDelta = float(tempResult) / floatDataPostIntervalInSec
-                        tempLogStatsToPost[key] += ",{0}_{1}_delta={2:.2f}".format( key, paramName, tempResultDelta)
+                        tempString = ",{0}_{1}_delta={2:.2f}".format( key, paramName, tempResultDelta)
                     except:
                         ### not a numeric value, store it as is
-                        tempLogStatsToPost[key] = "{0},{1}_{2}_delta={3}".format( tempLogStatsToPost[key], key, paramName, tempResult)
+                        tempString = ",{0}_{1}_delta={2}".format( tempLogStatsToPost[key], key, paramName, tempResult)
+
+                    tempLogStatsToPost[key] += tempString
+                    sizeOfBufferToPost += len(tempString)
 
                     if postData == True :
-                        if sys.getsizeof(tempLogStatsToPost) > maxSendBufferSize :
+                        if sizeOfBufferToPost > maxSendBufferSize :
                         ### send the data to web server
                             if prevDBType == 'Influxdb' :
                                 storeUponFailure = True
@@ -1758,6 +1777,7 @@ def JAPostAllDataToWebServer():
                             
                             ### prepare tempLogStatsToPost with fixed data for next posting
                             tempLogStatsToPost = logStatsToPost.copy()
+                            sizeOfBufferToPost = sizeOfLogStatsToPost
 
                 else:
                     ### current index has param name
@@ -1798,10 +1818,13 @@ def JAPostAllDataToWebServer():
                     try:
                         ### numeric value, compute average
                         tempResultAverage = float(tempResult) / float(sampleCountList[index])
-                        tempLogStatsToPost[key] += ",{0}_{1}_average={2:.2f}".format( key, paramName, tempResultAverage)
+                        tempString = ",{0}_{1}_average={2:.2f}".format( key, paramName, tempResultAverage)
                     except:
                         ### not a numeric value, store it as is
-                        tempLogStatsToPost[key] = "{0},{1}_{2}_average={3}".format( tempLogStatsToPost[key], key, paramName, tempResult)
+                        tempString = ",{0}_{1}_average={2}".format( tempLogStatsToPost[key], key, paramName, tempResult)
+
+                    tempLogStatsToPost[key] += tempString
+                    sizeOfBufferToPost += len(tempString)
 
                     if postData == True :
                         if sys.getsizeof(tempLogStatsToPost) > maxSendBufferSize :
@@ -1818,7 +1841,7 @@ def JAPostAllDataToWebServer():
                             
                             ### prepare tempLogStatsToPost with fixed data for next posting
                             tempLogStatsToPost = logStatsToPost.copy()
-
+                            sizeOfBufferToPost = sizeOfLogStatsToPost
                 else:
                     ### current index has param name
                     paramName = tempResult
@@ -1860,6 +1883,7 @@ def JAPostAllDataToWebServer():
 
             # use temporary buffer for each posting
             tempLogLinesToPost = logLinesToPost.copy()
+            sizeOfBufferToPost = sizeOfLogLinesToPost
 
             # tempLogLinesToPost[key] = 'timeStamp=' + timeStamp
             tempLogLinesToPost[key] = ''
@@ -1868,12 +1892,16 @@ def JAPostAllDataToWebServer():
             for line in lines:
                 # line = line.rstrip('\n')
                 tempLogLinesToPost[key] += line
-                if sys.getsizeof(tempLogLinesToPost) > maxSendBufferSize :
+                
+                sizeOfBufferToPost += len(line)
+
+                if sizeOfBufferToPost > maxSendBufferSize :
                     if JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests) == True:
                         ### successful posting, increment count
                         numPostings += 1
                     tempLogLinesToPost = logLinesToPost.copy()
                     tempLogLinesToPost[key] = ''
+                    sizeOfBufferToPost = sizeOfLogLinesToPost
 
             if JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests) == True:
                 ### successful posting, increment count
@@ -1901,19 +1929,24 @@ def JAPostAllDataToWebServer():
 
             # use temporary buffer for each posting
             tempLogTracesToPost = logTracesToPost.copy()
+            sizeOfBufferToPost = sizeOfTracesToPost
 
             tempLogTracesToPost[key] = ''
 
             for trace in traces:
                 # line = line.rstrip('\n')
                 tempLogTracesToPost[key] += trace
-                if sys.getsizeof(tempLogTracesToPost) > maxSendBufferSize :
+
+                sizeOfBufferToPost += len( trace)
+
+                if sizeOfBufferToPost > maxSendBufferSize :
                     if JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests) == True:
                         numPostings += 1
                     else:
                         break
                     tempLogTracesToPost = logTracesToPost.copy()
                     tempLogTracesToPost[key] = ''
+                    sizeOfBufferToPost = sizeOfTracesToPost
 
             logTracesCount[key] = 0
             ### empty the list
@@ -2348,12 +2381,12 @@ def JAProcessLineForTrace( tempLine, fileName, key, values, keyDebugLevel ):
                     ### add current trace block lines to logLines[key] with traceId prefixed at the end of the line
                     ### this is to ensure loki can use the traceid to associate with tempo on starting line
                     if values[indexForTraceIdPrefix] != None:
-                        tempLogLineWithTraceId = r'{0} {1}{2}'.format(firstLogLine, \
+                        tempLogLineWithTraceId = r'{0} {1}{2}\n'.format(firstLogLine, \
                                     values[indexForTraceIdPrefix], \
-                                    traceBlockTraceId[fileName] ) + '\n'
+                                    traceBlockTraceId[fileName] )
                     else:
-                        tempLogLineWithTraceId = r'{0} TraceId={1}'.format( firstLogLine, \
-                                    traceBlockTraceId[fileName] ) + '\n'
+                        tempLogLineWithTraceId = r'{0} TraceId={1}\n'.format( firstLogLine, \
+                                    traceBlockTraceId[fileName] )
 
                     logLines[key].append( tempLogLineWithTraceId )
                     if keyDebugLevel > 3:
