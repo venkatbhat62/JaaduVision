@@ -1268,9 +1268,10 @@ try:
             if importlib.util.find_spec("requests") != None:
                 useRequests = True
                 import requests
+                from urllib3.exceptions import InsecureRequestWarning
                 requestSession = requests.session()
                 if disableWarnings == True:
-                    requestSession.packages.urllib3.disable_warnings()
+                    requestSession.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
             else:
                 useRequests = False
