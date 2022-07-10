@@ -1701,7 +1701,7 @@ def JAPostAllDataToWebServer():
                     except:
                         tempString = ",{0}_{1}_sum={2}".format( key, paramName, tempResult)
 
-                    tempLogStatsToPost[key] += tempString
+                    tempLogStatsToPost[key] = "{0}{1}}".format(tempLogStatsToPost[key], tempString)
                     sizeOfBufferToPost += len(tempString)
 
                     if postData == True :
@@ -1759,7 +1759,7 @@ def JAPostAllDataToWebServer():
                         ### not a numeric value, store it as is
                         tempString = ",{0}_{1}_delta={2}".format( tempLogStatsToPost[key], key, paramName, tempResult)
 
-                    tempLogStatsToPost[key] += tempString
+                    tempLogStatsToPost[key] = "{0}{1}}".format(tempLogStatsToPost[key], tempString)
                     sizeOfBufferToPost += len(tempString)
 
                     if postData == True :
@@ -1823,7 +1823,7 @@ def JAPostAllDataToWebServer():
                         ### not a numeric value, store it as is
                         tempString = ",{0}_{1}_average={2}".format( tempLogStatsToPost[key], key, paramName, tempResult)
 
-                    tempLogStatsToPost[key] += tempString
+                    tempLogStatsToPost[key] = "{0}{1}}".format(tempLogStatsToPost[key], tempString)
                     sizeOfBufferToPost += len(tempString)
 
                     if postData == True :
