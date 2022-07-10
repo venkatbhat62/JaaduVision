@@ -1304,13 +1304,8 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
     if useRequests == True:
         try:
             # post interval elapsed, post the data to web server
-            if verifyCertificate == True:
-                returnResult = requestSession.post(
-                    webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
-            else:
-                returnResult = requestSession.post(
-                    webServerURL, data, headers=headers, timeout=(dataCollectDurationInSec/2))
-
+            returnResult = requestSession.post(
+                webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
             resultText = returnResult.text
         except requestSession.exceptions.RequestException as err:
             resultText = ["<Response [500]> requestSession.post() Error posting data to web server {0}, exception raised","error:{1}".format(webServerURL, err)]
@@ -1453,10 +1448,7 @@ def JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests):
     if useRequests == True:
         try:
             # post interval elapsed, post the data to web server
-            if verifyCertificate == True:
-                returnResult = requestSession.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
-            else:
-                returnResult = requestSession.post(webServerURL, data, headers=headers, timeout=(dataCollectDurationInSec/2))
+            returnResult = requestSession.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
             resultText = returnResult.text
         
         except requestSession.exceptions.RequestException as err:
@@ -1512,11 +1504,7 @@ def JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests):
     if useRequests == True:
         try:
             # post interval elapsed, post the data to web server
-            if verifyCertificate == True:
-                returnResult = requestSession.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
-            else:
-                returnResult = requestSession.post(webServerURL, data, headers=headers, timeout=(dataCollectDurationInSec/2))
-
+            returnResult = requestSession.post(webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
             resultText = returnResult.text
         
         except requestSession.exceptions.RequestException as err:
