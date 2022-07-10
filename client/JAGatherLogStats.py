@@ -1308,15 +1308,16 @@ def JAPostDataToWebServer(tempLogStatsToPost, useRequests, storeUponFailure):
                 webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
             resultText = returnResult.text
         except requestSession.exceptions.RequestException as err:
-            resultText = ["500 requestSession.post() Error posting data to web server {0}, exception raised","error:{1}".format(webServerURL, err)]
-
+            resultText = ["<Response [500]> requestSession.post() Error posting data to web server {0}, exception raised","error:{1}".format(webServerURL, err)]
+            logStatsPostSuccess = False
     else:
         try:
             result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
                                     "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             resultText = result.stdout.decode('utf-8').split('\n')
         except Exception as err:
-            resultText = ["500 subprocess.run(curl) Error posting data to web server {0}, exception raised","error:{1}".format(webServerURL, err)]
+            resultText = ["<Response [500]> subprocess.run(curl) Error posting data to web server {0}, exception raised","error:{1}".format(webServerURL, err)]
+            logStatsPostSuccess = False
 
     resultLength = len(resultText)
     if resultLength > 1 :
@@ -1451,7 +1452,9 @@ def JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests):
             resultText = returnResult.text
         
         except requestSession.exceptions.RequestException as err:
-            resultText = ["500 ERROR requestSession.post() Error posting logs to web server, exception raised","error:{0}".format(err)]
+            resultText = ["<Response [500]> ERROR requestSession.post() Error posting logs to web server, exception raised","error:{0}".format(err)]
+            logStatsPostSuccess = False
+
     else:
         try:
             result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
@@ -1459,7 +1462,8 @@ def JAPostLogLinesToWebServer(key, tempLogLinesToPost, useRequests):
             resultText = result.stdout.decode('utf-8').split('\n')
             
         except Exception as err:
-            resultText = ["500 subprocess.run() Error posting logs to web server, exception raised","error:{0}".format(err)]
+            resultText = ["<Response [500]> subprocess.run() Error posting logs to web server, exception raised","error:{0}".format(err)]
+            logStatsPostSuccess = False
 
     logStatsPostSuccess = True
     resultLength = len(resultText)
@@ -1504,7 +1508,8 @@ def JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests):
             resultText = returnResult.text
         
         except requestSession.exceptions.RequestException as err:
-            resultText = ["500 ERROR requestSession.post() Error posting traces to web server, exception raised","error:{0}".format(err)]
+            resultText = ["<Response [500]> ERROR requestSession.post() Error posting traces to web server, exception raised","error:{0}".format(err)]
+            logStatsPostSuccess = False 
     else:
         try:
             result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
@@ -1512,8 +1517,8 @@ def JAPostTraceLinesToWebServer(tempLogTracesToPost, useRequests):
             resultText = result.stdout.decode('utf-8').split('\n')
             
         except Exception as err:
-            resultText = ["500 subprocess.run() Error posting trace to web server, exception raised","error:{0}".format(err)]
-
+            resultText = ["<Response [500]> subprocess.run() Error posting trace to web server, exception raised","error:{0}".format(err)]
+            logStatsPostSuccess = False 
     logStatsPostSuccess = True
     resultLength = len(resultText)
     if resultLength > 1 :
