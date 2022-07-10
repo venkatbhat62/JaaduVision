@@ -100,7 +100,7 @@ def JASaveStatsExit(self, reason, statusCode, JASaveStatsStartTime):
     return
 
 def JASaveStatsError(self, reason, statusCode,JASaveStatsStartTime ):
-    JASaveStatsExit(self, 'ERROR Could not save the data: ' + reason, statusCode, JASaveStatsStartTime)
+    JASaveStatsExit(self, str('ERROR Could not save the data:{0}'.format(reason)), statusCode, JASaveStatsStartTime)
     return
 
 class Handler(BaseHTTPRequestHandler):
