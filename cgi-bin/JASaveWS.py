@@ -80,13 +80,13 @@ def JAInfluxdbWriteData( self, bucket, data, debugLevel=0):
 
 def JASaveStatsExit(self, reason, statusCode, JASaveStatsStartTime):
     if re.match('^ERROR ', reason):
-        message='ERROR JASaveWS.py() ' + reason + ' <Response [500]>'
+        message='ERROR JASaveWS.py() {0} <Response [500]>'.format(reason)
         print("ERROR {0}\n".format( reason ))
 
     elif re.match('^PASS ', reason):
-        message='PASS  JASaveWS.py() ' + reason + ' <Response [200]>'
+        message='PASS  JASaveWS.py() {0} <Response [200]>'.format(reason)
     else:
-        message='      JASaveWS.py() ' + reason
+        message='      JASaveWS.py() {0}'.format(reason)
 
     self.send_response(statusCode)
     self.end_headers()
