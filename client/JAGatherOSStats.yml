@@ -43,6 +43,23 @@ Environment:
         # post stats to below web server
         # WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
         WebServerURL: https://192.168.1.160:443/JaaduVision/
+        DebugLevel: 0
+        ### influxdb details
+        ### DBDetails - optional, defaults to Prometheus, if present, applies to all service types or measurements 
+        ###            where local DBDetails is not specified
+        ###     DBType - influxdb, Prometheus
+        ###              defaults to Prometheus
+        ###     InfluxdbBucket - can be present when DBType is influxdb,  specify different bucket for different application or platform that needs different retency period
+        ###              default value is as specified in JAGlobalVars.yml on web server
+        ###     InfluxdbOrg - can be present when DBType is influxdb - can specify diff org for diff application or platform
+        ###              default value is as specified in JAGlobalVars.yml on web server
+        DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
+        ###
+        ### Retry sending stats to Web server, 0 to disable retry. Applicable when DBDetails is set to use influxdb.
+        ###   if web server is not available, history stats older than this period will be discarded
+        ###   
+        RetryDurationInHours: 48
+
 ### if target host has psutil python module installed, use the field names as defined in python documentation
 ###   Fields: values that can be read using that psutil function
 ###   Refer to Python documentation https://psutil.readthedocs.io/en/latest/

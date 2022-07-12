@@ -60,6 +60,9 @@ Execution flow
     If multiple process instances are present with the same process name, the stats are
       aggregated for all those process instances.
 
+2022-07-10 version 1.30.00
+    Supported sending data to influxDB
+
 """
 import os, sys, re
 import datetime
@@ -69,8 +72,8 @@ import subprocess
 import signal
 from collections import defaultdict
 
-### MAJOR 1, minor 10, buildId 01
-JAVersion = "01.11.01"
+### MAJOR 1, minor 30, buildId 00
+JAVersion = "01.30.00"
 
 ## global default parameters
 ### config file containing OS Stats to be collected, intervals, and WebServer info
@@ -106,6 +109,20 @@ JAToTimeString =  None
 ### used to derive the sar data file name based on today's date
 JADayOfMonth = None
 
+### cache file name
+JAGatherOSStatsCache = "JAGatherOSStats.cache"
+
+### keys DBType, influxdbBucket, influxdbOrg
+###    default DBType is Prometheus
+DBDetails = {}
+DBDetails['DBType'] = "Prometheus"
+retryDurationInHours = 48
+retryOSStatsBatchSize = 100 
+
+### YYYYMMDD will be appended to this name to make daily file where retry stats are kept
+retryOSStatsFileNamePartial = "JARetryOSStats."
+### this file handle points to current retry log stats file. If not None, it points to position in file at which new data is to be written
+retryOSStatsFileHandleCurrent = None
 
 ## parse arguments passed from command line
 import argparse
@@ -239,7 +256,9 @@ def JAGatherEnvironmentSpecs( key, values ):
     ### declare global variables
     global dataPostIntervalInSec, dataCollectDurationInSec
     global webServerURL, disableWarnings, verifyCertificate
-    
+    global DBDetails, retryDurationInHours, retryOSStatsBatchSize
+    global debugLevel
+
     for myKey, myValue in values.items():
         if debugLevel > 1 :
             print('DEBUG-2 JAGatherEnvironmentSpecs() key: {0}, value: {1}'.format( myKey, myValue))
@@ -288,8 +307,182 @@ def JAGatherEnvironmentSpecs( key, values ):
 
                 elif key == 'All':
                     verifyCertificate = True
+        elif myKey == 'DebugLevel':
+            if debugLevel == 0:
+                if myValue != None:
+                    debugLevel = int(myValue)
+
+        elif myKey == 'RetryDurationInHours':
+            if retryDurationInHours == None:
+                if myValue != None:
+                    retryDurationInHours = int(myValue)
+
+        elif myKey == 'RetryOSStatsBatchSize':
+            if myValue != None:
+                retryOSStatsBatchSize = int(myValue)
+
+        elif myKey == 'DBDetails':
+            if myValue != None:
+                tempDBDetailsArray = myValue.split(',')
+                if len(tempDBDetailsArray) == 0 :
+                    errorMsg = "ERROR JAGatherEnvironmentSpecs() invalid format in DBDetails spec:|{1}|, expected format:DBType=influxdb,influxdbBucket=bucket,influxdbOrg=org".format(keyValuePair, myValue)
+                    print(errorMsg)
+                    JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+
+                for keyValuePair in tempDBDetailsArray:
+                    fieldArray = keyValuePair.split('=')
+                    if len(fieldArray) > 0:
+                        DBDetails[fieldArray[0]] = fieldArray[1]
+                    else:
+                        errorMsg = "ERROR JAGatherEnvironmentSpecs() invalid format in DB spec:|{0}|, DBDetails:|{1}|".format(keyValuePair, myValue)
+                        print(errorMsg)
+                        JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+
+
+
     if debugLevel > 1 :
         print('DEBUG-2 JAGatherEnvironmentSpecs(), DataPostIntervalInSec:{0}, DataCollectDurationInSec: {1}, DisableWarnings: {2}, verifyCertificate: {3}, WebServerURL: {4}'.format( dataPostIntervalInSec, dataCollectDurationInSec, disableWarnings, verifyCertificate, webServerURL))
+
+### Now post the data to web server
+import json
+headers= {'Content-type': 'application/json', 
+        'Accept': 'text/plain', 
+        'Connection': "keep-alive",
+        'Keep-Alive': "timeout=60" } 
+
+
+def JAPostDataToWebServer(tempOSStatsToPost, useRequests, storeUponFailure):
+    global requestSession
+    """
+    Post data to web server
+    Returns True up on success, False upon failure
+    """
+    global webServerURL, verifyCertificate, debugLevel, headers, retryOSStatsFileHandleCurrent, fileNameRetryStatsPost
+    OSStatsPostSuccess = True
+
+    data = json.dumps(tempOSStatsToPost)
+    if debugLevel > 1:
+        print('DEBUG-2 JAPostDataToWebServer() tempOSStatsToPost: {0}'.format(tempOSStatsToPost))
+    if debugLevel > 0:
+        print('DEBUG-1 JAPostDataToWebServer() size of tempOSStatsToPost: {0}'.format(sys.getsizeof(tempOSStatsToPost)))
+    if useRequests == True:
+        try:
+            # post interval elapsed, post the data to web server
+            returnResult = requestSession.post(
+                webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
+            resultText = returnResult.text
+        except requestSession.exceptions.RequestException as err:
+            resultText = "<Response [500]> requestSession.post() Error posting data to web server {0}, exception raised","error:{1}".format(webServerURL, err)
+            OSStatsPostSuccess = False
+    else:
+        try:
+            result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
+                                    "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            resultText = result.stdout.decode('utf-8').split('\n')
+        except Exception as err:
+            resultText = "<Response [500]> subprocess.run(curl) Error posting data to web server {0}, exception raised, error:{1}".format(webServerURL, err)
+            OSStatsPostSuccess = False
+
+    resultLength = len(resultText)
+    if resultLength > 1 :
+        try:            
+            statusLine = str(resultText[-80:])
+            if re.search(r'\[2\d\d\]', statusLine) == None :
+                if re.search(r'\[4\d\d\]|\[5\d\d\]', statusLine) != None:
+                    OSStatsPostSuccess = False 
+            else:   
+                matches = re.findall(r'<Response \[2\d\d\]>', str(resultText), re.MULTILINE)
+                if len(matches) == 0:
+                    OSStatsPostSuccess = False
+        except :
+            OSStatsPostSuccess = False
+    else:
+        OSStatsPostSuccess = False
+
+    
+    if OSStatsPostSuccess == False:
+        print(resultText)
+        if resultLength > 1 :
+            JAGlobalLib.LogMsg(resultText[resultLength-1], JAOSStatsLogFileName, True)
+        if retryOSStatsFileHandleCurrent != None and storeUponFailure == True:
+            if retryOSStatsFileHandleCurrent == None :
+                try:
+                    retryOSStatsFileHandleCurrent = open( fileNameRetryStatsPost,"a")
+                except OSError as err:
+                    errorMsg = 'ERROR - Can not open file:{0}, OS error: {1}'.format(fileNameRetryStatsPost, err)
+                    print(errorMsg)
+                    JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+
+            if retryOSStatsFileHandleCurrent != None :
+                try:
+                    ### if DBType is influxdb and retryStatsFileHandle is not None, store current data to be sent later
+                    retryOSStatsFileHandleCurrent.write( data + '\n')
+                except OSError as err:
+                    errorMsg = "ERROR JAPostDataToWebServer() could not append data to retryStatsFile, error:{0}".format(err)
+                    print(errorMsg)
+                    JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+
+                except Exception as err:
+                    errorMsg = "ERROR Unknwon error:{0}".format( err )
+                    print(errorMsg)
+                    JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+        else:
+            print("ERROR JAPostDataToWebServer() posting data:{0}\n".format(tempOSStatsToPost))
+    else:
+        print("INFO JAPostDataToWebServer() posted data to web server successfully")
+    return OSStatsPostSuccess
+
+def JARetryOSStatsPost(currentTime):
+    """
+    This function tries to send the retryOSStats to web server
+    """
+    global useRequests, debugLevel, retryOSStatsBatchSize, retryDurationInHours, retryOSStatsFileNamePartial
+
+    ### find history files with updated time within retryDurationInHours
+    ###   returned files in sorted order, oldest file fist
+    retryOSStatsFileNames = JAGlobalLib.JAFindModifiedFiles(
+        retryOSStatsFileNamePartial + "*", (currentTime - retryDurationInHours * 3600), debugLevel, thisHostName)
+
+    returnStatus = True
+    for retryOSStatsFileName in retryOSStatsFileNames :
+        if debugLevel > 0:
+            print("DEBUG-1 JARetryOSStatsPost() processing retry log stats file:|{0}".format(retryOSStatsFileName))
+        try:
+            numberOfRecordsSent = 0
+            ### read each line from a file and send to web server
+            retryFileHandle = open ( retryOSStatsFileName, "r")
+            while returnStatus == True:
+                tempLine = retryFileHandle.readline()
+                if not tempLine:
+                    break
+                ### Need to pass dictionary type object to JAPostDataToWebServer()
+                returnStatus = JAPostDataToWebServer(json.loads(tempLine), useRequests, False)
+                if returnStatus == True:
+                    numberOfRecordsSent += 1
+
+            retryFileHandle.close()
+
+            if returnStatus == True:
+                if numberOfRecordsSent > 0:
+                    ### delete the file
+                    os.remove( retryOSStatsFileName)
+                    errorMsg = "INFO JARetryOSStatsPost() retry passed for OSStats file:{0}, numberOfRecordsSent:|{1}|, deleted this file".format(retryOSStatsFileName, numberOfRecordsSent)
+                else:
+                    errorMsg = "INFO No record to send in file:{0}".format(retryOSStatsFileName)
+            else:
+                errorMsg = 'WARN JARetryOSStatsPost() retry failed for OSStats file:{0}'.format(retryOSStatsFileName)
+            print(errorMsg)
+            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+
+        except IOError as err:
+            errorMsg = "INFO file in open state already, skipping file: {0}".format(retryOSStatsFileName)
+            print(errorMsg)
+            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+
+        except OSError as err:
+            errorMsg = "ERROR JARetryOSStatsPost() not able to read the file:|{0}, error:{1}".format(retryOSStatsFileName, err)
+            print(errorMsg)
+            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
 
 if sys.version_info >= (3,3):
     import importlib
@@ -486,6 +679,14 @@ if waitTime <= 0:
 ### Create a file with current time stamp
 JAGlobalLib.JAWriteTimeStamp("JAGatherOSStats.PrevStartTime")
 
+if retryDurationInHours == None:
+    retryDurationInHours = 0
+
+### if retryDurationInHours is not zero, open file in append mode to append failed postings
+if retryDurationInHours > 0:
+    fileNameRetryStatsPost = retryOSStatsFileNamePartial + JAGlobalLib.UTCDateForFileName()
+    retryOSStatsFileHandleCurrent = None
+    
 ### delete old log files
 if OSType == 'Windows':
     ### TBD expand this later 
@@ -515,6 +716,50 @@ OSStatsToPost['componentName'] = componentName
 OSStatsToPost['platformName'] = platformName
 OSStatsToPost['siteName'] = siteName 
 OSStatsToPost['environment'] = environment
+
+if DBDetails['DBType'] == 'Influxdb' :
+    OSStatsToPost['DBType'] = 'Influxdb'
+    OSStatsToPost['InfluxdbBucket'] = DBDetails['InfluxdbBucket']
+    OSStatsToPost['InfluxdbOrg'] = DBDetails['InfluxdbOrg']
+    storeUponFailure = True
+else:
+    storeUponFailure = False
+
+### process retryOSStats files if present with time stamp within retryDurationInHours
+if retryDurationInHours > 0 :
+    skipRetry = False 
+    ### read the last time this process was started, 
+    ###   if the time elapsed is less than 24 times dataCollectDurationInSec, 
+    ###   prev instance is still running, get out
+    prevStartTime = JAGlobalLib.JAReadTimeStamp( "JAGatherOSStats.RetryStartTime")
+    if prevStartTime > 0:
+        currentTime = time.time()
+        if ( prevStartTime + 24 * dataCollectDurationInSec) > currentTime:
+            errorMsg = 'INFO - Previous retry operation still in progress'
+            print(errorMsg)
+            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+            skipRetry = True
+
+    if skipRetry == False:
+        ### Create a file with current time stamp
+        JAGlobalLib.JAWriteTimeStamp("JAGatherOSStats.RetryStartTime")
+        if OSType == 'Windows':
+            errorMsg = "ERROR RetryDurationInHours is not suppported on Windows, history data not sent to webserver automatically"
+            print(errorMsg)
+            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+            JAGlobalLib.JAWriteTimeStamp("JAGatherOSStats.RetryStartTime", 0)
+        else:
+            procId = os.fork()
+            if procId == 0:
+                ### child process
+                JARetryOSStatsPost(programStartTime)
+                JAGlobalLib.JAWriteTimeStamp("JAGatherOSStats.RetryStartTime", 0)
+                errorMsg = "INFO Retry operation completed"
+                print(errorMsg)
+                JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                sys.exit(0)
+
+
 
 def JAGetProcessStats( processNames, fields ):
     """
@@ -1933,6 +2178,26 @@ JAGetDiskIOCounters('', False)
 ### this is to get first network sample so that delta can be computed later
 JAGetNetworkIOCounters('',False)
 
+if sys.version_info >= (3,3):
+    import importlib
+    try:
+        importlib.util.find_spec("requests")
+        importlib.util.find_spec("json")
+        import requests
+        from urllib3.exceptions import InsecureRequestWarning
+        from urllib3 import disable_warnings
+
+        requestSession = requests.session()
+        if disableWarnings == True:
+            disable_warnings(InsecureRequestWarning)
+
+        useRequests = True
+    except ImportError:
+        useRequests = False
+else:
+    useRequests = False
+
+
 ### until the end time, keep checking the log file for presence of patterns
 ###   and post the stats per post interval
 while loopStartTimeInSec  <= statsEndTimeInSec :
@@ -2054,62 +2319,8 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
             timeStamp = JAGlobalLib.UTCDateTime() 
             tempOSStatsToPost[key] = 'timeStamp={0},{1}'.format(timeStamp, valuePairs)
 
-  ### Now post the data to web server
-  import json
-  headers= {'Content-type': 'application/json', 
-        'Accept': 'text/plain', 
-        'Connection': "keep-alive",
-        'Keep-Alive': "timeout=60" } 
-
-  if sys.version_info >= (3,3):
-    import importlib
-    try:
-        importlib.util.find_spec("requests")
-        importlib.util.find_spec("json")
-        import requests
-        from urllib3.exceptions import InsecureRequestWarning
-        from urllib3 import disable_warnings
-
-        requestSession = requests.session()
-        if disableWarnings == True:
-            disable_warnings(InsecureRequestWarning)
-
-        useRequests = True
-    except ImportError:
-        useRequests = False
-  else:
-    useRequests = False
-
-  data = json.dumps(tempOSStatsToPost)
-  if useRequests == True:
-
-    if debugLevel > 1:
-        print ('DEBUG-2 OSStatsToPost:{0}'.format( tempOSStatsToPost) )
+  JAPostDataToWebServer(tempOSStatsToPost, useRequests, storeUponFailure)
     
-    try:
-        returnResult = requestSession.post( webServerURL, data, verify=verifyCertificate, headers=headers, timeout=60)
-        errorMsg = 'INFO requestSession.post() posted data to web server {0} with result:{1}'.format(webServerURL, returnResult.text)
-        print(errorMsg)
-        JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
-     
-    except requestSession.exceptions.RequestException as err:
-        errorMsg = "<Response [500]> ERROR requestSession.post() error posting data to web server {0}, exception raised, {1}".format(webServerURL, err)
-        print(errorMsg)
-        JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
-        
-  else:
-    try:
-        result =  subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H', "Content-Type: application/json", '-d', data],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-        returnStatus = result.stdout.decode('utf-8').split('\n')
-        errorMsg = 'INFO - subprocess.run(curl) posted data to web server {0} with result {1}'.format(webServerURL, returnStatus )
-        print(errorMsg)
-        JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
-    except Exception as err:
-        errorMsg = "<Response [500]> ERROR subprocess.run(curl) posting data to web server {0}, exception raised, {1}".format(webServerURL, err)
-        print(errorMsg)
-        JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
-
-
   ### if elapsed time is less than post interval, sleep till post interval elapses
   elapsedTimeInSec = time.time() - logFileProcessingStartTime
   if elapsedTimeInSec < dataCollectDurationInSec :
@@ -2121,6 +2332,11 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
 
   ### take curren time so that processing will start from current time
   loopStartTimeInSec = logFileProcessingStartTime
+
+### close fileNameRetryStatsPost
+if retryOSStatsFileHandleCurrent != None :
+    retryOSStatsFileHandleCurrent.close()
+
 try:
     if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
         myProcessingTime = time.process_time()
