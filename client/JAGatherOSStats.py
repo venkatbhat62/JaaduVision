@@ -880,10 +880,15 @@ def JAGetProcessStats( processNames, fields ):
         # result = subprocess.run( ['ps', 'aux'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         result = subprocess.run( ['ps', '-eo', '%cpu,%mem,vsz,rss,etime,cmd'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         lines = result.stdout.decode('utf-8').split('\n')
+        if debugLevel > 2:
+            print("DEBUG-3 JAGetProcessStats() output of ps -eo:{0}".format(lines))
         for line in lines:
+            if debugLevel > 3:
+                print("DEBUG-4 JAGetProcessStats() processing line:{0}".format(line))
             line = re.sub('\s+', ' ', line)
             if len(line) < 5:
                 continue
+
             try:
                 ### ps aux output line is of the form with 11 columns total
                 ### USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
@@ -892,9 +897,11 @@ def JAGetProcessStats( processNames, fields ):
                 # ps -eo %cpu,%mem,vsz,rss,etime,cmd output is of the form with 6 columns total
                 # %CPU %MEM    VSZ   RSS     ELAPSED CMD
                 # 0.0  0.0   1744  1076    21:30:57 /init
-                CPUPercent, MEMPercent, VSZ, RSS, elapsedTime, COMMAND = line.split(' ', 5)
+                dummy, CPUPercent, MEMPercent, VSZ, RSS, elapsedTime, COMMAND = line.split(' ', 6)
                 tempCommand = '{0}'.format(COMMAND)
 
+                if debugLevel > 3 :
+                    print("DEBUG-4 JAGetProcessStats() CPUPercent:{0}, MEMPercent:{1}, VSZ:{2}, RSS:{3}, elapsedTime:{4}, COMMAND:{5}".format(CPUPercent, MEMPercent, VSZ, RSS, elapsedTime, COMMAND))
                 for processName in tempProcessNames:
                     ### if current process name is at starting position of the command
                     ###   gather stats 
@@ -921,22 +928,28 @@ def JAGetProcessStats( processNames, fields ):
                             elif field == 'RSS' :
                                 fieldValue = RSS
                             elif field == 'etime' :
-                                if elapsedTime.find(":") >= 0 :
-                                    if elapsedTime.find('-') >= 0 :
-                                        ### convert [D+-][HH:]MM:SS to number of seconds
-                                        tempNumberOfDays,tempHoursMinSec = elapsedTime.split('-')
-                                    else:
-                                        tempNumberOfDays = 0
-                                        tempHoursMinSec = elapsedTime
-                                tempTimeFields = tempHoursMinSec.split(':')
-                                if len(tempTimeFields) > 2:
-                                    ### elapsed time has HH:MM:SS portion
-                                    elapsedTimeInHours = float(tempTimeFields[0]) + float(tempTimeFields[0])/60 + float(tempTimeFields)/3600
-                                else:
-                                    ### elapsed time has MM:SS portion only
-                                    elapsedTimeInHours = float(tempTimeFields[0])/60 + float(tempTimeFields)/3600
-                                fieldValue = tempNumberOfDays + elapsedTimeInHours/24
-                                
+                                try:
+                                    if elapsedTime.find(":") >= 0 :
+                                        if elapsedTime.find('-') >= 0 :
+                                            ### convert [D+-][HH:]MM:SS to number of seconds
+                                            tempNumberOfDays,tempHoursMinSec = elapsedTime.split('-')
+                                        else:
+                                            tempNumberOfDays = 0
+                                            tempHoursMinSec = elapsedTime
+                                        tempTimeFields = tempHoursMinSec.split(':')
+                                        if len(tempTimeFields) > 2:
+                                            ### elapsed time has HH:MM:SS portion
+                                            elapsedTimeInHours = float(tempTimeFields[0]) + float(tempTimeFields[1])/60 + float(tempTimeFields[2])/3600
+                                        else:
+                                            ### elapsed time has MM:SS portion only
+                                            elapsedTimeInHours = float(tempTimeFields[0])/60 + float(tempTimeFields[1])/3600
+                                        fieldValue = "{0:1.2f}".format(tempNumberOfDays + elapsedTimeInHours/24)
+                                except:
+                                    errorMsg = 'ERROR JAGetProcessStats() exception while processing elapsedTime"{0}\n'.format(elapsedTime)
+                                    print( errorMsg )
+                                    JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                                    continue
+
                             else:
                                 errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, check Fields definition in Process section of config file:{1}\n'.format(field, configFile)
                                 print( errorMsg )
@@ -949,6 +962,8 @@ def JAGetProcessStats( processNames, fields ):
                             else:
                                 ### sum the values if current processNameField is already present
                                 procStats[procNameField] += float(fieldValue)
+                    if debugLevel > 1 :
+                        print("DEBUG-2 JAGetProcessStats() processName:{0}, shortProcessName:{1}, procStats:{2}".format(processName,shortProcessName,procStats))
 
             except:
                 ## ignore error
