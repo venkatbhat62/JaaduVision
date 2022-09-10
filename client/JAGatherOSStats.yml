@@ -94,8 +94,9 @@ OSStats:
     ### can specify in CSV format
     ###  characters '-', '.', ' ' will be replaced with '', while posting the process name to grafana 
     ###  leading /<name>/.. will be skipped, only the last word of process name be posted to grafana
+    ### uptime - number of hours since start of a process
     ProcessNames: -bash,ps aux,/bin/bash,python,python3
-    Fields: CPU,MEM,VSZ,RSS
+    Fields: CPU,MEM,VSZ,RSS,etime
   DiskIO:
     ### On grafana, the variable name will be disk_io_counters_<field> like disk_io_counters_read_count, disk_io_counters_write_count,...
     ###   disk_io_counters_breads, disk_io_counters_bwrtns,..
@@ -128,4 +129,4 @@ OSStats:
     ###  On grafana, the variable name will be socket_stats_<field> like socket_stats_total, socket_stats_established,...
     Name: socket_stats
     # netstat -an command used to get this stat
-    Fields: total,established,time_wait 
+    Fields: total,established,time_wait

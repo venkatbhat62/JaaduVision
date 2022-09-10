@@ -63,6 +63,8 @@ Execution flow
 2022-07-10 version 1.30.00
     Supported sending data to influxDB
 
+2022-09-10 version 1.31.00
+    Collected OS_uptime and process elapsed time (etime) in Linux (not supported on Windows yet)
 """
 import os, sys, re
 import datetime
@@ -72,8 +74,8 @@ import subprocess
 import signal
 from collections import defaultdict
 
-### MAJOR 1, minor 30, buildId 00
-JAVersion = "01.30.00"
+### MAJOR 1, minor 31, buildId 00
+JAVersion = "01.31.00"
 
 ## global default parameters
 ### config file containing OS Stats to be collected, intervals, and WebServer info
@@ -763,10 +765,12 @@ if retryDurationInHours > 0 :
 
 def JAGetProcessStats( processNames, fields ):
     """
-    This function gets CPU, MEM, VSZ, RSS used by processes 
+    Get OS uptime and record it as OS_Uptime in number of hours
+
+    This function gets CPU, MEM, VSZ, RSS, etime used by processes 
     Fields supported are
         CPU, MEM, VSZ, RSS as given by ps aux command
-
+        etime - process elapsed in number of days
     Returns stats in the form
         process_Name_field=fieldValue,process_Name_field=fieldValue,...
 
@@ -793,6 +797,7 @@ def JAGetProcessStats( processNames, fields ):
         print('ERROR JAGetProcessStats() NO process name passed')
         return None
 
+
     ### separate field names
     fieldNames = re.split(',', fields)
 
@@ -804,6 +809,9 @@ def JAGetProcessStats( processNames, fields ):
     procStats = {}
 
     if OSType == 'Windows':
+       # import wmi        
+        procStats['OS_uptime'] = "{0:1.2f}".format(float(time.time() - psutil.boot_time()) /  (24 * 3600))
+ 
         if psutilModulePresent == True :
             for proc in psutil.process_iter():
                 try:
@@ -826,6 +834,8 @@ def JAGetProcessStats( processNames, fields ):
                                 fieldValue = dummy.vms
                             elif field == 'RSS' :
                                 fieldValue = dummy.rss
+                            #elif field == 'etime':
+                            #    fieldValue = 0
                             else:
                                 errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, check Fields definition in Process section of config file:{1}\n'.format(field, configFile)
                                 print( errorMsg )
@@ -849,18 +859,40 @@ def JAGetProcessStats( processNames, fields ):
             errorMsg = "ERROR JAGetProcessStats() install psutil module to use this feature"
 
     else:
+        try:
+            ### first parameter of /proc/uptime is number of seconds since OS start
+            with open("/proc/uptime") as procfile:
+                uptimeInSec, dummy  = procfile.readline().split()
+
+                ### convert seconds to days.
+                procStats['OS_uptime'] = "{0:1.2f}".format(uptimeInSec / (24 * 3600) )
+                if debugLevel > 0:
+                    print("DEBUG-1 JAGetProcessStats() OS_uptime: {0} days".format(procStats['OS_uptime']))
+                procfile.close()
+
+        except OSError as err:
+            errorMsg = "ERROR JAGetProcessStats() OSError:{0}, not able to derive OSUptime from /proc/uptime".format(err)
+            print(errorMsg)
+            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+            procStats['OS_uptime'] = None
+
         ### get process stats for all processes
-        result = subprocess.run( ['ps', 'aux'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # result = subprocess.run( ['ps', 'aux'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run( ['ps', '-eo', '%cpu,%mem,vsz,rss,etime,cmd'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         lines = result.stdout.decode('utf-8').split('\n')
         for line in lines:
             line = re.sub('\s+', ' ', line)
             if len(line) < 5:
                 continue
             try:
-                ### line is of the form with 11 columns total
+                ### ps aux output line is of the form with 11 columns total
                 ### USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
-                parent, pid, CPUPercent, MEMPercent, VSZ, RSS, TTY, STAT, START, TIME, COMMAND = line.split(' ', 10)
+                # parent, pid, CPUPercent, MEMPercent, VSZ, RSS, TTY, STAT, START, TIME, COMMAND = line.split(' ', 10)
 
+                # ps -eo %cpu,%mem,vsz,rss,etime,cmd output is of the form with 6 columns total
+                # %CPU %MEM    VSZ   RSS     ELAPSED CMD
+                # 0.0  0.0   1744  1076    21:30:57 /init
+                CPUPercent, MEMPercent, VSZ, RSS, elapsedTime, COMMAND = line.split(' ', 5)
                 tempCommand = '{0}'.format(COMMAND)
 
                 for processName in tempProcessNames:
@@ -888,6 +920,23 @@ def JAGetProcessStats( processNames, fields ):
                                 fieldValue = VSZ
                             elif field == 'RSS' :
                                 fieldValue = RSS
+                            elif field == 'etime' :
+                                if elapsedTime.find(":") >= 0 :
+                                    if elapsedTime.find('-') >= 0 :
+                                        ### convert [D+-][HH:]MM:SS to number of seconds
+                                        tempNumberOfDays,tempHoursMinSec = elapsedTime.split('-')
+                                    else:
+                                        tempNumberOfDays = 0
+                                        tempHoursMinSec = elapsedTime
+                                tempTimeFields = tempHoursMinSec.split(':')
+                                if len(tempTimeFields) > 2:
+                                    ### elapsed time has HH:MM:SS portion
+                                    elapsedTimeInHours = float(tempTimeFields[0]) + float(tempTimeFields[0])/60 + float(tempTimeFields)/3600
+                                else:
+                                    ### elapsed time has MM:SS portion only
+                                    elapsedTimeInHours = float(tempTimeFields[0])/60 + float(tempTimeFields)/3600
+                                fieldValue = tempNumberOfDays + elapsedTimeInHours/24
+                                
                             else:
                                 errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, check Fields definition in Process section of config file:{1}\n'.format(field, configFile)
                                 print( errorMsg )
