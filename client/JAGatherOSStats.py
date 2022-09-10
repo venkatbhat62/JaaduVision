@@ -865,7 +865,7 @@ def JAGetProcessStats( processNames, fields ):
                 uptimeInSec, dummy  = procfile.readline().split()
 
                 ### convert seconds to days.
-                procStats['OS_uptime'] = "{0:1.2f}".format(uptimeInSec / (24 * 3600) )
+                procStats['OS_uptime'] = "{0:1.2f}".format( float(uptimeInSec) / (24 * 3600) )
                 if debugLevel > 0:
                     print("DEBUG-1 JAGetProcessStats() OS_uptime: {0} days".format(procStats['OS_uptime']))
                 procfile.close()
