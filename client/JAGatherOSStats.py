@@ -905,68 +905,73 @@ def JAGetProcessStats( processNames, fields ):
                 for processName in tempProcessNames:
                     ### if current process name is at starting position of the command
                     ###   gather stats 
-                    if re.match( processName, tempCommand) != None :
+                    try:
+                        if re.match( processName, tempCommand) == None :
+                            ### no match, skip current line
+                            continue
+                    except:
+                        continue
 
-                        processNameParts = processName.split('/')
-                        if processNameParts[-1] != None :
-                            shortProcessName = processNameParts[-1]
-                        else:
-                            shortProcessName = processName
-                        ### replace ., - with ''
-                        shortProcessName = re.sub(r'[\.\-]', '', shortProcessName)
-                        ### remove space from process name
-                        shortProcessName = re.sub('\s+','',shortProcessName)
+                    processNameParts = processName.split('/')
+                    if processNameParts[-1] != None :
+                        shortProcessName = processNameParts[-1]
+                    else:
+                        shortProcessName = processName
+                    ### replace ., - with ''
+                    shortProcessName = re.sub(r'[\.\-]', '', shortProcessName)
+                    ### remove space from process name
+                    shortProcessName = re.sub('\s+','',shortProcessName)
 
-                        ### collect data if the field name is enabled for collection
-                        for field in fieldNames:
-                            if field == 'CPU':
-                                fieldValue = CPUPercent
-                            elif field == 'MEM':
-                                fieldValue = MEMPercent
-                            elif field == 'VSZ' :
-                                fieldValue = VSZ
-                            elif field == 'RSS' :
-                                fieldValue = RSS
-                            elif field == 'etime' :
-                                try:
-                                    if elapsedTime.find(':') != -1 :
-                                        if elapsedTime.find('-') != -1 :
-                                            ### convert [D-][HH:]MM:SS to number of seconds
-                                            tempNumberOfDays,tempHoursMinSec = elapsedTime.split('-')
-                                        else:
-                                            tempNumberOfDays = 0
-                                            tempHoursMinSec = elapsedTime
-                                        if debugLevel > 2:    
-                                            print("DEBUG-4 JAGetProcessStats() tempNumberOfDays:{0}, tempHoursMinSec:{1}".format(tempNumberOfDays,tempHoursMinSec ))
-                                        tempTimeFields = tempHoursMinSec.split(':')
-                                        if len(tempTimeFields) > 2:
-                                            ### elapsed time has HH:MM:SS portion
-                                            elapsedTimeInHours = float(tempTimeFields[0]) + float(tempTimeFields[1])/60 + float(tempTimeFields[2])/3600
-                                        else:
-                                            ### elapsed time has MM:SS portion only
-                                            elapsedTimeInHours = float(tempTimeFields[0])/60 + float(tempTimeFields[1])/3600
-                                        fieldValue = "{0:1.2f}".format(float(tempNumberOfDays) + elapsedTimeInHours/24)
+                    ### collect data if the field name is enabled for collection
+                    for field in fieldNames:
+                        if field == 'CPU':
+                            fieldValue = CPUPercent
+                        elif field == 'MEM':
+                            fieldValue = MEMPercent
+                        elif field == 'VSZ' :
+                            fieldValue = VSZ
+                        elif field == 'RSS' :
+                            fieldValue = RSS
+                        elif field == 'etime' :
+                            try:
+                                if elapsedTime.find(':') != -1 :
+                                    if elapsedTime.find('-') != -1 :
+                                        ### convert [D-][HH:]MM:SS to number of seconds
+                                        tempNumberOfDays,tempHoursMinSec = elapsedTime.split('-')
                                     else:
-                                        ### time in seconds
-                                        fieldValue = "{0:1.2f}".format( float(elapsedTime)/(24*3600) )
-                                except:
-                                    errorMsg = 'ERROR JAGetProcessStats() exception while processing elapsedTime:{0}\n'.format(elapsedTime)
-                                    print( errorMsg )
-                                    JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
-                                    continue
-
-                            else:
-                                errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, check Fields definition in Process section of config file:{1}\n'.format(field, configFile)
+                                        tempNumberOfDays = 0
+                                        tempHoursMinSec = elapsedTime
+                                    if debugLevel > 2:    
+                                        print("DEBUG-4 JAGetProcessStats() tempNumberOfDays:{0}, tempHoursMinSec:{1}".format(tempNumberOfDays,tempHoursMinSec ))
+                                    tempTimeFields = tempHoursMinSec.split(':')
+                                    if len(tempTimeFields) > 2:
+                                        ### elapsed time has HH:MM:SS portion
+                                        elapsedTimeInHours = float(tempTimeFields[0]) + float(tempTimeFields[1])/60 + float(tempTimeFields[2])/3600
+                                    else:
+                                        ### elapsed time has MM:SS portion only
+                                        elapsedTimeInHours = float(tempTimeFields[0])/60 + float(tempTimeFields[1])/3600
+                                    fieldValue = "{0:1.2f}".format(float(tempNumberOfDays) + elapsedTimeInHours/24)
+                                else:
+                                    ### time in seconds
+                                    fieldValue = "{0:1.2f}".format( float(elapsedTime)/(24*3600) )
+                            except:
+                                errorMsg = 'ERROR JAGetProcessStats() exception while processing elapsedTime:{0}\n'.format(elapsedTime)
                                 print( errorMsg )
                                 JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
                                 continue
 
-                            procNameField = '{0}_{1}'.format(shortProcessName,field)
-                            if procNameField not in procStats:
-                                procStats[procNameField] = float(fieldValue)
-                            else:
-                                ### sum the values if current processNameField is already present
-                                procStats[procNameField] += float(fieldValue)
+                        else:
+                            errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, check Fields definition in Process section of config file:{1}\n'.format(field, configFile)
+                            print( errorMsg )
+                            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                            continue
+
+                        procNameField = '{0}_{1}'.format(shortProcessName,field)
+                        if procNameField not in procStats:
+                            procStats[procNameField] = float(fieldValue)
+                        else:
+                            ### sum the values if current processNameField is already present
+                            procStats[procNameField] += float(fieldValue)
                     if debugLevel > 1 :
                         print("DEBUG-2 JAGetProcessStats() processName:{0}, shortProcessName:{1}, procStats:{2}".format(processName,shortProcessName,procStats))
 
