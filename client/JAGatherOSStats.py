@@ -929,13 +929,15 @@ def JAGetProcessStats( processNames, fields ):
                                 fieldValue = RSS
                             elif field == 'etime' :
                                 try:
-                                    if elapsedTime.find(":") >= 0 :
-                                        if elapsedTime.find('-') >= 0 :
-                                            ### convert [D+-][HH:]MM:SS to number of seconds
+                                    if elapsedTime.find(':') != -1 :
+                                        if elapsedTime.find('-') != -1 :
+                                            ### convert [D-][HH:]MM:SS to number of seconds
                                             tempNumberOfDays,tempHoursMinSec = elapsedTime.split('-')
                                         else:
                                             tempNumberOfDays = 0
                                             tempHoursMinSec = elapsedTime
+                                        if debugLevel > 2:    
+                                            print("DEBUG-4 JAGetProcessStats() tempNumberOfDays:{0}, tempHoursMinSec:{1}".format(tempNumberOfDays,tempHoursMinSec ))
                                         tempTimeFields = tempHoursMinSec.split(':')
                                         if len(tempTimeFields) > 2:
                                             ### elapsed time has HH:MM:SS portion
@@ -943,9 +945,12 @@ def JAGetProcessStats( processNames, fields ):
                                         else:
                                             ### elapsed time has MM:SS portion only
                                             elapsedTimeInHours = float(tempTimeFields[0])/60 + float(tempTimeFields[1])/3600
-                                        fieldValue = "{0:1.2f}".format(tempNumberOfDays + elapsedTimeInHours/24)
+                                        fieldValue = "{0:1.2f}".format(float(tempNumberOfDays) + elapsedTimeInHours/24)
+                                    else:
+                                        ### time in seconds
+                                        fieldValue = "{0:1.2f}".format( float(elapsedTime)/(24*3600) )
                                 except:
-                                    errorMsg = 'ERROR JAGetProcessStats() exception while processing elapsedTime"{0}\n'.format(elapsedTime)
+                                    errorMsg = 'ERROR JAGetProcessStats() exception while processing elapsedTime:{0}\n'.format(elapsedTime)
                                     print( errorMsg )
                                     JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
                                     continue
