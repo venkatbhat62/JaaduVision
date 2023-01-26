@@ -71,10 +71,12 @@ def JADatamaskReadConfig(fileName,JADebugLevel):
     try:
         with open(fileName,'r') as file:
             tempDatamaskSpec = yaml.load(file, Loader=yaml.FullLoader)
-            # print (tempDatamaskSpec)
-            for element in tempDatamaskSpec['DMSpec']:
-                name = element.pop('Name')
-                JADatamaskSpec[name] = element
+            if tempDatamaskSpec != None:
+                if len(tempDatamaskSpec) > 0:
+                    # print (tempDatamaskSpec)
+                    for element in tempDatamaskSpec['DMSpec']:
+                        name = element.pop('Name')
+                        JADatamaskSpec[name] = element
                 
         returnStatus = True
     except OSError as err:
@@ -162,7 +164,8 @@ else:
     storeType = 'local'
 
 if 'datamaskFileName' in arguments:
-    datamaskFileName = arguments['datamaskFileName'].value
+    ### datamask is expected to be in ../filename
+    datamaskFileName = '{0}/../{1}'.format(os.getcwd(), arguments['datamaskFileName'].value)
 
     if datamaskFileName == 'NONE':
         datamaskFileName = ''

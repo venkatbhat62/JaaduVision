@@ -578,10 +578,12 @@ def JAGatherEnvironmentSpecs(key, values):
 
         elif myKey == "TraceId":
             if myValue != None:
-                traceId = myValue.strip()
+                if isinstance(myValue,str) == True:
+                    traceId = myValue.strip()
         elif myKey == "TraceParentId":
             if myValue != None:
-                traceParentId = myValue.strip()
+                if isinstance(myValue,str) == True:
+                    traceParentId = myValue.strip()
             else:
                 ### use traceId as parentId
                 traceParentId = traceId

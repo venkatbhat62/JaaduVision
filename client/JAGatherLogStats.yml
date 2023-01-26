@@ -208,7 +208,7 @@ Environment:
      TraceIdPrefix: TraceId=
      # log timestamp format to convert time using time.strptime(). 
      # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
-     TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
+     TimeStampFormat: '%Y-%m-%dT%H:%M:%S.%f'
      ## id - self-if of a component, used to indicate relationship between various components in a perticular message flow
      ##  this id can be specified in other components definition as parentId if message from this host goes to that host
      TraceId: 1234
@@ -216,6 +216,8 @@ Environment:
      #TraceParentId:
      # default timestamp format for all logs, can override it later for each log file that has diff format
      PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)
+     # when PatternTimeStamp match to current line, by default, pick up 1st matching group value as timestamp string
+     TimeStampGroup: 1
 
 ### commands in execute section are executed before processing log files so that
 ###   any log file created by these execute commands can be processed properly.
@@ -234,29 +236,62 @@ LogFile:
     SyslogError:
       LogFileName: /var/log/syslog
       #LogFileName: /var/log/{HOSTNAME}syslog
-      PatternCount: Error
+      # Dec 25 00:00:05 havembha systemd[1]: Finished Daily man-db regeneration.
+      PatternTimeStamp: (\w\w\w\s+\d+ \d\d:\d\d:\d\d)
+      PatternCount: (E|e)rror
+      PatternLog: (E|e)rror
       Priority: 3
 
     SyslogSession:
       LogFileName: /var/log/syslog
       PatternCount: Started Session
+      PatternTimeStamp: (\w\w\w\s+\d+ \d\d:\d\d:\d\d)
+      Priority: 3
+
+    AuthlogSessionOpened:
+      LogFileName: /var/log/auth.log
+      PatternCount: session opened
+      # Dec 27 15:24:01 havembha CRON[1349357]: pam_unix(cron:session): session opened for user havembha by (uid=0)
+      PatternTimeStamp: (\w\w\w\s+\d+ \d\d:\d\d:\d\d)
+      Priority: 3
+
+    AuthlogSessionClosed:
+      LogFileName: /var/log/auth.log
+      PatternCount: session closed
+      # Dec 27 15:24:01 havembha CRON[1349357]: pam_unix(cron:session): session opened for user havembha by (uid=0)
+      PatternTimeStamp: (\w\w\w\s+\d+ \d\d:\d\d:\d\d)
       Priority: 3
 
     AuthlogInvalidUser:
       LogFileName: /var/log/auth.log
       PatternCount: Invalid user
+      # Dec 27 15:24:01 havembha CRON[1349357]: pam_unix(cron:session): session opened for user havembha by (uid=0)
+      PatternTimeStamp: (\w\w\w\s+\d+ \d\d:\d\d:\d\d)
+      PatternLog: Invalid user
       Priority: 3
 
     ApacheGrafana:
       LogFileName: /var/log/apache2/access.log*
       PatternPass: \/grafana(.*)HTTP\/\d.\d" [2..|3..]
+      PatternLog: \/grafana(.*)HTTP\/\d.\d" [4..|5..]
       PatternFail: \/grafana(.*)HTTP\/\d.\d" [4..|5..]
+      # 127.0.0.1 - - [27/Dec/2022:15:02:24 +0000] "GET / HTTP/1.1" 200 14618 "-" "curl/7.74.0"
+      PatternTimeStamp: (- - \[)(\s*)(\d+\/\w\w\w\/\d\d\d\d:\d\d:\d\d:\d\d)
+      #                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- time stamp group 3
+      #  specify TimeStampGroup when it is other than default number 1
+      TimeStampGroup: 3
       Priority: 2
   
     ApachePrometheus:
       LogFileName: /var/log/apache2/access.log*
       PatternPass: \/prometheus(.*)HTTP\/\d.\d" [2..|3..]
+      PatternLog: \/prometheus(.*)HTTP\/\d.\d" [4..|5..]
       PatternFail: \/prometheus(.*)HTTP\/\d.\d" [4..|5..]
+      # 127.0.0.1 - - [27/Dec/2022:15:02:24 +0000] "GET / HTTP/1.1" 200 14618 "-" "curl/7.74.0"
+      PatternTimeStamp: (- - \[)(\s*)(\d+\/\w\w\w\/\d\d\d\d:\d\d:\d\d:\d\d)
+      #                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- time stamp
+      #  specify TimeStampGroup when it is other than default number 1
+      TimeStampGroup: 3
       Priority: 2
 
     ApacheSaveStats:
@@ -275,11 +310,18 @@ LogFile:
       ###                                   This allows further filtering in grafana based on client IP address
       PatternPass: \/JASaveStats.py(.*)HTTP\/\d.\d" [2\d\d|3\d\d]
       PatternFail: \/JASaveStats.py(.*)HTTP\/\d.\d" [4\d\d|5\d\d]
+      # 127.0.0.1 - - [27/Dec/2022:15:02:24 +0000] "GET / HTTP/1.1" 200 14618 "-" "curl/7.74.0"
+      PatternTimeStamp:  (- - \[)(\s*)(\d+\/\w\w\w\/\d\d\d\d:\d\d:\d\d:\d\d)
+      #                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- time stamp
+      TimeStampGroup: 3
       Priority: 1
 
     ApacheError:
       LogFileName: /var/log/apache2/error.log* 
+      # [Sun Dec 18 00:00:02.075990 2022] [core:notice] [pid 97291] AH00094: Command line: '/usr/sbin/apache2'
       PatternCount: \[cgi:error\] 
+      PatternTimeStamp:  (\w\w\w \w\w\w\s+\d+ \d\d:\d\d:\d\d.\d\d\d\d\d\d \d\d\d\d)
+      TimeStampGroup: 1
       Priority: 1
 
     TestStats:
@@ -309,6 +351,8 @@ LogFile:
       #                                                       kkkk v              kkkk vvvv
       ### ### On grafana, variable name wil be TestStats_key1_delta, TestStats_key2_delta
       PatternDelta: tps (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy
+      TimeStampFormat: '%Y-%m-%dT%H:%M:%S.%f'
+      Priority: 2
 
     TestStatsWithVarPrefix:
       LogFileName: JATest.log*
@@ -432,7 +476,7 @@ LogFile:
       TimeStampGroup: 1
       # log timestamp format to convert time using time.strptime(). 
       # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
-      TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
+      TimeStampFormat: '%Y-%m-%dT%H:%M:%S.%f'
       # all trace info in single line
       TraceSingleLine: True
       # trace id group in log line
@@ -469,7 +513,7 @@ LogFile:
       TimeStampGroup: 1
       # log timestamp format to convert time using time.strptime(). 
       # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
-      TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
+      TimeStampFormat: '%Y-%m-%dT%H:%M:%S.%f'
       # all trace info in single line
       TraceSingleLine: True
       TraceIdGroup: 3
@@ -539,4 +583,3 @@ LogFile:
       TraceIdPrefix: TraceId=
       Priority: 2
       # DebugLevel: 4
-
