@@ -886,6 +886,8 @@ def JAGetProcessStats( processNames, fields ):
             if debugLevel > 3:
                 print("DEBUG-4 JAGetProcessStats() processing line:{0}".format(line))
             line = re.sub('\s+', ' ', line)
+            ### remove any leading space
+            line = line.strip()
             if len(line) < 5:
                 continue
 
@@ -897,7 +899,7 @@ def JAGetProcessStats( processNames, fields ):
                 # ps -eo %cpu,%mem,vsz,rss,etime,cmd output is of the form with 6 columns total
                 # %CPU %MEM    VSZ   RSS     ELAPSED CMD
                 # 0.0  0.0   1744  1076    21:30:57 /init
-                dummy, CPUPercent, MEMPercent, VSZ, RSS, elapsedTime, COMMAND = line.split(' ', 6)
+                CPUPercent, MEMPercent, VSZ, RSS, elapsedTime, COMMAND = line.split(' ', 5)
                 tempCommand = '{0}'.format(COMMAND)
 
                 if debugLevel > 3 :
