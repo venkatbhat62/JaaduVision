@@ -39,7 +39,7 @@ def JAConvertStringTimeToTimeInMicrosec( dateTimeString, format):
         return 0
 
 
-def JAParseDateTime( dateTimeString:str ):
+def JAParseDateTime( dateTimeString ):
     """
     It uses dateutil parser to parse the date time string to time in seconds.
     If parser does not parse due to incomplete parts (like year not present, date not present etc), 
