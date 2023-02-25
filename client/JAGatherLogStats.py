@@ -127,7 +127,7 @@ statsPatternIndexsList = [
     indexForPatternSum,
     indexForPatternAverage,
     indexForPatternDelta,
-    indexForTimeStamp,
+#    indexForTimeStamp,
     indexForCSVVariableNames,
     indexForSkip
 ]
@@ -2480,7 +2480,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
             tempPatternTimeStamp = None
             tempTimeStampGroup =  None
 
-            for key, values in JAStatsSpec[fileName].items():
+            for key, values in JAStatsSpec[logFileName].items():
                 if ( values[indexForTimeStampFormat] != None ):
                     tempPatternTimeStamp = r'{0}'.format( values[indexForTimeStampFormat])
                     tempTimeStampGroup = values[indexForTimeStampGroup]

@@ -320,6 +320,11 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel, thisHostName, OSTy
             myDirPath = './'
     else:
         myDirPath = head_tail[0]
+        if myDirPath == '.':
+            if OSType == 'Windows':
+                myDirPath = '.\\'
+            else:
+                myDirPath = './'
 
     fileNameWithoutPath = head_tail[1]
 
@@ -337,11 +342,7 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel, thisHostName, OSTy
     fileNames = {}
 
     try:
-        tempFileName = None
-        if OSType == 'Windows':
-            tempFileName = myDirPath + "\\" + fileNameWithoutPath   
-        else:
-            tempFileName = myDirPath + "/" + fileNameWithoutPath 
+        tempFileName = myDirPath + fileNameWithoutPath 
         ### get all file names in desired directory with matching file spec
         for file in glob.glob(tempFileName):
         
@@ -359,8 +360,8 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel, thisHostName, OSTy
         print( errorMsg)
         
     sortedFileNames = []
-    for fileModifiedTime, fileName in sorted ( fileNames.items() ):
-        sortedFileNames.append( fileName )
+    for fileModifiedTime, tempFileName in sorted ( fileNames.items() ):
+        sortedFileNames.append( tempFileName )
 
     if debugLevel > 0 :
         print('DEBUG-1 JAFileFilesModified() modified files in:{0}, since gmtTimeInSec:{1}, fileNames:{2}'.format( fileName, sinceTimeInSec, sortedFileNames) )

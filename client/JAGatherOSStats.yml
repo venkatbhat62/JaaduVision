@@ -42,7 +42,7 @@ Environment:
         VerifyCertificate: False
         # post stats to below web server
         # WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
-        WebServerURL: https://192.168.1.160:443/JaaduVision/
+        WebServerURL: https://192.168.1.169:443/JaaduVision/
         DebugLevel: 0
         ### influxdb details
         ### DBDetails - optional, defaults to Prometheus, if present, applies to all service types or measurements 
