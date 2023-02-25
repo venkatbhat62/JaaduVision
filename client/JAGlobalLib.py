@@ -305,7 +305,7 @@ def JAYamlLoad(fileName ):
 
 import os
 
-def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel, thisHostName, OSType):
+def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel, thisHostName, OSType='Linux'):
     """
         This function returns file names in a directory that are modified since given GMT time in seconds
         if sinceTimeInSec is 0, latest file is picked up regardless of modified time
