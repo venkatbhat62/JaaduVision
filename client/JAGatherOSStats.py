@@ -443,7 +443,7 @@ def JARetryOSStatsPost(currentTime):
     ### find history files with updated time within retryDurationInHours
     ###   returned files in sorted order, oldest file fist
     retryOSStatsFileNames = JAGlobalLib.JAFindModifiedFiles(
-        retryOSStatsFileNamePartial + "*", (currentTime - retryDurationInHours * 3600), debugLevel, thisHostName)
+        retryOSStatsFileNamePartial + "*", (currentTime - retryDurationInHours * 3600), debugLevel, thisHostName, OSType)
 
     returnStatus = True
     for retryOSStatsFileName in retryOSStatsFileNames :

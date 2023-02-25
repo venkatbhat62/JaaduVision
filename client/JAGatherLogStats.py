@@ -280,6 +280,8 @@ traceIdPrefix = None
 
 ### global timestamp format specification. if individual key does not have the spec, global definition will be used
 timeStampFormat = None
+timeStampGroup = None
+
 ### global timestamp pattern, defined in common section, this can be overriden for each log file with spec in key section
 patternTimeStamp = "(^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)"
 
@@ -441,7 +443,7 @@ def JAGatherEnvironmentSpecs(key, values):
     global dataPostIntervalInSec, dataCollectDurationInSec, maxCPUUsageForEvents, maxProcessingTimeForAllEvents
     global webServerURL, disableWarnings, verifyCertificate, debugLevel, maxLogLines, saveLogsOnWebServer
     global DBDetails, retryDurationInHours, retryLogStatsBatchSize, maxTraceLines, dataMaskEnabled
-    global timeStampFormat, traceIdPrefix, traceId, traceParentId, patternTimeStamp
+    global timeStampFormat, timeStampGroup, traceIdPrefix, traceId, traceParentId, patternTimeStamp
 
     for myKey, myValue in values.items():
         if debugLevel > 1:
@@ -575,6 +577,10 @@ def JAGatherEnvironmentSpecs(key, values):
         elif myKey == 'TimeStampFormat':
             if myValue != None:
                 timeStampFormat = myValue.strip()
+
+        elif myKey == 'TimeStampGroup':
+            if myValue != None:
+                timeStampGroup = int(myValue)
 
         elif myKey == "TraceId":
             if myValue != None:
@@ -866,11 +872,15 @@ try:
                 tempPatternList[indexForTimeStamp] = patternTimeStamp
                 tempPatternPresent[indexForTimeStamp] = True
 
-            if value.get('TimeStampGroup') != None:
+            if value.get('TimeStampGroup') == None:
+                if timeStampGroup != None:
+                    tempPatternList[indexForTimeStampGroup]  = timeStampGroup
+                    tempPatternPresent[indexForTimeStampGroup] = True
+            else:
                 ## need to send current log line with trace data
                 tempPatternList[indexForTimeStampGroup] = int(str(value.get('TimeStampGroup')).strip())
                 tempPatternPresent[indexForTimeStampGroup] = True
-
+            
             if value.get('TimeStampFormat') == None:
                 if timeStampFormat != None:
                     tempPatternList[indexForTimeStampFormat]  = timeStampFormat
@@ -2426,9 +2436,9 @@ def JAProcessLineForLog( tempLine, fileName, key, values, keyDebugLevel ):
     return patternLogMatched
 
 def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, gatherLogStatsEnabled, debugLevel):
-    global averageCPUUsage, thisHostName, logEventPriorityLevel, statsPatternIndexsList, traceId
+    global averageCPUUsage, thisHostName, logEventPriorityLevel, statsPatternIndexsList, traceId, OSType
     logFileNames = JAGlobalLib.JAFindModifiedFiles(
-        logFileName, startTimeInSec, debugLevel, thisHostName)
+        logFileName, startTimeInSec, debugLevel, thisHostName, OSType)
 
     if logFileNames == None:
         return False
@@ -2465,8 +2475,102 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
         # first time, open the file
         if firstTime == True:
+                
+            ### get the timestamp format for current log file line from any of the key associated with this log file name
+            tempPatternTimeStamp = None
+            tempTimeStampGroup =  None
+
+            for key, values in JAStatsSpec[fileName].items():
+                if ( values[indexForTimeStampFormat] != None ):
+                    tempPatternTimeStamp = r'{0}'.format( values[indexForTimeStampFormat])
+                    tempTimeStampGroup = values[indexForTimeStampGroup]
+                    break
+
+            if (tempPatternTimeStamp == None):
+                ### if log file specific format not specified, use global definition
+                tempPatternTimeStamp = timeStampFormat
+
+            if (tempTimeStampGroup == None):
+                ### if log file specific timeStampGroup not specified, use global definition
+                tempTimeStampGroup = timeStampGroup
+
+            ### if previous log file with diff name got saved with different name,
+            ###  it is possible that the new log file contain log lines already processed before with diff file name
+            ### need to check the timestamp of log line to ensure only log lines of newer timestamp are included
+            skipThisFile = False
+
             try:
-                file = open(fileName, "r")
+                fileSize = os.path.getsize(fileName)
+                logTimePointFound = False
+                file =  open(fileName, "r")
+                
+                if gatherLogStatsEnabled == True:
+                    ### Open the log file that was changed within the FromTime specified, using binary halving method, locate the starting log line
+                    filePosition = int(fileSize / 2)
+                    lastCheck = 0
+                    lastPosition = 0
+                    logLine = ''
+                    while logTimePointFound == False:
+                        file.seek( filePosition, 0)
+                        ### read two lines so that 2nd line has full line, including timestamp
+                        logLine = file.readline()
+                        logLine = file.readline()
+                        filePosition = file.tell()
+                        ### search for timestamp pattern
+                        try:
+                            myResults = re.findall( tempPatternTimeStamp, logLine)
+                            patternMatchCount =  len(myResults)
+                            if myResults != None and patternMatchCount > 0 :
+                                ### if patterns found is greater than or equal to timeStampGroup, pick up the timeStamp value
+                                if patternMatchCount >= tempTimeStampGroup:
+                                    currentTimeStampString = str(myResults[tempTimeStampGroup-1])
+                                    returnStatus, timeInSeconds, errorMsg = JAGlobalLib.JAParseDateTime(currentTimeStampString )
+                                    if returnStatus == False:
+                                        errorMsg = "ERROR JAProcessLogFile() Error parsing the timestamp string:|{0}|, picked up from log line:|{1}, using the 'PatternTimeStamp' spec:|{2}|, logFile:|{3}|, errorMsg:|{4}|".format(
+                                            currentTimeStampString, logLine, tempPatternTimeStamp, fileName, errorMsg)
+                                        LogMsg(errorMsg,statsLogFileName,True)
+                                        skipThisFile = True
+                                        break
+
+                                    if timeInSeconds >  prevTimeInSec:                             
+                                        ### current time is greater than fromTime desired
+                                        if lastCheck < 0:
+                                            ### last check was less than fromTime
+                                            filePosition = lastPosition
+                                            if filePosition < 0:
+                                                filePosition = 0
+                                            file.seek( filePosition, 0)
+                                            break
+
+                                        if filePosition < 3000:
+                                            file.seek( 0, 0)
+                                            break
+
+                                        lastPosition =  filePosition
+                                        filePosition = int(filePosition / 2)
+                                        lastCheck = 1
+                                    elif timeInSeconds < prevTimeInSec:   
+                                        ### current time is less than fromTime desired
+                                        if lastCheck > 0:
+                                            ### last time current timestamp was greater than fromTime
+                                            break
+                                        lastCheck = -1
+                                        if filePosition > ( fileSize - 3000) :
+                                            file.seek( filePosition, 0)
+                                            break
+                                        lastPosition = filePosition
+                                        filePosition = filePosition + int((fileSize - filePosition)/2)
+                                else:
+                                    ### position to end of current line, to read next line that may have timestamp
+                                    filePosition += len(logLine)
+                        except re.error as err: 
+                            errorMsg = "ERROR JAProcessLogFile() invalid timestamp pattern:|{0}|, regular expression error:|{1}|, skipping the log file:|{2}|".format(
+                                    patternTimeStamp,err, logFileName)
+                            LogMsg(errorMsg, statsLogFileName, True)
+                            file.close()
+                            skipThisFile = True
+                            break
+
             except OSError as err:
                 errorMsg = 'ERROR - JAProcessLogFile() Can not open logFile:| ' + fileName + \
                     '|' + "OS error: {0}".format(err) + '\n'
@@ -2475,6 +2579,10 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                 # store error status so that next round, this will not be tried
                 logFileInfo[fileName]['filePosition'] = 'ERROR'
                 continue
+                
+            if skipThisFile == True:
+                continue
+
         else:
             try:
                 # if this program is just started and it read file position from cache file,
@@ -2651,7 +2759,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 continue
 
 
-                        ### see whether current line match to any sttas definitions
+                        ### see whether current line match to any stats definitions
                         for index in statsPatternIndexsList:
 
                             if values[index] == None:
@@ -2948,7 +3056,7 @@ def JARetryLogStatsPost(currentTime):
     ### find history files with updated time within retryDurationInHours
     ###   returned files in sorted order, oldest file fist
     retryLogStatsFileNames = JAGlobalLib.JAFindModifiedFiles(
-        retryLogStatsFileNamePartial + "*", (currentTime - retryDurationInHours * 3600), debugLevel, thisHostName)
+        retryLogStatsFileNamePartial + "*", (currentTime - retryDurationInHours * 3600), debugLevel, thisHostName, OSType)
 
     returnStatus = True
     for retryLogStatsFileName in retryLogStatsFileNames :

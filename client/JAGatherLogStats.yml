@@ -185,8 +185,8 @@ Environment:
      ### do not verify web server certificate, defaults to True
      VerifyCertificate: False
      # post stats to below web server
-     #WebServerURL: https://192.168.1.159:443/cgi-bin/JASaveStats.py
-     WebServerURL: https://192.168.1.159:443/JaaduVision/
+     #WebServerURL: https://192.168.1.169:443/cgi-bin/JASaveStats.py
+     WebServerURL: https://192.168.1.169:443/JaaduVision/
      ### debug level 0, no debug, 1 to 4, 4 being max details
      DebugLevel: 0
      ### DBDetails - optional, defaults to Prometheus, if present, applies to all service types or measurements 

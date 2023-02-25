@@ -39,6 +39,97 @@ def JAConvertStringTimeToTimeInMicrosec( dateTimeString, format):
         return 0
 
 
+def JAParseDateTime( dateTimeString:str ):
+    """
+    It uses dateutil parser to parse the date time string to time in seconds.
+    If parser does not parse due to incomplete parts (like year not present, date not present etc), 
+        it will try to parse it locally using additional logic.
+
+        Dec 26 08:42:01 - year is not present, pads current year and tries to parse it.
+
+    """
+    from dateutil import parser
+
+    returnStatus = False
+    errorMsg  =''
+    timeInSeconds = 0
+    try:
+        tempDate = parser.parse(dateTimeString)
+        timeInSeconds = tempDate.timestamp()
+        returnStatus = True
+    except:
+        returnStatus = False
+    
+    if returnStatus == False:
+        currentDate = datetime.datetime.utcnow()
+        ### try to parse the string and generate standard format string in the form %Y-%d-%mT%H:%M:%S
+        ###  %Y - position 1, %d - position 2, %m - position 3, %H:%M:%S - position 4
+        ###  0 - put current host's date/time value in that position
+        ### search pattern - to identify the date element parts
+        ### replace definition - elements that will go to desired format position
+        supportedPatterns = {
+            # Dec 26 08:42:01 - prefix with current yyyy
+            r'(\w\w\w)(\s+)(\d+)( )(\d\d:\d\d:\d\d)': [ 0, 3, 1, 4],
+            #   1      2     3  4   5
+            # 08:42:01 - prefix with current yyyy-mm-dd
+            r'(\d\d:\d\d:\d\d)': [ 0, 0, 0, 1 ],
+            #   1
+        }
+        
+        for pattern in supportedPatterns:
+            try:
+                myResults = re.findall( pattern, dateTimeString)
+                if myResults != None:
+                    numberOfGroups = len(myResults)
+                    if len(numberOfGroups) > 0:
+                        replacementSpec = supportedPatterns[pattern]
+                        if replacementSpec[0] == 0:
+                            ### prefix with default year
+                            newDateTimeString = currentDate.strftime("%Y") + "-"
+                        elif replacementSpec[0] <= numberOfGroups:
+                            newDateTimeString = myResults[ replacementSpec[0] - 1]
+                        else:
+                            ### current pattern is not the correct one, continue the search
+                            continue
+                        
+                        if replacementSpec[1] == 0:
+                            ### prefix with default month number
+                            newDateTimeString += currentDate.strftime("%m") + "-"
+                        elif replacementSpec[1] <= numberOfGroups:
+                            newDateTimeString += myResults[ replacementSpec[1] - 1]
+                        else:
+                            ### current pattern is not the correct one, continue the search
+                            continue
+
+                        if replacementSpec[2] == 0:
+                            ### prefix with default month number
+                            newDateTimeString += currentDate.strftime("%d") + "-"
+                        elif replacementSpec[2] <= numberOfGroups:
+                            newDateTimeString += myResults[ replacementSpec[2] - 1]
+                        else:
+                            ### current pattern is not the correct one, continue the search
+                            continue
+
+                        if replacementSpec[3] <= numberOfGroups:
+                            newDateTimeString += "T" + myResults[ replacementSpec[3] - 1]
+                        else:
+                            ### current pattern is not the correct one, continue the search
+                            continue
+                        ### found the match, get out
+                        returnStatus = True
+                        break
+            except:
+                errorMsg += "ERROR JAParseDateTime() searching for pattern:|{0}|, ".format( pattern )
+                returnStatus = False
+        if returnStatus == False:
+            errorMsg += "ERROR JAParseDateTime() converting the date time string:{0}".format( dateTimeString)
+        else:
+            ### convert the time to seconds
+            tempDate = parser.parse(newDateTimeString)
+            timeInSeconds = tempDate.timestamp()
+
+    return returnStatus, timeInSeconds, errorMsg
+
 def JAGetTime( deltaSeconds ):
     tempTime = datetime.datetime.now()
     deltaTime = datetime.timedelta(seconds=deltaSeconds)
@@ -214,7 +305,7 @@ def JAYamlLoad(fileName ):
 
 import os
 
-def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel, thisHostName):
+def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel, thisHostName, OSType):
     """
         This function returns file names in a directory that are modified since given GMT time in seconds
         if sinceTimeInSec is 0, latest file is picked up regardless of modified time
@@ -223,7 +314,10 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel, thisHostName):
     head_tail = os.path.split( fileName )
     ### if no path specified, use ./ (current working directory)
     if head_tail[0] == '' or head_tail[0] == None:
-        myDirPath = './'
+        if OSType == 'Windows':
+            myDirPath = '.\\'
+        else:
+            myDirPath = './'
     else:
         myDirPath = head_tail[0]
 
@@ -240,12 +334,16 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel, thisHostName):
     import glob
 
     ### return buffer
-    returnFileNames = []
     fileNames = {}
 
     try:
+        tempFileName = None
+        if OSType == 'Windows':
+            tempFileName = myDirPath + "\\" + fileNameWithoutPath   
+        else:
+            tempFileName = myDirPath + "/" + fileNameWithoutPath 
         ### get all file names in desired directory with matching file spec
-        for file in glob.glob(myDirPath + "/" + fileNameWithoutPath):
+        for file in glob.glob(tempFileName):
         
             if debugLevel > 2 :
                 print('DEBUG-3 JAFileFilesModified() fileName: {0}, match to desired fileNamePattern: {1}'.format(file, fileNameWithoutPath) )
