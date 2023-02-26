@@ -3193,7 +3193,7 @@ for logFileName in sorted(JAStatsSpec.keys()):
     ### pass False for JAGatherLogStatsEnabled so that file pointers are moved to end of file
     JAProcessLogFile(logFileName, 0, logFileProcessingStartTime,
                         False, debugLevel)
-
+elapsedTimeInSec = 0
 # until the end time, keep checking the log file for presence of patterns
 # and post the stats per post interval
 while loopStartTimeInSec <= statsEndTimeInSec:
@@ -3205,8 +3205,8 @@ while loopStartTimeInSec <= statsEndTimeInSec:
                 myProcessingTime = 0
         except:
             myProcessingTime = 0
-        print('DEBUG-1 log file(s) processing time: {0}, Sleeping for: {1} sec'.format(
-            myProcessingTime, sleepTimeInSec))
+        print('DEBUG-1 log file(s) processing time: {0}, elapsedTimeInSec:{1}, Sleeping for: {2} sec'.format(
+            myProcessingTime, elapsedTimeInSec, sleepTimeInSec))
 
     time.sleep(sleepTimeInSec)
 
