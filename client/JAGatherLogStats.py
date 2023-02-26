@@ -2442,6 +2442,9 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
     if logFileNames == None:
         return False
+    if debugLevel > 0:
+        print('DEBUG-1 JAProcessLogFile() Processing logFileName:{0}, startTimeInSec:{1}, logFileProcessingStartTime:{2}, gatherLogStatsEnabled:{3}'.format(
+            logFileName, startTimeInSec,logFileProcessingStartTime, gatherLogStatsEnabled) )
 
     for fileName in logFileNames:
         # use passed startTimeInSec if prev time is not stored for this file before
@@ -2573,9 +2576,9 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                             file.close()
                             skipThisFile = True
                             break
-                    if debugLevel > 1:
+                    if debugLevel > 0:
                         filePosition = file.tell()
-                        print("DEBUG-2 JAProcessLogFile() filePosition:{0}, logLine:{1}".format( filePosition, logLine))
+                        print("DEBUG-1 JAProcessLogFile() filePosition:{0}, logLine:{1}".format( filePosition, logLine))
 
             except OSError as err:
                 errorMsg = 'ERROR - JAProcessLogFile() Can not open logFile:| ' + fileName + \
@@ -2612,7 +2615,12 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
             elapsedTimeInSec = time.time() - logFileProcessingStartTime
             if elapsedTimeInSec > maxProcessingTimeForAllEvents:
                 gatherLogStatsEnabled =  False
-
+                if ( debugLevel ):
+                    errorMsg = "DEBUG-1 JAProcessLogFile() disabled log file parsing, elapsedTimeInSec:{0} is greater than maxProcessingTimeForAllEvents:{1}, logFileProcessingStartTime:{2}, currentTime:{3}".format(
+                        elapsedTimeInSec, maxProcessingTimeForAllEvents, logFileProcessingStartTime, time.time() )
+                    print(errorMsg)
+                    LogMsg(errorMsg, statsLogFileName, True)
+                    
         # if gatherLogStatsEnabled is set to False, just move the file pointer to end of the file
         # so that next time, search can start from that position onwards.
         # do not search for patterns in log lines
