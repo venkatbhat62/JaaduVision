@@ -325,7 +325,12 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel, thisHostName, OSTy
                 myDirPath = '.\\'
             else:
                 myDirPath = './'
-
+        else:
+            if OSType == 'Windows':
+                myDirPath = myDirPath + '\\'
+            else:
+                myDirPath = myDirPath + '/'
+                
     fileNameWithoutPath = head_tail[1]
 
     ### if fileName has variable {HOSTNAME}, replace that with current short hostname
