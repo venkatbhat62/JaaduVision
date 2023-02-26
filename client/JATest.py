@@ -77,6 +77,7 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
     deltaTimeInMin = int((currentTime - lastFileTime) / 60)
     if ( deltaTimeInMin > 10 ):
         fileCount += 1
+        lastFileTime = currentTime
     testLogFileName = "{0}.{1}".format(testLogFileNameBase, fileCount)
 
     ### log messages to log file
