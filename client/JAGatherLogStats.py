@@ -2482,7 +2482,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
             ### get the timestamp format for current log file line from any of the key associated with this log file name
             tempPatternTimeStamp = None
             tempTimeStampGroup =  None
-
+            tempTimeStampFormat = None
+            
             for key, values in JAStatsSpec[logFileName].items():
                 if ( values[indexForTimeStamp] != None ):
                     tempPatternTimeStamp = r'{0}'.format( values[indexForTimeStamp])
