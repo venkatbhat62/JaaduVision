@@ -2362,7 +2362,7 @@ def JAProcessLineForLog( tempLine, fileName, key, values, keyDebugLevel ):
     ### see whether current line match to any log definitions
     for index in logPatternIndexsList:
 
-        if values[index] == None or (values[index] == None or values[index] == '' ):
+        if values[index] == None  or values[index] == '' :
             continue
 
         ### maxLogLines non-zero, logs collection is enabled for this host
@@ -2525,8 +2525,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 ### if patterns found is greater than or equal to timeStampGroup, pick up the timeStamp value
                                 if patternMatchCount >= tempTimeStampGroup:
                                     currentTimeStampString = str(myResults[tempTimeStampGroup-1])
-                                    timeInSeconds = int(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(
-                                                    currentTimeStampString, tempTimeStampFormat) )
+                                    timeInSeconds = (int(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(
+                                                    currentTimeStampString, tempTimeStampFormat)))/1000000
                                     if timeInSeconds == 0:
                                         errorMsg = "ERROR JAProcessLogFile() Error parsing the timestamp string:|{0}|, picked up from log line:|{1}, using the 'TimeStampFormat' spec:|{2}|, logFile:|{3}|, errorMsg:|{4}|".format(
                                             currentTimeStampString, logLine, values[indexForTimeStampFormat], fileName, errorMsg)
