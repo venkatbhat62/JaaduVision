@@ -149,7 +149,7 @@ specForLogProcessing = [
 logPatternIndexsList = [
     indexForPatternLog,
     indexForSkip,
-    indexForTimeStamp
+#    indexForTimeStamp
 ]
 ### include any pattern spec associated with trace processing. DO NOT include TimeStamp here.
 # trace log line will be parsed if any of these are present for a key definition
@@ -2483,7 +2483,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
             tempPatternTimeStamp = None
             tempTimeStampGroup =  None
             tempTimeStampFormat = None
-            
+
             for key, values in JAStatsSpec[logFileName].items():
                 if ( values[indexForTimeStamp] != None ):
                     tempPatternTimeStamp = r'{0}'.format( values[indexForTimeStamp])
