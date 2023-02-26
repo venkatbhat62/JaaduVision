@@ -2504,7 +2504,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                 logTimePointFound = False
                 file =  open(fileName, "r")
                 
-                if gatherLogStatsEnabled == True:
+                if gatherLogStatsEnabled == True and tempPatternTimeStamp != None:
                     ### Open the log file that was changed within the FromTime specified, using binary halving method, locate the starting log line
                     filePosition = int(fileSize / 2)
                     lastCheck = 0
