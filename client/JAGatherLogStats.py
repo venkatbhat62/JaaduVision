@@ -2488,7 +2488,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
             if (tempPatternTimeStamp == None):
                 ### if log file specific format not specified, use global definition
-                tempPatternTimeStamp = timeStampFormat
+                tempPatternTimeStamp = r'{0}'.format(timeStampFormat)
 
             if (tempTimeStampGroup == None):
                 ### if log file specific timeStampGroup not specified, use global definition
