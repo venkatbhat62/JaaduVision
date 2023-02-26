@@ -2516,6 +2516,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                         ### read two lines so that 2nd line has full line, including timestamp
                         logLine = file.readline()
                         logLine = file.readline()
+                        if not logLine:
+                            break
                         filePosition = file.tell()
                         ### search for timestamp pattern
                         try:
@@ -2572,6 +2574,46 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                             file.close()
                             skipThisFile = True
                             break
+
+                    if ( skipThisFile == False ):
+                        ### read line by line until the time stamp is greater than previous time stamp
+                        logTimePointFound = False
+                        while logTimePointFound == False:
+                            filePosition = file.tell()
+                            logLine = file.readline()
+                            if not logLine:
+                                break
+                            ### search for timestamp pattern
+                            try:
+                                myResults = re.findall( tempPatternTimeStamp, logLine)
+                                patternMatchCount =  len(myResults)
+                                if myResults != None and patternMatchCount > 0 :
+                                    ### if patterns found is greater than or equal to timeStampGroup, pick up the timeStamp value
+                                    if patternMatchCount >= tempTimeStampGroup:
+                                        currentTimeStampString = str(myResults[tempTimeStampGroup-1])
+                                        timeInSeconds = (JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(
+                                                        currentTimeStampString, tempTimeStampFormat))/1000000
+                                        if timeInSeconds == 0:
+                                            errorMsg = "ERROR JAProcessLogFile() Error parsing the timestamp string:|{0}|, picked up from log line:|{1}, using the 'TimeStampFormat' spec:|{2}|, logFile:|{3}|, errorMsg:|{4}|".format(
+                                                currentTimeStampString, logLine, values[indexForTimeStampFormat], fileName, errorMsg)
+                                            LogMsg(errorMsg,statsLogFileName,True)
+                                            skipThisFile = True
+                                            break
+
+                                        if timeInSeconds >  prevTimeInSec:
+                                            logTimePointFound = True
+                                            ### go back to previous postion so that current line will be read again
+                                            file.seek( filePosition, 0)
+                                            break 
+
+                            except re.error as err: 
+                                errorMsg = "ERROR JAProcessLogFile() invalid timestamp pattern:|{0}|, regular expression error:|{1}|, skipping the log file:|{2}|".format(
+                                        patternTimeStamp,err, logFileName)
+                                LogMsg(errorMsg, statsLogFileName, True)
+                                file.close()
+                                skipThisFile = True
+                                break
+                    
                     if debugLevel > 0:
                         filePosition = file.tell()
                         print("DEBUG-1 JAProcessLogFile() filePosition:{0}, logLine:{1}".format( filePosition, logLine))
