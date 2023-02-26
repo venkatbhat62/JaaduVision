@@ -2481,18 +2481,21 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
             tempTimeStampGroup =  None
 
             for key, values in JAStatsSpec[logFileName].items():
-                if ( values[indexForTimeStampFormat] != None ):
-                    tempPatternTimeStamp = r'{0}'.format( values[indexForTimeStampFormat])
+                if ( values[indexForTimeStamp] != None ):
+                    tempPatternTimeStamp = r'{0}'.format( values[indexForTimeStamp])
                     tempTimeStampGroup = values[indexForTimeStampGroup]
                     break
 
             if (tempPatternTimeStamp == None):
                 ### if log file specific format not specified, use global definition
-                tempPatternTimeStamp = r'{0}'.format(timeStampFormat)
+                tempPatternTimeStamp = r'{0}'.format(patternTimeStamp)
 
             if (tempTimeStampGroup == None):
                 ### if log file specific timeStampGroup not specified, use global definition
                 tempTimeStampGroup = timeStampGroup
+
+            if debugLevel > 1:
+                print('DEBUG-2 JAProcessLogFile() tempPatternTimeStamp:{0}, tempTimeStampGroup:{1}'.format(tempPatternTimeStamp, tempTimeStampGroup))
 
             ### if previous log file with diff name got saved with different name,
             ###  it is possible that the new log file contain log lines already processed before with diff file name
@@ -2570,6 +2573,9 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                             file.close()
                             skipThisFile = True
                             break
+                    if debugLevel > 1:
+                        filePosition = file.tell()
+                        print("DEBUG-2 JAProcessLogFile() filePosition:{0}, logLine:{1}".format( filePosition, logLine))
 
             except OSError as err:
                 errorMsg = 'ERROR - JAProcessLogFile() Can not open logFile:| ' + fileName + \

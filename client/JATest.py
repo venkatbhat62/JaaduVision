@@ -23,7 +23,7 @@ from random import randint
 
 debugLevel = 3
 simulationType = 'random'
-testLogFileName = 'JATest.log'
+testLogFileNameBase = 'JATest.log'
 testDurationInSec = 3600
 stepTime = 5
 
@@ -48,16 +48,18 @@ def JATestExit(reason):
     print(reason)
     exit()
 
-startTimeInSec = time.time()
+lastFileTime = startTimeInSec = time.time()
 # seed random number generator
 seed(1)
 traceId = 1
+
+### increment file count for every 30 min
+fileCount = 0
 
 while ( time.time() - startTimeInSec) < testDurationInSec:
     if simulationType == 'random':
         ### sleep for random time
         sleepTimeInSec = randint(0, 60)
-
 
     else:
         sleepTimeInSec += stepTime
@@ -70,7 +72,12 @@ while ( time.time() - startTimeInSec) < testDurationInSec:
     time.sleep( sleepTimeInSec)
 
     rampupCount = 0
-    
+
+    currentTime = time.time()
+    deltaTimeInMin = int((currentTime - lastFileTime) / 60)
+    if ( deltaTimeInMin > 10 ):
+        fileCount += 1
+    testLogFileName = "{0}.{1}".format(testLogFileNameBase, fileCount)
 
     ### log messages to log file
     for count in range( int(sleepTimeInSec / 8) ):
