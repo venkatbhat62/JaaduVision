@@ -2487,18 +2487,12 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                 if ( values[indexForTimeStamp] != None ):
                     tempPatternTimeStamp = r'{0}'.format( values[indexForTimeStamp])
                     tempTimeStampGroup = values[indexForTimeStampGroup]
+                    tempTimeStampFormat = r'{0}'.format( values[indexForTimeStampFormat])
                     break
 
-            if (tempPatternTimeStamp == None):
-                ### if log file specific format not specified, use global definition
-                tempPatternTimeStamp = r'{0}'.format(patternTimeStamp)
-
-            if (tempTimeStampGroup == None):
-                ### if log file specific timeStampGroup not specified, use global definition
-                tempTimeStampGroup = timeStampGroup
-
             if debugLevel > 1:
-                print('DEBUG-2 JAProcessLogFile() tempPatternTimeStamp:{0}, tempTimeStampGroup:{1}'.format(tempPatternTimeStamp, tempTimeStampGroup))
+                print('DEBUG-2 JAProcessLogFile() tempPatternTimeStamp:{0}, tempTimeStampGroup:{1}, timeStampFormat:{2}'.format(
+                    tempPatternTimeStamp, tempTimeStampGroup, tempTimeStampFormat))
 
             ### if previous log file with diff name got saved with different name,
             ###  it is possible that the new log file contain log lines already processed before with diff file name
@@ -2530,10 +2524,11 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 ### if patterns found is greater than or equal to timeStampGroup, pick up the timeStamp value
                                 if patternMatchCount >= tempTimeStampGroup:
                                     currentTimeStampString = str(myResults[tempTimeStampGroup-1])
-                                    returnStatus, timeInSeconds, errorMsg = JAGlobalLib.JAParseDateTime(currentTimeStampString )
-                                    if returnStatus == False:
-                                        errorMsg = "ERROR JAProcessLogFile() Error parsing the timestamp string:|{0}|, picked up from log line:|{1}, using the 'PatternTimeStamp' spec:|{2}|, logFile:|{3}|, errorMsg:|{4}|".format(
-                                            currentTimeStampString, logLine, tempPatternTimeStamp, fileName, errorMsg)
+                                    timeInSeconds = int(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(
+                                                    currentTimeStampString, tempTimeStampFormat) )
+                                    if timeInSeconds == 0:
+                                        errorMsg = "ERROR JAProcessLogFile() Error parsing the timestamp string:|{0}|, picked up from log line:|{1}, using the 'TimeStampFormat' spec:|{2}|, logFile:|{3}|, errorMsg:|{4}|".format(
+                                            currentTimeStampString, logLine, values[indexForTimeStampFormat], fileName, errorMsg)
                                         LogMsg(errorMsg,statsLogFileName,True)
                                         skipThisFile = True
                                         break
