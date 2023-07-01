@@ -62,18 +62,20 @@ def JAParseDateTime( dateTimeString ):
     
     if returnStatus == False:
         currentDate = datetime.datetime.utcnow()
-        ### try to parse the string and generate standard format string in the form %Y-%d-%mT%H:%M:%S
-        ###  %Y - position 1, %d - position 2, %m - position 3, %H:%M:%S - position 4
+        ### try to parse the string and generate standard format string in the form %Y-%m-%dT%H:%M:%S
+        ###  %Y - position 1, %m - position 2, %d - position 3, %H:%M:%S - position 4
         ###  0 - put current host's date/time value in that position
         ### search pattern - to identify the date element parts
         ### replace definition - elements that will go to desired format position
         supportedPatterns = {
             # Dec 26 08:42:01 - prefix with current yyyy
-            r'(\w\w\w)(\s+)(\d+)( )(\d\d:\d\d:\d\d)': [ 0, 3, 1, 4],
+            r'(\w\w\w)(\s+)(\d+)( )(\d\d:\d\d:\d\d)': [ 0, 1, 3, 4],
             #   1      2     3  4   5
             # 08:42:01 - prefix with current yyyy-mm-dd
             r'(\d\d:\d\d:\d\d)': [ 0, 0, 0, 1 ],
             #   1
+            r'(\d\d\d\d)(\d\d)(\d\d)(\s+)(\d\d:\d\d:\d\d\.\d+)': [1,2,3,4],
+            #   1         2      3    4    5
         }
         
         for pattern in supportedPatterns:

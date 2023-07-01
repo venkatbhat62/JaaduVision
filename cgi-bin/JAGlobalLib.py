@@ -27,6 +27,7 @@ def UTCTime():
     return datetime.datetime.utcnow().strftime("%H:%M:%S")
 
 def JAConvertStringTimeToTimeInMicrosec( dateTimeString, format):
+    ### 2022-06-04 add logic to use timezone while converting time to UTC time ???
     try:
         datetime_obj = datetime.datetime.strptime(dateTimeString, format)
         if sys.version_info[0] < 3 or sys.version_info[1] < 4:
@@ -36,7 +37,101 @@ def JAConvertStringTimeToTimeInMicrosec( dateTimeString, format):
         return timeInMicroSeconds
     except:
         return 0
+
+
+def JAParseDateTime( dateTimeString ):
+    """
+    It uses dateutil parser to parse the date time string to time in seconds.
+    If parser does not parse due to incomplete parts (like year not present, date not present etc), 
+        it will try to parse it locally using additional logic.
+
+        Dec 26 08:42:01 - year is not present, pads current year and tries to parse it.
+
+    """
+    from dateutil import parser
+
+    returnStatus = False
+    errorMsg  =''
+    timeInSeconds = 0
+    try:
+        tempDate = parser.parse(dateTimeString)
+        timeInSeconds = tempDate.timestamp()
+        returnStatus = True
+    except:
+        returnStatus = False
+    
+    if returnStatus == False:
+        currentDate = datetime.datetime.utcnow()
+        ### try to parse the string and generate standard format string in the form %Y-%m-%dT%H:%M:%S
+        ###  %Y - position 1, %m - position 2, %d - position 3, %H:%M:%S - position 4
+        ###  0 - put current host's date/time value in that position
+        ### search pattern - to identify the date element parts
+        ### replace definition - elements that will go to desired format position
+        supportedPatterns = {
+            # Dec 26 08:42:01 - prefix with current yyyy
+            r'(\w\w\w)(\s+)(\d+)( )(\d\d:\d\d:\d\d)': [ 0, 1, 3, 4],
+            #   1      2     3  4   5
+            # 08:42:01 - prefix with current yyyy-mm-dd
+            r'(\d\d:\d\d:\d\d)': [ 0, 0, 0, 1 ],
+            #   1
+            r'(\d\d\d\d)(\d\d)(\d\d)(\s+)(\d\d:\d\d:\d\d\.\d+)': [1,2,3,4],
+            #   1         2      3    4    5
+        }
         
+        for pattern in supportedPatterns:
+            try:
+                myResults = re.findall( pattern, dateTimeString)
+                if myResults != None:
+                    numberOfGroups = len(myResults)
+                    if len(numberOfGroups) > 0:
+                        replacementSpec = supportedPatterns[pattern]
+                        if replacementSpec[0] == 0:
+                            ### prefix with default year
+                            newDateTimeString = currentDate.strftime("%Y") + "-"
+                        elif replacementSpec[0] <= numberOfGroups:
+                            newDateTimeString = myResults[ replacementSpec[0] - 1]
+                        else:
+                            ### current pattern is not the correct one, continue the search
+                            continue
+                        
+                        if replacementSpec[1] == 0:
+                            ### prefix with default month number
+                            newDateTimeString += currentDate.strftime("%m") + "-"
+                        elif replacementSpec[1] <= numberOfGroups:
+                            newDateTimeString += myResults[ replacementSpec[1] - 1]
+                        else:
+                            ### current pattern is not the correct one, continue the search
+                            continue
+
+                        if replacementSpec[2] == 0:
+                            ### prefix with default month number
+                            newDateTimeString += currentDate.strftime("%d") + "-"
+                        elif replacementSpec[2] <= numberOfGroups:
+                            newDateTimeString += myResults[ replacementSpec[2] - 1]
+                        else:
+                            ### current pattern is not the correct one, continue the search
+                            continue
+
+                        if replacementSpec[3] <= numberOfGroups:
+                            newDateTimeString += "T" + myResults[ replacementSpec[3] - 1]
+                        else:
+                            ### current pattern is not the correct one, continue the search
+                            continue
+                        ### found the match, get out
+                        returnStatus = True
+                        break
+            except:
+                errorMsg += "ERROR JAParseDateTime() searching for pattern:|{0}|, ".format( pattern )
+                returnStatus = False
+        if returnStatus == False:
+            errorMsg += "ERROR JAParseDateTime() converting the date time string:{0}".format( dateTimeString)
+        else:
+            ### convert the time to seconds
+            tempDate = parser.parse(newDateTimeString)
+            timeInSeconds = tempDate.timestamp()
+
+    return returnStatus, timeInSeconds, errorMsg
+
 def JAGetTime( deltaSeconds ):
     tempTime = datetime.datetime.now()
     deltaTime = datetime.timedelta(seconds=deltaSeconds)
@@ -50,7 +145,7 @@ def JAGetDayOfMonth( deltaSeconds ):
     newTimeString = newTime.strftime("%d")
     return newTimeString 
 
-def LogMsg(logMsg, fileName, appendDate=True):
+def LogMsg(logMsg, fileName, appendDate=True, prefixTimeStamp=True):
     if fileName == None:
         print(logMsg)
         return 0
@@ -65,7 +160,10 @@ def LogMsg(logMsg, fileName, appendDate=True):
     except OSError:
         return 0
     else:
-        logFileStream.write( UTCDateTime() + " " + logMsg )
+        if ( prefixTimeStamp == True) :
+            logFileStream.write( UTCDateTime() + " " + logMsg )
+        else:
+            logFileStream.write(logMsg )
         logFileStream.close()
         return 1
 
@@ -209,19 +307,32 @@ def JAYamlLoad(fileName ):
 
 import os
 
-def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
+def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel, thisHostName, OSType='Linux'):
     """
         This function returns file names in a directory that are modified since given GMT time in seconds
         if sinceTimeInSec is 0, latest file is picked up regardless of modified time
-        Can be used instead of find command
+        Can be used instead of find command 
     """
     head_tail = os.path.split( fileName )
     ### if no path specified, use ./ (current working directory)
     if head_tail[0] == '' or head_tail[0] == None:
-        myDirPath = './'
+        if OSType == 'Windows':
+            myDirPath = '.\\'
+        else:
+            myDirPath = './'
     else:
         myDirPath = head_tail[0]
-
+        if myDirPath == '.':
+            if OSType == 'Windows':
+                myDirPath = '.\\'
+            else:
+                myDirPath = './'
+        else:
+            if OSType == 'Windows':
+                myDirPath = myDirPath + '\\'
+            else:
+                myDirPath = myDirPath + '/'
+                
     fileNameWithoutPath = head_tail[1]
 
     ### if fileName has variable {HOSTNAME}, replace that with current short hostname
@@ -232,36 +343,32 @@ def JAFindModifiedFiles(fileName, sinceTimeInSec, debugLevel):
         print('DEBUG-2 JAFileFilesModified() filePath:{0}, fileName: {1}'.format( myDirPath, fileNameWithoutPath))
 
     import fnmatch
-    
+    import glob
+
     ### return buffer
-    returnFileNames = []
     fileNames = {}
 
     try:
-        ### get all file names in desired directory
-        for file in os.listdir( myDirPath ) :
-            ### select the file name that matches to passed file name
-            if fnmatch.fnmatch(file, fileNameWithoutPath) :
+        tempFileName = myDirPath + fileNameWithoutPath 
+        ### get all file names in desired directory with matching file spec
+        for file in glob.glob(tempFileName):
         
+            if debugLevel > 2 :
+                print('DEBUG-3 JAFileFilesModified() fileName: {0}, match to desired fileNamePattern: {1}'.format(file, fileNameWithoutPath) )
+
+            ### now check the file modified time, if greater than or equal to passed time, save the file name
+            fileModifiedTime = os.path.getmtime ( file )
+            if fileModifiedTime >= sinceTimeInSec :
+                fileNames[ fileModifiedTime ] = file 
                 if debugLevel > 2 :
-                    print('DEBUG-3 JAFileFilesModified() fileName: {0}, match to desired fileNamePattern: {1}'.format(file, fileNameWithoutPath) )
-
-                ### make full file name including path/name
-                fullFileName = myDirPath + '/' + file
-
-                ### now check the file modified time, if greater than or equal to passed time, save the file name
-                fileModifiedTime = os.path.getmtime ( fullFileName )
-                if fileModifiedTime >= sinceTimeInSec :
-                    fileNames[ fileModifiedTime ] = fullFileName 
-                    if debugLevel > 2 :
-                        print('DEBUG-3 JAFileFilesModified() fileName: {0}, modified time: {1}, later than desired time: {2}'.format( file, fileModifiedTime, sinceTimeInSec) )
+                    print('DEBUG-3 JAFileFilesModified() fileName: {0}, modified time: {1}, later than desired time: {2}'.format( file, fileModifiedTime, sinceTimeInSec) )
     except OSError as err:
         errorMsg = "ERROR JAFileFilesModified() Not able to find files in fileName: {0}, error:{1}".format( myDirPath, err)
         print( errorMsg)
         
     sortedFileNames = []
-    for fileModifiedTime, fileName in sorted ( fileNames.items() ):
-        sortedFileNames.append( fileName )
+    for fileModifiedTime, tempFileName in sorted ( fileNames.items() ):
+        sortedFileNames.append( tempFileName )
 
     if debugLevel > 0 :
         print('DEBUG-1 JAFileFilesModified() modified files in:{0}, since gmtTimeInSec:{1}, fileNames:{2}'.format( fileName, sinceTimeInSec, sortedFileNames) )
@@ -307,8 +414,43 @@ def JAGetOSInfo(pythonVersion, debugLevel):
                         dummy,tempOSVersion = re.split(r'VERSION_ID=', tempLine)
                 file.close()
         except:
-            print("ERROR JAGetOSInfo() Can't read file: /etc/os-release")
-            tempOSReease = ''
+            try:
+                with open("/etc/system-release", "r") as file:
+                    while True:
+                        tempLine = file.readline()
+                        if not tempLine:
+                            break
+                        if len(tempLine)<5:
+                            continue
+                        tempLine = re.sub('\n$','',tempLine)
+                        ### line is of the form: red hat enterprise linux server release 6.8 (santiago)
+                        ###                                                             \d.\d <-- OSVersion
+                        myResults = re.search( r'Red Hat (.*) (\d.\d) (.*)', tempLine)
+                        if myResults != None:
+                            tempOSVersion = myResults.group(2)
+                            OSName = 'rhel'
+
+            except:
+                try:
+                    with open("/etc/redhat-release", "r") as file:
+                        while True:
+                            tempLine = file.readline()
+                            if not tempLine:
+                                break
+                            if len(tempLine)<5:
+                                continue
+                            tempLine = re.sub('\n$','',tempLine)
+                            ### line is of the form: red hat enterprise linux server release 6.8 (santiago)
+                            ###                                                             \d.\d <-- OSVersion
+                            myResults = re.search( r'Red Hat (.*) (\d.\d) (.*)', tempLine)
+                            if myResults != None:
+                                tempOSVersion = myResults.group(2)
+                                OSName = 'rhel'
+                except:
+                    tempOSVersion = ''
+                    OSName = ''
+                    print("ERROR JAGetOSInfo() Can't read file: /etc/os-release or /etc/system-release")
+                    tempOSReease = ''
 
     elif OSType == 'Windows' :
         if pythonVersion >= (3,7) :
@@ -389,7 +531,8 @@ def JAReadCPUUsageHistory( logFileName=None, debugLevel=0):
                     tempLine = file.readline()
                     if not tempLine:
                         break
-                    CPUUsage.append( float( tempLine.strip() ) )
+                    if tempLine != '\n':
+                        CPUUsage.append( float( tempLine.strip() ) )
                 file.close()
                 return CPUUsage, average 
             else:
@@ -416,7 +559,7 @@ def JAWriteTimeStamp(fileName, currentTime=None):
     
     try:
         with open (fileName, "w") as file:
-            file.write( '{:.2f}\n'.format( currentTime) )
+            file.write( '{0:.2f}\n'.format( currentTime) )
             file.close()
             return True
 
@@ -429,11 +572,14 @@ def JAReadTimeStamp( fileName):
     """
     This function reads the time stamp from a given file
     """
+    prevTime = 0
     try:
         if os.path.exists(fileName) == False:
             return 0
         with open (fileName, "r") as file:
-            prevTime = float( file.readline().strip() )
+            tempLine = file.readline().strip()
+            if len(tempLine) > 0:
+                prevTime = float( tempLine )
             file.close()
             return prevTime
 
@@ -441,3 +587,17 @@ def JAReadTimeStamp( fileName):
         errorMsg = 'INFO - JAReadTimeStamp() Can not open file: {0} to save current time, error:{1}\n'.format( fileName, err)
         print(errorMsg)
         return 0
+
+def JAGetUptime(OSType):
+    """
+    returns uptime in number of seconds
+    if can't be computed, returns 0
+    """
+    if OSType == 'Linux':
+        with open('/proc/uptime', 'r') as f:
+            uptime_seconds = float(f.readline().split()[0])
+    elif OSType == 'Windows':
+        uptime_seconds = 0
+    else:
+         uptime_seconds = 0
+    return uptime_seconds
