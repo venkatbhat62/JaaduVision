@@ -2823,21 +2823,22 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
 
                         ### if current line has time stamp pattern, store that timestamp to post to web server
                         try:
-                            myResults = re.findall( tempPatternTimeStamp, tempLine)
-                            patternMatchCount =  len(myResults)
-                            if myResults != None and patternMatchCount > 0 :
-                                ### if patterns found is greater than or equal to timeStampGroup, pick up the timeStamp value
-                                if patternMatchCount >= tempTimeStampGroup:
-                                    currentTimeStampString = str(myResults[tempTimeStampGroup-1])
-                                    timeInSeconds = (int(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(
-                                                    currentTimeStampString, tempTimeStampFormat)))/1000000
-                                    if timeInSeconds == 0:
-                                        errorMsg = "ERROR JAProcessLogFile() Error parsing the timestamp string:|{0}|, picked up from log line:|{1}, using the 'TimeStampFormat' spec:|{2}|, logFile:|{3}|, errorMsg:|{4}|".format(
-                                            currentTimeStampString, logLine, values[indexForTimeStampFormat], fileName, errorMsg)
-                                        LogMsg(errorMsg,statsLogFileName,True)
-                                    else:
-                                        logStats[key][indexForTimeStampFormat*2] = datetime.datetime.fromtimestamp(timeInSeconds).strftime(tempTimeStampFormat) 
-                                        logStats[key][indexForTimeStampFormat*2+1] = True   
+                            if tempPatternTimeStamp != None:
+                                myResults = re.findall( tempPatternTimeStamp, tempLine)
+                                patternMatchCount =  len(myResults)
+                                if myResults != None and patternMatchCount > 0 :
+                                    ### if patterns found is greater than or equal to timeStampGroup, pick up the timeStamp value
+                                    if patternMatchCount >= tempTimeStampGroup:
+                                        currentTimeStampString = str(myResults[tempTimeStampGroup-1])
+                                        timeInSeconds = (int(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(
+                                                        currentTimeStampString, tempTimeStampFormat)))/1000000
+                                        if timeInSeconds == 0:
+                                            errorMsg = "ERROR JAProcessLogFile() Error parsing the timestamp string:|{0}|, picked up from log line:|{1}, using the 'TimeStampFormat' spec:|{2}|, logFile:|{3}|, errorMsg:|{4}|".format(
+                                                currentTimeStampString, logLine, values[indexForTimeStampFormat], fileName, errorMsg)
+                                            LogMsg(errorMsg,statsLogFileName,True)
+                                        else:
+                                            logStats[key][indexForTimeStampFormat*2] = datetime.datetime.fromtimestamp(timeInSeconds).strftime(tempTimeStampFormat) 
+                                            logStats[key][indexForTimeStampFormat*2+1] = True   
                         except re.error as err: 
                             errorMsg = "ERROR JAProcessLogFile() invalid timestamp pattern:|{0}|, regular expression error:|{1}|, log line:|{2}|".format(
                                     patternTimeStamp,err, tempLine)
