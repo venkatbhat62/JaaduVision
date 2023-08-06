@@ -44,6 +44,10 @@ Author: havembha@gmail.com, 2021-07-18
     Added capability to post events to webserver with zipkin option so that the events are posted to zipkin
       This data is to show the trace using tempo and grafana
 
+2023-08-06 havembha@gmail.com 1.31.00
+    Used timestamp within a log line to post the data to web server instead of taking current timestamp. This allows more 
+    accurate indication of sample time especially when used along with InfluxDB to store performance stats.
+
 """
 import json
 import platform
@@ -56,11 +60,12 @@ import JAGlobalLib
 import time
 import subprocess
 import signal
+import datetime
 
 from JAGlobalLib import LogMsg
 
-# Major 01, minor 20, buildId 01
-JAVersion = "01.30.00"
+# Major 01, minor 31, buildId 00
+JAVersion = "01.31.00"
 
 ### number of patterns that can be searched in log line per Service
 indexForPriority = 0
@@ -1640,6 +1645,11 @@ def JAPostAllDataToWebServer():
 
         timeStampAdded = False
         
+        if values[indexForTimeStampFormat*2+1] == True:
+            if values[indexForTimeStampFormat*2] != None:
+                # if the sample has it's own timestamp, use it to post the data to web
+                timeStamp = values[indexForTimeStampFormat*2]
+
         # 2022-03-27 JAPrepareStatsToPost() debug this later           
         if values[indexForPatternPass*2+1] == True:
             if timeStampAdded == False:
@@ -2476,24 +2486,25 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                 logFileInfo[fileName]['filePosition'] = 'ERROR'
                 continue
 
+                
+        ### get the timestamp format for current log file line from any of the key associated with this log file name
+        tempPatternTimeStamp = None
+        tempTimeStampGroup =  None
+        tempTimeStampFormat = None
+
+        for key, values in JAStatsSpec[logFileName].items():
+            if ( values[indexForTimeStamp] != None ):
+                tempPatternTimeStamp = r'{0}'.format( values[indexForTimeStamp])
+                tempTimeStampGroup = values[indexForTimeStampGroup]
+                tempTimeStampFormat = r'{0}'.format( values[indexForTimeStampFormat])
+                break
+
+        if debugLevel > 1:
+            print('DEBUG-2 JAProcessLogFile() tempPatternTimeStamp:{0}, tempTimeStampGroup:{1}, timeStampFormat:{2}'.format(
+                tempPatternTimeStamp, tempTimeStampGroup, tempTimeStampFormat))
+
         # first time, open the file
         if firstTime == True:
-                
-            ### get the timestamp format for current log file line from any of the key associated with this log file name
-            tempPatternTimeStamp = None
-            tempTimeStampGroup =  None
-            tempTimeStampFormat = None
-
-            for key, values in JAStatsSpec[logFileName].items():
-                if ( values[indexForTimeStamp] != None ):
-                    tempPatternTimeStamp = r'{0}'.format( values[indexForTimeStamp])
-                    tempTimeStampGroup = values[indexForTimeStampGroup]
-                    tempTimeStampFormat = r'{0}'.format( values[indexForTimeStampFormat])
-                    break
-
-            if debugLevel > 1:
-                print('DEBUG-2 JAProcessLogFile() tempPatternTimeStamp:{0}, tempTimeStampGroup:{1}, timeStampFormat:{2}'.format(
-                    tempPatternTimeStamp, tempTimeStampGroup, tempTimeStampFormat))
 
             ### if previous log file with diff name got saved with different name,
             ###  it is possible that the new log file contain log lines already processed before with diff file name
@@ -2810,6 +2821,27 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 values[indexForLabel] = None
                                 continue
 
+                        ### if current line has time stamp pattern, store that timestamp to post to web server
+                        try:
+                            myResults = re.findall( tempPatternTimeStamp, tempLine)
+                            patternMatchCount =  len(myResults)
+                            if myResults != None and patternMatchCount > 0 :
+                                ### if patterns found is greater than or equal to timeStampGroup, pick up the timeStamp value
+                                if patternMatchCount >= tempTimeStampGroup:
+                                    currentTimeStampString = str(myResults[tempTimeStampGroup-1])
+                                    timeInSeconds = (int(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(
+                                                    currentTimeStampString, tempTimeStampFormat)))/1000000
+                                    if timeInSeconds == 0:
+                                        errorMsg = "ERROR JAProcessLogFile() Error parsing the timestamp string:|{0}|, picked up from log line:|{1}, using the 'TimeStampFormat' spec:|{2}|, logFile:|{3}|, errorMsg:|{4}|".format(
+                                            currentTimeStampString, logLine, values[indexForTimeStampFormat], fileName, errorMsg)
+                                        LogMsg(errorMsg,statsLogFileName,True)
+                                    else:
+                                        logStats[key][indexForTimeStampFormat*2] = datetime.datetime.fromtimestamp(timeInSeconds).strftime(tempTimeStampFormat) 
+                                        logStats[key][indexForTimeStampFormat*2+1] = True   
+                        except re.error as err: 
+                            errorMsg = "ERROR JAProcessLogFile() invalid timestamp pattern:|{0}|, regular expression error:|{1}|, log line:|{2}|".format(
+                                    patternTimeStamp,err, tempLine)
+                            LogMsg(errorMsg, statsLogFileName, True)
 
                         ### see whether current line match to any stats definitions
                         for index in statsPatternIndexsList:
