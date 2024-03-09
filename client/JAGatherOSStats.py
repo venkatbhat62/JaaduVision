@@ -366,7 +366,7 @@ def JAPostDataToWebServer(tempOSStatsToPost, useRequests, storeUponFailure):
     if debugLevel > 1:
         print('DEBUG-2 JAPostDataToWebServer() tempOSStatsToPost: {0}'.format(tempOSStatsToPost))
     if debugLevel > 0:
-        print('DEBUG-1 JAPostDataToWebServer() size of tempOSStatsToPost: {0}'.format(sys.getsizeof(tempOSStatsToPost)))
+        print('DEBUG-1 JAPostDataToWebServer() size of tempOSStatsToPost: {0}'.format(len(tempOSStatsToPost)))
     if useRequests == True:
         try:
             # post interval elapsed, post the data to web server
@@ -381,6 +381,8 @@ def JAPostDataToWebServer(tempOSStatsToPost, useRequests, storeUponFailure):
             result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
                                     "Content-Type: application/json", '-d', data], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             resultText = result.stdout.decode('utf-8').split('\n')
+            if debugLevel > 1:
+                print("DEBUG-2 JAPostDataToWebServer() response for POST using curl:{0}\n".format(resultText))
         except Exception as err:
             resultText = "<Response [500]> subprocess.run(curl) Error posting data to web server {0}, exception raised, error:{1}".format(webServerURL, err)
             OSStatsPostSuccess = False
@@ -390,7 +392,7 @@ def JAPostDataToWebServer(tempOSStatsToPost, useRequests, storeUponFailure):
         try:            
             statusLine = str(resultText[-80:])
             if re.search(r'\[2\d\d\]', statusLine) == None :
-                if re.search(r'\[4\d\d\]|\[5\d\d\]', statusLine) != None:
+                if re.search(r'\[4\d\d\]|\[5\d\d\]|>4\d\d |>5\d\d ', statusLine) != None:
                     OSStatsPostSuccess = False 
             else:   
                 matches = re.findall(r'<Response \[2\d\d\]>', str(resultText), re.MULTILINE)

@@ -1,0 +1,1 @@
+2024-03-09T17:14:46.497077 ERROR RetryDurationInHours is not suppported on Windows, history data not sent to webserver automatically
