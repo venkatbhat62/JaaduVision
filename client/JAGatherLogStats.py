@@ -2833,8 +2833,8 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                         timeInSeconds = (int(JAGlobalLib.JAConvertStringTimeToTimeInMicrosec(
                                                         currentTimeStampString, tempTimeStampFormat)))/1000000
                                         if timeInSeconds == 0:
-                                            errorMsg = "ERROR JAProcessLogFile() Error parsing the timestamp string:|{0}|, picked up from log line:|{1}, using the 'TimeStampFormat' spec:|{2}|, logFile:|{3}|, errorMsg:|{4}|".format(
-                                                currentTimeStampString, logLine, values[indexForTimeStampFormat], fileName, errorMsg)
+                                            errorMsg = "ERROR JAProcessLogFile() Error parsing the timestamp string:|{0}|, picked up from log line:|{1}, using the 'TimeStampFormat' spec:|{2}|, logFile:|{3}|".format(
+                                                currentTimeStampString, tempLine, values[indexForTimeStampFormat], fileName)
                                             LogMsg(errorMsg,statsLogFileName,True)
                                         else:
                                             logStats[key][indexForTimeStampFormat*2] = datetime.datetime.fromtimestamp(timeInSeconds).strftime(tempTimeStampFormat) 
