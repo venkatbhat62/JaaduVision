@@ -2719,6 +2719,7 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                                 file = open( fileName, "r")
                                 file.seek(prevFilePosition)
                                 tempLine = file.readline()
+                                logFileInfo[fileName]['filePointer'] = file
                 except OSError as err:
                     errorMsg = 'ERROR - JAProcessLogFile() error reading a line from logFile:|' + \
                         fileName + '|' + "OS error: {0}".format(err) + '\n'
