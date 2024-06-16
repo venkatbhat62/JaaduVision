@@ -2715,11 +2715,11 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                             if( debugLevel > 1 ):
                                 print('DEBUG-2 JAProcessLogFile() closing the file and reopening the file:{0}, prevFilePosition:{1}, fileSize:{2}'.format(
                                     fileName, prevFilePosition, fileSize))
-                                file.close()
-                                file = open( fileName, "r")
-                                file.seek(prevFilePosition)
-                                tempLine = file.readline()
-                                logFileInfo[fileName]['filePointer'] = file
+                            file.close()
+                            file = open( fileName, "r")
+                            file.seek(prevFilePosition)
+                            tempLine = file.readline()
+                            logFileInfo[fileName]['filePointer'] = file
                 except OSError as err:
                     errorMsg = 'ERROR - JAProcessLogFile() error reading a line from logFile:|' + \
                         fileName + '|' + "OS error: {0}".format(err) + '\n'
