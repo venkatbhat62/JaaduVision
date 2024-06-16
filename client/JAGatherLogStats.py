@@ -2451,7 +2451,7 @@ def JAProcessLineForLog( tempLine, fileName, key, values, keyDebugLevel ):
     return patternLogMatched
 
 def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, gatherLogStatsEnabled, debugLevel):
-    global averageCPUUsage, thisHostName, logEventPriorityLevel, statsPatternIndexsList, traceId, OSType
+    global averageCPUUsage, thisHostName, logEventPriorityLevel, statsPatternIndexsList, traceId, OSType, logFileInfo
     logFileNames = JAGlobalLib.JAFindModifiedFiles(
         logFileName, startTimeInSec, debugLevel, thisHostName, OSType)
 
