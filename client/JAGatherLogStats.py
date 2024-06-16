@@ -2720,6 +2720,21 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                             file.seek(prevFilePosition)
                             tempLine = file.readline()
                             logFileInfo[fileName]['filePointer'] = file
+
+                    if not tempLine:
+                        # end of file, pause processing for now
+                        logFileInfo[fileName]['fileName'] = fileName
+                        logFileInfo[fileName]['filePointer'] = file
+                        logFileInfo[fileName]['filePosition'] = file.tell()
+                        logFileInfo[fileName]['prevTime'] = time.time()
+                        if debugLevel > 0:
+                            print('DEBUG-1 JAProcessLogFile() Reached end of log file: ' + fileName)
+                        break
+
+                    # SKIP short lines
+                    if len(tempLine) < 2:
+                        continue
+
                 except OSError as err:
                     errorMsg = 'ERROR - JAProcessLogFile() error reading a line from logFile:|' + \
                         fileName + '|' + "OS error: {0}".format(err) + '\n'
@@ -2728,23 +2743,6 @@ def JAProcessLogFile(logFileName, startTimeInSec, logFileProcessingStartTime, ga
                     # store error status so that next round, this will not be tried
                     logFileInfo[fileName]['filePosition'] = 'ERROR'
                     continue    
-
-                if not tempLine:
-                    # end of file, pause processing for now
-                    logFileInfo[fileName]['fileName'] = fileName
-                    logFileInfo[fileName]['filePointer'] = file
-                    logFileInfo[fileName]['filePosition'] = file.tell()
-                    logFileInfo[fileName]['prevTime'] = time.time()
-                    if debugLevel > 0:
-                        print('DEBUG-1 JAProcessLogFile() Reached end of log file: ' + fileName)
-                    break
-                if debugLevel > 3:
-                    print(
-                        'DEBUG-4 JAProcessLogFile() processing log line:' + tempLine + '\n')
-
-                # SKIP short lines
-                if len(tempLine) < 2:
-                    continue
 
                 patternMatched = patternLogMatched = patternTraceMatched = False
 
