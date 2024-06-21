@@ -53,6 +53,11 @@ Author: havembha@gmail.com, 2021-07-18
       closed the file, opened the file, position the file pointer to previous file position and tried to 
       read next line. This is to overcome issue seen with python 2.7 while attempting to read a file that is 
       still being written. 
+      
+2024-06-21 havembha@gmail.com 1.31.03
+     While posting the data to web server, when the influxdb bucket name changes from previously processed key,
+        data is posted with previous key DB details. Now data gets posted to different influx db buckets. 
+
 """
 import json
 import platform
@@ -69,8 +74,8 @@ import datetime
 
 from JAGlobalLib import LogMsg
 
-# Major 01, minor 31, buildId 00
-JAVersion = "01.31.00"
+# Major 01, minor 32, buildId 00
+JAVersion = "01.31.03"
 
 ### number of patterns that can be searched in log line per Service
 indexForPriority = 0
@@ -1601,8 +1606,10 @@ def JAPostAllDataToWebServer():
     ### default DBType
     prevDBType = DBDetails['DBType']
     tempLogStatsToPost['DBType'] = DBDetails['DBType']
+    prevDBBucket = None
+
     if prevDBType == 'Influxdb' :
-        tempLogStatsToPost['InfluxdbBucket'] =  DBDetails['InfluxdbBucket']
+        tempLogStatsToPost['InfluxdbBucket'] =  prevDBBucket = DBDetails['InfluxdbBucket']
         tempLogStatsToPost['InfluxdbOrg'] =  DBDetails['InfluxdbOrg']
 
     floatDataPostIntervalInSec = float(dataPostIntervalInSec)
@@ -1619,7 +1626,16 @@ def JAPostAllDataToWebServer():
     #                    pass      fail     count     stats
     for key, values in logStats.items():
         if logStats[key][indexForDBDetails*2+1] == True:
-            if logStats[key][indexForDBDetails*2]['DBType'] != prevDBType:
+            tempInfluxDBBucketName = None
+            try:
+                if logStats[key][indexForDBDetails*2]['InfluxdbBucket'] != None:
+                    tempInfluxDBBucketName = logStats[key][indexForDBDetails*2]['InfluxdbBucket']
+            except:
+                if prevDBType != 'Prometheus' :
+                    if debugLevel > 0:
+                        print("DEBUG-1 Better to add other DBDetails for :|{0}|".format(logStats[key][indexForDBDetails*2]))
+
+            if logStats[key][indexForDBDetails*2]['DBType'] != prevDBType or ( logStats[key][indexForDBDetails*2]['DBType'] == 'Influxdb' and tempInfluxDBBucketName != prevDBBucket ):
                 ### current key's DBDetails differ from prevDBType
                 ###   post the data aggregated so far in tempLogStatsToPost
                 if postData == True :
