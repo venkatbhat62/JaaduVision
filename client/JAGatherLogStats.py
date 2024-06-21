@@ -53,7 +53,7 @@ Author: havembha@gmail.com, 2021-07-18
       closed the file, opened the file, position the file pointer to previous file position and tried to 
       read next line. This is to overcome issue seen with python 2.7 while attempting to read a file that is 
       still being written. 
-      
+
 2024-06-21 havembha@gmail.com 1.31.03
      While posting the data to web server, when the influxdb bucket name changes from previously processed key,
         data is posted with previous key DB details. Now data gets posted to different influx db buckets. 
@@ -74,7 +74,7 @@ import datetime
 
 from JAGlobalLib import LogMsg
 
-# Major 01, minor 32, buildId 00
+# Major 01, minor 31, buildId 03
 JAVersion = "01.31.03"
 
 ### number of patterns that can be searched in log line per Service
