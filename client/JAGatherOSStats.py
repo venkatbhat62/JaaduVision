@@ -65,6 +65,9 @@ Execution flow
 
 2022-09-10 version 1.31.00
     Collected OS_uptime and process elapsed time (etime) in Linux (not supported on Windows yet)
+
+2024-06-22 version 1.40.00
+    Added two 
 """
 import os, sys, re
 import datetime
@@ -74,8 +77,8 @@ import subprocess
 import signal
 from collections import defaultdict
 
-### MAJOR 1, minor 31, buildId 00
-JAVersion = "01.31.00"
+### MAJOR 1, minor 40, buildId 00
+JAVersion = "01.40.00"
 
 ## global default parameters
 ### config file containing OS Stats to be collected, intervals, and WebServer info
@@ -376,6 +379,7 @@ def JAPostDataToWebServer(tempOSStatsToPost, useRequests, storeUponFailure):
         except requestSession.exceptions.RequestException as err:
             resultText = "<Response [500]> requestSession.post() Error posting data to web server {0}, exception raised","error:{1}".format(webServerURL, err)
             OSStatsPostSuccess = False
+        
     else:
         try:
             result = subprocess.run(['curl', '-k', '-X', 'POST', webServerURL, '-H', "Accept: text/plain", '-H',
@@ -573,6 +577,8 @@ try:
                     myEnvironment = key
 
         for key, value in JAOSStats['OSStats'].items():
+            processOwnerNamesList = []
+            processNamesToExcludeList = []
             if value.get('Name') != None:
                 statType = value.get('Name')
 
@@ -584,12 +590,43 @@ try:
                 if value.get('FileSystemNames') != None:
                     ### file system names will be in CSV format
                     fsNames = value.get('FileSystemNames')
+
             elif statType == 'process' :
+
                 if value.get('ProcessNames') != None:
                     ### process names will be in CSV format
                     fsNames = value.get('ProcessNames')
 
-            JAOSStatsSpec[statType] = [ fields, fsNames ]
+                if value.get('ProcessOwnerNames') != None:
+                    ### owner names will be in CSV format
+                    tempProcessOwnerNames = value.get('ProcessOwnerNames')
+                else:
+                    ### by default, include processes of current user and other standard process possibilities
+                    if OSType == 'Windows':
+                        tempProcessOwnerNames = "$USERNAME,oracle,mariadba"
+                    else:
+                        tempProcessOwnerNames = "$USER,oracle,mariadba"
+                tempProcessOwnerNamesList = tempProcessOwnerNames.split(',')                
+                for tempOwnerName in tempProcessOwnerNamesList:
+                    ### if parameter has leading $, it is environment variable,
+                    ###    xlate to get the real user name and append to the username regular expression string
+                    try:
+                        if ( tempOwnerName[0] == '$'):
+                            if ( os.environ[tempOwnerName[1:]] != None):
+                                tempOwnerName = os.environ[tempOwnerName[1:]]
+                        processOwnerNamesList.append(tempOwnerName)                            
+                    except OSError as err:
+                        print('ERROR Not able to xlate the username:{0}'.format(tempOwnerName))
+                        continue
+                if value.get('ProcessNamesToExclude') != None:
+                    ### process names will be in CSV format
+                    tempProcessNamesToExclude = value.get('ProcessNamesToExclude')
+                    ### prepare a process list
+                    tempProcessNamesToExcludeList = tempProcessNamesToExclude.split(',')
+                    for tempProcessName in tempProcessNamesToExcludeList:
+                        processNamesToExcludeList.append(tempProcessName)
+
+            JAOSStatsSpec[statType] = [ fields, fsNames, processOwnerNamesList, processNamesToExcludeList ]
 
             if debugLevel > 1:
                 print('DEBUG-2 key: {0}, OSStatType: {1}, fields: {2}, fsNames: {3}'.format(key, statType, fields, fsNames ) )
@@ -765,7 +802,7 @@ if retryDurationInHours > 0 :
 
 
 
-def JAGetProcessStats( processNames, fields ):
+def JAGetProcessStats( processNames, fields, processOwnerNamesList, processNamesToExcludeList ):
     """
     Get OS uptime and record it as OS_Uptime in number of hours
 
@@ -815,12 +852,26 @@ def JAGetProcessStats( processNames, fields ):
         procStats['OS_uptime'] = "{0:1.2f}".format(float(time.time() - psutil.boot_time()) /  (24 * 3600))
  
         if psutilModulePresent == True :
+            field = fieldValue  = None
             for proc in psutil.process_iter():
                 try:
                     # Get process name & pid from process object.
                     processName = proc.name()
+                    if( processName == '' or processName == None):
+                        continue
+                    try:
+                        tempOwnerName = proc.username()
+                    except:
+                        if( debugLevel > 3 ):
+                            errorMsg = 'DEBUG-4 JAGetProcessStats() Not able to get owner name for the process:{0}, check process section of config file:{1}\n'.format(
+                                processName, configFile)
+                            print( errorMsg )
+                            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                        continue
                     processName = processName.replace(".exe","",1)
-                    if processName in tempProcessNames:
+                    ### if current process name is desired process name list or
+                    ###   current process is owned by the process owner in owner list and process name is not in exclude list
+                    if processName in tempProcessNames or (tempOwnerName in processOwnerNamesList and processName not in processNamesToExcludeList):
                         pInfoDict = proc.as_dict(attrs=[ 'cpu_percent','memory_percent', 'memory_info'])
                         dummy = pInfoDict['memory_info']
                         # print("VSZ:{0} RSS:{1}".format(dummy.rss, dummy.vms))
@@ -852,7 +903,8 @@ def JAGetProcessStats( processNames, fields ):
                                 procStats[procNameField] += float(fieldValue)
 
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                    errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, check Fields definition in Process section of config file:{1}\n'.format(field, configFile)
+                    errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, processName: {1}, check Fields definition in Process section of config file:{2}\n'.format(
+                                    field, processName, configFile)
                     print( errorMsg )
                     JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
                     continue
@@ -879,8 +931,7 @@ def JAGetProcessStats( processNames, fields ):
             procStats['OS_uptime'] = None
 
         ### get process stats for all processes
-        # result = subprocess.run( ['ps', 'aux'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        result = subprocess.run( ['ps', '-eo', '%cpu,%mem,vsz,rss,etime,cmd'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run( ['ps', '-eo', 'user,%cpu,%mem,vsz,rss,etime,cmd'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         lines = result.stdout.decode('utf-8').split('\n')
         if debugLevel > 2:
             print("DEBUG-3 JAGetProcessStats() output of ps -eo:{0}".format(lines))
@@ -894,28 +945,39 @@ def JAGetProcessStats( processNames, fields ):
                 continue
 
             try:
-                ### ps aux output line is of the form with 11 columns total
-                ### USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
-                # parent, pid, CPUPercent, MEMPercent, VSZ, RSS, TTY, STAT, START, TIME, COMMAND = line.split(' ', 10)
-
-                # ps -eo %cpu,%mem,vsz,rss,etime,cmd output is of the form with 6 columns total
-                # %CPU %MEM    VSZ   RSS     ELAPSED CMD
-                # 0.0  0.0   1744  1076    21:30:57 /init
-                CPUPercent, MEMPercent, VSZ, RSS, elapsedTime, COMMAND = line.split(' ', 5)
+                # ps -eo 'user,%cpu,%mem,vsz,rss,etime,cmd' output is of the form with 6 columns total
+                # USER %CPU %MEM    VSZ   RSS     ELAPSED CMD
+                # root 0.0  0.0   1744  1076    21:30:57 /init
+                tempOwnerName,CPUPercent, MEMPercent, VSZ, RSS, elapsedTime, COMMAND = line.split(' ', 6)
                 tempCommand = '{0}'.format(COMMAND)
 
                 if debugLevel > 3 :
-                    print("DEBUG-4 JAGetProcessStats() CPUPercent:{0}, MEMPercent:{1}, VSZ:{2}, RSS:{3}, elapsedTime:{4}, COMMAND:{5}".format(CPUPercent, MEMPercent, VSZ, RSS, elapsedTime, COMMAND))
+                    print("DEBUG-4 JAGetProcessStats() User: {0}, CPUPercent:{1}, MEMPercent:{2}, VSZ:{3}, RSS:{4}, elapsedTime:{5}, COMMAND:{6}".format(
+                        tempOwnerName, CPUPercent, MEMPercent, VSZ, RSS, elapsedTime, COMMAND))
+
+                tempGatherProcessInfo = False
+
                 for processName in tempProcessNames:
                     ### if current process name is at starting position of the command
                     ###   gather stats 
                     try:
                         if re.match( processName, tempCommand) == None :
-                            ### no match, skip current line
+                            ### no match, continue searching
                             continue
+                        else:
+                            ### found match, collect process info.
+                            tempGatherProcessInfo = True
+                            break 
                     except:
                         continue
 
+                if (tempGatherProcessInfo == False ):
+                    ### if current process is owned by the process owner in owner list and process name is not in process exclude list
+                    if (tempOwnerName in processOwnerNamesList and tempCommand not in processNamesToExcludeList) : 
+                        tempGatherProcessInfo = True
+                        processName = tempCommand
+                        
+                if (tempGatherProcessInfo == True ):
                     processNameParts = processName.split('/')
                     if processNameParts[-1] != None :
                         shortProcessName = processNameParts[-1]
@@ -1148,7 +1210,8 @@ def JAGetSocketStats(fields, recursive=False):
        or empty string if can't be computed
 
     """
-    myStats = comma = '' 
+    myStats = ''
+    comma = '' 
     ### separate field names
     fieldNames = re.split(',', fields)
    
@@ -2336,7 +2399,7 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
             tempPostData = True
 
     elif key == 'process':
-        stats = JAGetProcessStats( spec[1], fields )
+        stats = JAGetProcessStats( spec[1], fields, spec[2], spec[3] )
         if stats != '' and stats != None: 
             tempPostData = True
 

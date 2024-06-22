@@ -42,7 +42,7 @@ Environment:
         VerifyCertificate: False
         # post stats to below web server
         # WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
-        WebServerURL: https://192.168.1.169:443/JaaduVision/
+        WebServerURL: https://192.168.1.236:443/JaaduVision/
         DebugLevel: 0
         ### influxdb details
         ### DBDetails - optional, defaults to Prometheus, if present, applies to all service types or measurements 
@@ -96,6 +96,14 @@ OSStats:
     ###  leading /<name>/.. will be skipped, only the last word of process name be posted to grafana
     ### uptime - number of hours since start of a process
     ProcessNames: -bash,ps aux,/bin/bash,python,python3
+    ### gather info of processes owned by the owner names listed below. 
+    ### $USERNAME in windows and $USER in linux/unix is special variables that map to the owner process under which this JAGatherOSStats.py is running
+    ###   information of processes running under the same user name will be collected.
+    ### Other owner like oracle, mariadba are other users on this target host
+    ProcessOwnerNames: $USER,oracle,mariadba,mysql
+    ### while gathering the information of all processes owned by a user in ProcessOwnerNames,
+    ###  exclude the processes listed below.
+    ProcessNamesToExclude: cat,grep,ps,vi,view,more,tail,find,df,du,netstat
     Fields: CPU,MEM,VSZ,RSS,etime
   DiskIO:
     ### On grafana, the variable name will be disk_io_counters_<field> like disk_io_counters_read_count, disk_io_counters_write_count,...

@@ -36,7 +36,7 @@ Environment:
         ### do not verify web server certificate, defaults to True
         VerifyCertificate: False
         # post stats to below web server
-        WebServerURL: https://192.168.1.221:443/cgi-bin/JASaveStats.py
+        WebServerURL: https://192.168.1.236:443/cgi-bin/JASaveStats.py
 
 ### format
 ### - Name: psutil.<functionName>
@@ -67,6 +67,14 @@ OSStats:
     ### process name, as it appears at 11th (last) column of ps aux command
     ### can specify in CSV format
     ProcessNames: GitHubDesktop,chrome,msedge
+    ### gather info of processes owned by the owner names listed below. 
+    ### $USERNAME in windows and $USER in linux/unix is special variables that map to the owner process under which this JAGatherOSStats.py is running
+    ###   information of processes running under the same user name will be collected.
+    ### Other owner like oracle, mariadba are other users on this target host
+    #ProcessOwnerNames: $USERNAME,oracle,mariadba
+    ### while gathering the information of all processes owned by a user in ProcessOwnerNames,
+    ###  exclude the processes listed below.
+    ProcessNamesToExclude: cat,grep,ps,vi,view,more,tail,find,df,du,netstat
     Fields: CPU,MEM,VSZ,RSS
   DiskIO:
     ### On grafana, the variable name will be disk_io_counters_<field> like disk_io_counters_read_count, disk_io_counters_write_count,...
