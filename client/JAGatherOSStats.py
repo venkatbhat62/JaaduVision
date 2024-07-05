@@ -376,6 +376,12 @@ def JAPostDataToWebServer(tempOSStatsToPost, useRequests, storeUponFailure):
             returnResult = requestSession.post(
                 webServerURL, data, verify=verifyCertificate, headers=headers, timeout=(dataCollectDurationInSec/2))
             resultText = returnResult.text
+            resultLength = len(resultText)
+            statusCode = returnResult.status_code
+            if( statusCode >= 400 ):
+                OSStatsPostSuccess = False
+            else:
+                OSStatsPostSuccess = True
         except requestSession.exceptions.RequestException as err:
             resultText = "<Response [500]> requestSession.post() Error posting data to web server {0}, exception raised","error:{1}".format(webServerURL, err)
             OSStatsPostSuccess = False
@@ -391,21 +397,21 @@ def JAPostDataToWebServer(tempOSStatsToPost, useRequests, storeUponFailure):
             resultText = "<Response [500]> subprocess.run(curl) Error posting data to web server {0}, exception raised, error:{1}".format(webServerURL, err)
             OSStatsPostSuccess = False
 
-    resultLength = len(resultText)
-    if resultLength > 1 :
-        try:            
-            statusLine = str(resultText[-80:])
-            if re.search(r'\[2\d\d\]', statusLine) == None :
-                if re.search(r'\[4\d\d\]|\[5\d\d\]|>4\d\d |>5\d\d ', statusLine) != None:
-                    OSStatsPostSuccess = False 
-            else:   
-                matches = re.findall(r'<Response \[2\d\d\]>', str(resultText), re.MULTILINE)
-                if len(matches) == 0:
-                    OSStatsPostSuccess = False
-        except :
+        resultLength = len(resultText)
+        if resultLength > 1 :
+            try:            
+                statusLine = str(resultText[-80:])
+                if re.search(r'\[2\d\d\]', statusLine) == None :
+                    if re.search(r'\[4\d\d\]|\[5\d\d\]|>4\d\d |>5\d\d ', statusLine) != None:
+                        OSStatsPostSuccess = False 
+                else:   
+                    matches = re.findall(r'<Response \[2\d\d\]>', str(resultText), re.MULTILINE)
+                    if len(matches) == 0:
+                        OSStatsPostSuccess = False
+            except :
+                OSStatsPostSuccess = False
+        else:
             OSStatsPostSuccess = False
-    else:
-        OSStatsPostSuccess = False
 
     
     if OSStatsPostSuccess == False:
@@ -800,7 +806,71 @@ if retryDurationInHours > 0 :
                 JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
                 sys.exit(0)
 
+def JACheckProcessForStatCollection( tempCommand, tempOwnerName, tempProcessNames, processOwnerNamesList, processNamesToExcludeList):
+    """
+    This function returns true if
+       current process name matches to any one of the process in processNames
+       or
+       current process owner is in processOwnerNamesList and
+       current rpocess leading word is not in processNamesToExcludeList
+    """
+    global debugLevel
+    statCollectionEnabled = False
+    
+    for processName in tempProcessNames:
+        ### if current process name is at starting position of the command
+        ###   gather stats 
+        try:
+            if re.match( processName, tempCommand) == None :
+                ### no match, continue searching
+                if debugLevel > 3 :
+                    print("DEBUG-4 JACheckProcessForStatCollection() process:{0}, not matching to command:{1}".format(
+                        processName, tempCommand))
+                continue
+            else:
+                ### found match, collect process info.
+                statCollectionEnabled = True
+                if debugLevel > 2 :
+                    print("DEBUG-3 JACheckProcessForStatCollection() collecting info for the process:{0}, matched to the command:{1}".format(
+                        processName, tempCommand))
+                break 
+        except:
+            continue
 
+    if (statCollectionEnabled == False ):
+        if (OSType == 'Windows'):
+            ### ownername passed is of the form hostName\<userName>, get only the username portion
+            dummy, tempOwnerName = tempOwnerName.split('\\')
+
+        ### if current process is owned by the process owner in owner list and process name is not in process exclude list
+        if (tempOwnerName in processOwnerNamesList ) :
+            ### ger first word of tempCommand
+            if( re.search(r"\s", tempCommand) ):
+                leadingWordOfCommand, restOfTheCommand = tempCommand.split(' ', 2)
+            else:
+                leadingWordOfCommand = tempCommand
+
+            if ( leadingWordOfCommand not in processNamesToExcludeList) : 
+                statCollectionEnabled = True
+                processName = tempCommand
+                if debugLevel > 2 :
+                    print("DEBUG-3 JACheckProcessForStatCollection() collecting info for the process:{0}, processOwner: {1} is in ProcessOwnerNames:{2} and process is not in ProcessNamesToExclude:{3}".format(
+                        leadingWordOfCommand, tempOwnerName, processOwnerNamesList, processNamesToExcludeList))
+            else:
+                if debugLevel > 3 :
+                    print("DEBUG-4 JACheckProcessForStatCollection() skipping process:{0}, processOwner:{1}, is in ProcessNamesToExclude:{2}".format(
+                        leadingWordOfCommand, tempOwnerName, processNamesToExcludeList))
+        else:
+            if debugLevel > 3 :
+                print("DEBUG-4 JACheckProcessForStatCollection() skipping process:{0}, processOwner:{1}, is not owned by ProcessOwnerNames:{2}".format(
+                    processName, tempOwnerName, processOwnerNamesList))
+
+    ### replace =, ., - with ''
+    processName = re.sub(r'[\=\.\-\(\)]', '_', processName)
+    ### remove space from process name
+    processName = re.sub('\s+','',processName)
+
+    return statCollectionEnabled, processName
 
 def JAGetProcessStats( processNames, fields, processOwnerNamesList, processNamesToExcludeList ):
     """
@@ -847,72 +917,72 @@ def JAGetProcessStats( processNames, fields, processOwnerNamesList, processNames
     # key - processNameField, value = fieldValue
     procStats = {}
 
-    if OSType == 'Windows':
+    if psutilModulePresent == True :
        # import wmi        
         procStats['OS_uptime'] = "{0:1.2f}".format(float(time.time() - psutil.boot_time()) /  (24 * 3600))
  
-        if psutilModulePresent == True :
-            field = fieldValue  = None
-            for proc in psutil.process_iter():
+        field = fieldValue  = None
+        for proc in psutil.process_iter():
+            try:
+                # Get process name & pid from process object.
+                processName = proc.name()
+                if( processName == '' or processName == None):
+                    continue
                 try:
-                    # Get process name & pid from process object.
-                    processName = proc.name()
-                    if( processName == '' or processName == None):
-                        continue
-                    try:
-                        tempOwnerName = proc.username()
-                    except:
-                        if( debugLevel > 3 ):
-                            errorMsg = 'DEBUG-4 JAGetProcessStats() Not able to get owner name for the process:{0}, check process section of config file:{1}\n'.format(
-                                processName, configFile)
+                    tempOwnerName = proc.username()
+                except:
+                    if( debugLevel > 3 ):
+                        errorMsg = 'DEBUG-4 JAGetProcessStats() Not able to get owner name for the process:{0}, check process section of config file:{1}\n'.format(
+                            processName, configFile)
+                        print( errorMsg )
+                        JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                    continue
+                processName = processName.replace(".exe","",1)
+                statCollectionEnabled, processName = JACheckProcessForStatCollection( processName, tempOwnerName, tempProcessNames, processOwnerNamesList, processNamesToExcludeList)
+                if(statCollectionEnabled ) :           
+
+                    pInfoDict = proc.as_dict(attrs=[ 'cpu_percent','memory_percent', 'memory_info'])
+                    dummy = pInfoDict['memory_info']
+                    # print("VSZ:{0} RSS:{1}".format(dummy.rss, dummy.vms))
+                    # print( pInfoDict)
+
+                    ### collect data if the field name is enabled for collection
+                    for field in fieldNames:
+                        if field == 'CPU':
+                            fieldValue = pInfoDict['cpu_percent']
+                        elif field == 'MEM':
+                            fieldValue = pInfoDict['memory_percent']
+                        elif field == 'VSZ' :
+                            fieldValue = dummy.vms
+                        elif field == 'RSS' :
+                            fieldValue = dummy.rss
+                        #elif field == 'etime':
+                        #    fieldValue = 0
+                        else:
+                            errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, check Fields definition in Process section of config file:{1}\n'.format(field, configFile)
                             print( errorMsg )
                             JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
-                        continue
-                    processName = processName.replace(".exe","",1)
-                    ### if current process name is desired process name list or
-                    ###   current process is owned by the process owner in owner list and process name is not in exclude list
-                    if processName in tempProcessNames or (tempOwnerName in processOwnerNamesList and processName not in processNamesToExcludeList):
-                        pInfoDict = proc.as_dict(attrs=[ 'cpu_percent','memory_percent', 'memory_info'])
-                        dummy = pInfoDict['memory_info']
-                        # print("VSZ:{0} RSS:{1}".format(dummy.rss, dummy.vms))
-                        # print( pInfoDict)
+                            continue
 
-                        ### collect data if the field name is enabled for collection
-                        for field in fieldNames:
-                            if field == 'CPU':
-                                fieldValue = pInfoDict['cpu_percent']
-                            elif field == 'MEM':
-                                fieldValue = pInfoDict['memory_percent']
-                            elif field == 'VSZ' :
-                                fieldValue = dummy.vms
-                            elif field == 'RSS' :
-                                fieldValue = dummy.rss
-                            #elif field == 'etime':
-                            #    fieldValue = 0
-                            else:
-                                errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, check Fields definition in Process section of config file:{1}\n'.format(field, configFile)
-                                print( errorMsg )
-                                JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
-                                continue
+                        procNameField = '{0}_{1}'.format(processName,field)
+                        if procNameField not in procStats:
+                            procStats[procNameField] = float(fieldValue)
+                        else:
+                            ### sum the values if current processNameField is already present
+                            procStats[procNameField] += float(fieldValue)
 
-                            procNameField = '{0}_{1}'.format(processName,field)
-                            if procNameField not in procStats:
-                                procStats[procNameField] = float(fieldValue)
-                            else:
-                                ### sum the values if current processNameField is already present
-                                procStats[procNameField] += float(fieldValue)
-
-                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                    errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, processName: {1}, check Fields definition in Process section of config file:{2}\n'.format(
-                                    field, processName, configFile)
-                    print( errorMsg )
-                    JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
-                    continue
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                errorMsg = 'ERROR JAGetProcessStats() Unsupported field name:{0}, processName: {1}, check Fields definition in Process section of config file:{2}\n'.format(
+                                field, processName, configFile)
+                print( errorMsg )
+                JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                continue
                     
-        else:
+    elif OSType == 'Windows':
             errorMsg = "ERROR JAGetProcessStats() install psutil module to use this feature"
-
-    else:
+            print( errorMsg )
+            JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+    else:    
         try:
             ### first parameter of /proc/uptime is number of seconds since OS start
             with open("/proc/uptime") as procfile:
@@ -955,38 +1025,13 @@ def JAGetProcessStats( processNames, fields, processOwnerNamesList, processNames
                     print("DEBUG-4 JAGetProcessStats() User: {0}, CPUPercent:{1}, MEMPercent:{2}, VSZ:{3}, RSS:{4}, elapsedTime:{5}, COMMAND:{6}".format(
                         tempOwnerName, CPUPercent, MEMPercent, VSZ, RSS, elapsedTime, COMMAND))
 
-                tempGatherProcessInfo = False
-
-                for processName in tempProcessNames:
-                    ### if current process name is at starting position of the command
-                    ###   gather stats 
-                    try:
-                        if re.match( processName, tempCommand) == None :
-                            ### no match, continue searching
-                            continue
-                        else:
-                            ### found match, collect process info.
-                            tempGatherProcessInfo = True
-                            break 
-                    except:
-                        continue
-
-                if (tempGatherProcessInfo == False ):
-                    ### if current process is owned by the process owner in owner list and process name is not in process exclude list
-                    if (tempOwnerName in processOwnerNamesList and tempCommand not in processNamesToExcludeList) : 
-                        tempGatherProcessInfo = True
-                        processName = tempCommand
-                        
-                if (tempGatherProcessInfo == True ):
+                statCollectionEnabled, processName = JACheckProcessForStatCollection( tempCommand, tempOwnerName, tempProcessNames, processOwnerNamesList, processNamesToExcludeList)
+                if(statCollectionEnabled ) :           
                     processNameParts = processName.split('/')
                     if processNameParts[-1] != None :
                         shortProcessName = processNameParts[-1]
                     else:
                         shortProcessName = processName
-                    ### replace ., - with ''
-                    shortProcessName = re.sub(r'[\.\-]', '', shortProcessName)
-                    ### remove space from process name
-                    shortProcessName = re.sub('\s+','',shortProcessName)
 
                     ### collect data if the field name is enabled for collection
                     for field in fieldNames:
@@ -2459,6 +2504,12 @@ while loopStartTimeInSec  <= statsEndTimeInSec :
         if valuePairs != '':
             timeStamp = JAGlobalLib.UTCDateTime() 
             tempOSStatsToPost[key] = 'timeStamp={0},{1}'.format(timeStamp, valuePairs)
+
+        if (key == 'process'):
+            ### process data can be large, post it now itself
+            JAPostDataToWebServer(tempOSStatsToPost, useRequests, storeUponFailure)
+            ### copy constant data portion
+            tempOSStatsToPost = OSStatsToPost.copy()
 
   JAPostDataToWebServer(tempOSStatsToPost, useRequests, storeUponFailure)
     

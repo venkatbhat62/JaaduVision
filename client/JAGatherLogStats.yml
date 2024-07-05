@@ -186,7 +186,7 @@ Environment:
      VerifyCertificate: False
      # post stats to below web server
      #WebServerURL: https://192.168.1.169:443/cgi-bin/JASaveStats.py
-     WebServerURL: https://192.168.1.169:443/JaaduVision/
+     WebServerURL: https://192.168.1.236:443/JaaduVision/
      ### debug level 0, no debug, 1 to 4, 4 being max details
      DebugLevel: 0
      ### DBDetails - optional, defaults to Prometheus, if present, applies to all service types or measurements 
@@ -325,7 +325,7 @@ LogFile:
       Priority: 1
 
     TestStats:
-      LogFileName: JATest.log*
+      LogFileName: JATest.multiple.log*
       ### tps = number of instances divided by sampling interval
       PatternPass: TestMsg Pass
       ### tps = number of instances divided by sampling interval
@@ -355,7 +355,7 @@ LogFile:
       Priority: 2
 
     TestStatsWithVarPrefix:
-      LogFileName: JATest.log*
+      LogFileName: JATest.multiple.log*
       ### extract the regular expression value that matches to the variable prefix definition
       ###   prefix that to the variable to make unique value
       ###   serviceName_<variablePrefix>_<patterDelta>_delta
@@ -367,7 +367,7 @@ LogFile:
       Priority: 1
 
     TestStatsWithVarPrefixGroup:
-      LogFileName: JATest.log*
+      LogFileName: JATest.multiple.log*
       ### extract the regular expression value that matches to the variable prefix definition
       ###   prefix that to the variable to make unique value
       ###   serviceName_<variablePrefix>_<patterDelta>_delta
@@ -383,7 +383,10 @@ LogFile:
       Priority: 1
 
     TestStatsCSV:
-      LogFileName: JATest.log*
+      LogFileName: JATest.multiple.log*
+      ### send this data to "test" bucket and "havembha" org in influxdb
+      ###   this allows use of separate bucket and org per component/platform, per service type or per variable 
+      DBDetails: DBType=Influxdb,InfluxdbBucket=test2,InfluxdbOrg=havembha
       ### NOTE - if regex spec does not have (), it will not be counted as group in regex.
       ###   serviceName_:label:_varName_delta
       PatternLabel: (CSV),(\w+),
@@ -417,7 +420,7 @@ LogFile:
       ### send this data to "test" bucket and "havembha" org in influxdb
       ###   this allows use of separate bucket and org per component/platform, per service type or per variable 
       DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
-      LogFileName: JATest.log*
+      LogFileName: JATest.multiple.log*
       # 2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
       # 2021-10-31T19:11:12.096877 Stats client2 total key1 34 dummy1 total key2 200.00 key3 200.00 dummy3
       #                                  ^^^^^^^ <-- will be posted as client label value to DB
@@ -440,10 +443,10 @@ LogFile:
       Priority: 1
 
     TestStatsRepeatFieldValueSpec:
-      ### send this data to "test" bucket and "havembha" org in influxdb
+      ### send this data to "test2" bucket and "havembha" org in influxdb
       ###   this allows use of separate bucket and org per component/platform, per service type or per variable 
-      DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
-      LogFileName: JATest.log*
+      DBDetails: DBType=Influxdb,InfluxdbBucket=test2,InfluxdbOrg=havembha
+      LogFileName: JATest.multiple.log*
       # 2021-11-28T14:00:03.228652 ValuePair client11,key1=39,key2=100.00,key3=19.50
       # 2021-11-28T14:00:03.228829 ValuePair client12,key1=69,key2=200.00,key3=34.50
       ### extract the regular expression value that matches to label definition
@@ -462,7 +465,7 @@ LogFile:
     TestTrace:
       # post trace data to zipkin
       DBDetails: DBType=zipkin
-      LogFileName: JATest.log*
+      LogFileName: JATest.multiple.log*
       # 2022-05-30T15:17:58.938264 TraceId=0000000000000001 Service1 status=202 test trace line 1
       # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
       # regex group:                1                                 2         3          4      5         6      7      8               9
@@ -497,7 +500,7 @@ LogFile:
     TestTraceWithSkipGroups:
       # post trace data to zipkin
       DBDetails: DBType=zipkin
-      LogFileName: JATest.log*
+      LogFileName: JATest.multiple.log*
 
       # 2022-05-30T15:17:58.938412 TraceId=0000000000000001 Service2 account=1234 Name=JaaduVision test trace line 1
       # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
@@ -531,7 +534,533 @@ LogFile:
     TestTraceBlock:
       # post trace data to zipkin
       DBDetails: DBType=zipkin
-      LogFileName: JATest.log*
+      LogFileName: JATest.multiple.log*
+      # all trace info in single line
+      TraceSingleLine: False
+      # log block of the form:
+      # 2022-06-10T23:28:33.906468 Block1 Service3 test trace line
+      # 2nd line of block status=404
+      # 3rd line of block 
+      # 4th line of block 00000000000000cb
+      # 5th line of block 
+      # 6th line of block 
+      #                                     1                              2         3       4
+      PatternTraceBlockStart: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Block1 )(Service3 )(.*)
+      #                                                                           ^^^^^^^^ <-- label group
+      #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
+      # group id where timestamp is present in trace log
+      TimeStampGroup: 1
+      # commented below so that it will use global definition
+      # TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
+      #
+      # trace label - trace label can be on it's own line or
+      #               can be part of traceId or traceBlockStart line
+      TraceLabelGroup: 3
+
+      ### line with status code
+      # 2nd line of block status=404
+      # regex group:               1                  2
+      PatternTraceBlockStatus: (2nd line of block status=)(\d+)
+      TraceStatusGroup: 2
+      PatternTraceStatus: (202|404)
+
+      # 3rd line of block
+      PatternTraceBlockContains: (3rd )(line of block)
+      # 4th line of block 00000000000000c
+      # regex group:    1    2           3        4
+      PatternTraceId: (.*)( block )([0-9a-fA-F]+)$
+      #                             ^^^^^^^^^^^^ <--- trace id
+      # trace id group in log line
+      TraceIdGroup: 3
+
+      # 5th line has SKIP words
+      # 5th line of block account=1234 Name=JaaduVision
+      # regex groups: 1       2     3       4   5
+      PatternSkip: (.*)(account=)(\d+)( Name=)(\w+)(.*)
+      SkipGroups: 3,5
+
+      ### Block end line, use at least two groups so that it goes through skip group checks
+      PatternTraceBlockEnd: (6th line)( of block)
+      ### add below word at the end of the block start line or single trace line and print translated trace id without '-'
+      ###   loki can identify trace id in timestamp line and link to trace record.
+      TraceIdPrefix: TraceId=
+      Priority: 2
+      # DebugLevel: 4
+
+    TestStatsSingle:
+      LogFileName: JATest.single.log*
+      ### tps = number of instances divided by sampling interval
+      PatternPass: TestMsg Pass
+      ### tps = number of instances divided by sampling interval
+      PatternFail: TestMsg Fail
+      PatternLog: TestMsg Fail
+      ### tps = number of instances divided by sampling interval
+      PatternCount: TestMsg Count
+      # PatternSum: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
+      # value is summed over the sampling interval, tps is computed by diving sampling interval
+      # line is of the form: 2021-09-18T14:57:07.088995 leading text key1 54 dummy1 key2 27.00 dummy2
+      #                                                              kkkk vv        kkkk vvvvv
+      ### On grafana, variable name wil be TestStats_key1_sum, TestStats_key2_sum
+      PatternSum: leading text (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy
+      # PatternAverage: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
+      # value is summed over the sampling interval, average value is computed by dividing number of samples in that sampling interval
+      # line is of the form: 2021-09-18T14:57:07.088995 tps key1 54 dummy1 key2 27.00 dummy2
+      #                                                     kkkk  vv       kkkk vvvvv
+      # PatternAverage: tps (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy  
+      # PatternDelta: leading text (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy
+      # prev sample value is subracted from current sample to find the change or delta value.
+      # these delta values are summed over the sampling interval and divided by sampling intervall to get tps
+      # line is of the form: 2021-09-18T14:57:07.089993 total key1 9 dummy1 total key2 4.50 dummy2
+      #                                                       kkkk v              kkkk vvvv
+      ### ### On grafana, variable name wil be TestStats_key1_delta, TestStats_key2_delta
+      PatternDelta: tps (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy
+      TimeStampFormat: '%Y-%m-%dT%H:%M:%S.%f'
+      Priority: 2
+
+    TestStatsSingleWithVarPrefix:
+      LogFileName: JATest.single.log*
+      ### extract the regular expression value that matches to the variable prefix definition
+      ###   prefix that to the variable to make unique value
+      ###   serviceName_<variablePrefix>_<patterDelta>_delta
+      PatternVariablePrefix: Stats MicroService(\d) total
+      # 2021-10-05T01:09:03.249334 Stats MicroService1 total key1 9 dummy1 total key2 4.50 dummy2
+      #                                                      kkk vv              kkk  vvvv
+      ### On grafana, variable name wil be TestStatsWithVarPrefix_1_key1_average, TestStatsWithVarPrefix_1_key2_average
+      PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
+      Priority: 1
+
+    TestStatsSingleWithVarPrefixGroup:
+      LogFileName: JATest.single.log*
+      ### extract the regular expression value that matches to the variable prefix definition
+      ###   prefix that to the variable to make unique value
+      ###   serviceName_<variablePrefix>_<patterDelta>_delta
+      PatternVariablePrefix: Stats MicroService(\d)(\d) total
+      ###                                       1    2  <-- group numbers, using index starting from 1
+      ###                                           ^^
+      ###  use 2nd group value as variable prefix for the *_avrage metrics variable
+      VariablePrefixGroup: 2
+      # 2021-10-05T01:09:03.249334 Stats MicroService25 total key1 9 dummy1 total key2 4.50 dummy2
+      #                                                       kkk vv              kkkk vvvv
+      ### On Grafana, variable will be TestStatsWithVarPrefixGroup_5_key1_average, TestStatsWithVarPrefixGroup_5_key2_average
+      PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
+      Priority: 1
+
+    TestStatsSingleCSV:
+      LogFileName: JATest.single.log*
+      ### send this data to "test" bucket and "havembha" org in influxdb
+      ###   this allows use of separate bucket and org per component/platform, per service type or per variable 
+      DBDetails: DBType=Influxdb,InfluxdbBucket=test2,InfluxdbOrg=havembha
+      ### NOTE - if regex spec does not have (), it will not be counted as group in regex.
+      ###   serviceName_:label:_varName_delta
+      PatternLabel: (CSV),(\w+),
+      ###              1    2   <-- group numbers, using index starting from 1
+      ###                  ^^^
+      ###  use 2nd group value as label so that variables can be tracked per client name,
+      ###       this allows to graph stats per client in grafana dashboard
+      LabelGroup: 2
+      ### On Grafana, variable will be TestStatsCSV_key1_delta, TestStatsCSV_key2_delta,... along with client name as label
+      ### Stats client2 total key1 39 dummy1 total key2 200.00 key3 19.50 dummy3
+      ### 2022-03-26T23:15:05.308415 CSV,client2,39,9.00,19.50
+      ###                                        ^^^^^^^^^^^^^^ <-- post these 3 values 
+      ###                            ^^^,^^^^^^^ <-- skip posting these as values 
+      PatternCSVVariableNames: CSV,clientName,key1,key2,key3
+      PatternDelta: (CSV),(\w+),(\d+),(\d+.\d+),(\d+.\d+)
+      ###             1    2        3       4      5 <-- group numbers, using index starting from 1
+      ###  skip groups 1, and group 2 which is client name, use group 2 for label, post values of groups 3,4,5 to web
+      SkipGroups: 1,2
+      ### 2022-03-26T23:15:05.308415 CSV,client2,39,9.00,19.50
+      ###                             1   2       3   4    5 <-- group numbers
+      ### variable and value posted to web server is of the form:
+      ###  TestStatsCSV_:client2:key1_delta=39   <-- group 3
+      ###                 ^^^^^ <-- this will be separated by web service as label and 
+      ###                                   data gets posted to prometheus with label client=client2 varName varValue
+      ###                                   This allows further filtering in grafana based on client names
+      ###  TestStatsCSV_:client2:key2_delta=<value like 9>    <-- group 4
+      ###  TestStatsCSV_:client2:key3_delta=<value like 19.5> <-- group 5
+      Priority: 1
+
+    TestStatsSingleWithLabel:
+      ### send this data to "test" bucket and "havembha" org in influxdb
+      ###   this allows use of separate bucket and org per component/platform, per service type or per variable 
+      DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
+      LogFileName: JATest.single.log*
+      # 2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
+      # 2021-10-31T19:11:12.096877 Stats client2 total key1 34 dummy1 total key2 200.00 key3 200.00 dummy3
+      #                                  ^^^^^^^ <-- will be posted as client label value to DB
+      ### extract the regular expression value that matches to label definition
+      PatternLabel: Stats (\w+) total
+      ###                  ^^^ <-- extract this and post the data for this service name with that label
+      ### using separate label name for these stats allows aggregation of stats per label name in dashboard
+      ###  use 1st group value as variable prefix for the *_avrage metrics variable
+      LabelGroup: 1
+      #2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
+      #                                               1     2               3    4      5    6     
+      #                                                                    ^^^^^^^^ <-- SKIP posting this data
+      SkipGroups: 3,4
+      PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) (\w+) (\d+.\d+) dummy3
+      ### variable and value posted to web server is of the form:
+      ###  TestStatsWithLabel_:client1:key1_average=34.67
+      ###                     ^^^^^^^^^ <-- this will be separated by web service as label and 
+      ###                                   data gets posted to influxb with label client=client1 varName varValue
+      ###                                   This allows further filtering in grafana based on client names
+      Priority: 1
+
+    TestStatsSingleRepeatFieldValueSpec:
+      ### send this data to "test2" bucket and "havembha" org in influxdb
+      ###   this allows use of separate bucket and org per component/platform, per service type or per variable 
+      DBDetails: DBType=Influxdb,InfluxdbBucket=test2,InfluxdbOrg=havembha
+      LogFileName: JATest.single.log*
+      # 2021-11-28T14:00:03.228652 ValuePair client11,key1=39,key2=100.00,key3=19.50
+      # 2021-11-28T14:00:03.228829 ValuePair client12,key1=69,key2=200.00,key3=34.50
+      ### extract the regular expression value that matches to label definition
+      PatternVariablePrefix: ValuePair client(\d)(\d)
+      ###                                         ^^
+      ###  use 2nd group value as variable prefix for the *_avrage metrics variable
+      VariablePrefixGroup: 2
+      # 2021-11-28T14:00:03.228652 ValuePair client11,key1=39,key2=100.00,key3=19.50
+      #                                               1    2  3    4      5    6     
+      #                                                       ^^^^^^^^ <-- SKIP posting this data
+      SkipGroups: 3,4
+      PatternAverage: (\w+)=(\d+)
+      Priority: 1
+
+    # Trace serviceName
+    TestTraceSingle:
+      # post trace data to zipkin
+      DBDetails: DBType=zipkin
+      LogFileName: JATest.single.log*
+      # 2022-05-30T15:17:58.938264 TraceId=0000000000000001 Service1 status=202 test trace line 1
+      # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
+      # regex group:                1                                 2         3          4      5         6      7      8               9
+      PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( TraceId=)([0-9a-fA-F]+)( )(Service1)( status=)(\d+)( test trace line )(\d+)
+      #                                                                                                                                  ^^^^ <-- duration
+      #                                                                                                           ^^^^  <-- status code
+      #                                                                                       ^^^^ <-- label
+      #                                                                         ^^^^^^^^^^ <-- trace Id
+      #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
+      # group id where timestamp is present in trace log
+      TimeStampGroup: 1
+      # log timestamp format to convert time using time.strptime(). 
+      # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
+      TimeStampFormat: '%Y-%m-%dT%H:%M:%S.%f'
+      # all trace info in single line
+      TraceSingleLine: True
+      # trace id group in log line
+      TraceIdGroup: 3
+      # trace name
+      TraceLabelGroup: 5
+      ## group where status code is present
+      TraceStatusGroup: 7
+      PatternTraceStatus: (202|404)
+      # event duration is at this group id
+      DurationGroup: 9
+      ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
+      DurationMultiplier: 1000
+      Priority: 1
+      # DebugLevel: 4
+
+    # Trace serviceName
+    TestTraceSingleWithSkipGroups:
+      # post trace data to zipkin
+      DBDetails: DBType=zipkin
+      LogFileName: JATest.single.log*
+
+      # 2022-05-30T15:17:58.938412 TraceId=0000000000000001 Service2 account=1234 Name=JaaduVision test trace line 1
+      # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
+      # regex group:             1                                      2          
+      # regex group:                1                                     2         3         4     5           6     7      8      9   10  11
+      PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( TraceId=)([0-9a-fA-F]+)( )(Service2)( account=)(\d+)( Name=)(\w+)(.*)(\d+)
+      #                                                                                                                                     ^^^^ <-- duration
+      #                                                                                                             ^^^          ^^^  <-- skip groups
+      #                                                                                       ^^^^ <-- label
+      #                                                                         ^^^^^^^^^^ <-- trace Id
+      #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
+      # group id where timestamp is present in trace log
+      TimeStampGroup: 1
+      # log timestamp format to convert time using time.strptime(). 
+      # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
+      TimeStampFormat: '%Y-%m-%dT%H:%M:%S.%f'
+      # all trace info in single line
+      TraceSingleLine: True
+      TraceIdGroup: 3
+      TraceLabelGroup: 5
+      # do not post values of these groups, just mask them. Here, account number and name are MASKED
+      SkipGroups: 7,9
+      # event duration is at this group id
+      DurationGroup: 11
+      ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
+      DurationMultiplier: 1000
+      Priority: 2
+      # DebugLevel: 4
+
+    # Trace serviceName
+    TestTraceSingleBlock:
+      # post trace data to zipkin
+      DBDetails: DBType=zipkin
+      LogFileName: JATest.single.log*
+      # all trace info in single line
+      TraceSingleLine: False
+      # log block of the form:
+      # 2022-06-10T23:28:33.906468 Block1 Service3 test trace line
+      # 2nd line of block status=404
+      # 3rd line of block 
+      # 4th line of block 00000000000000cb
+      # 5th line of block 
+      # 6th line of block 
+      #                                     1                              2         3       4
+      PatternTraceBlockStart: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( Block1 )(Service3 )(.*)
+      #                                                                           ^^^^^^^^ <-- label group
+      #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
+      # group id where timestamp is present in trace log
+      TimeStampGroup: 1
+      # commented below so that it will use global definition
+      # TimeStampFormat: %Y-%m-%dT%H:%M:%S.%f
+      #
+      # trace label - trace label can be on it's own line or
+      #               can be part of traceId or traceBlockStart line
+      TraceLabelGroup: 3
+
+      ### line with status code
+      # 2nd line of block status=404
+      # regex group:               1                  2
+      PatternTraceBlockStatus: (2nd line of block status=)(\d+)
+      TraceStatusGroup: 2
+      PatternTraceStatus: (202|404)
+
+      # 3rd line of block
+      PatternTraceBlockContains: (3rd )(line of block)
+      # 4th line of block 00000000000000c
+      # regex group:    1    2           3        4
+      PatternTraceId: (.*)( block )([0-9a-fA-F]+)$
+      #                             ^^^^^^^^^^^^ <--- trace id
+      # trace id group in log line
+      TraceIdGroup: 3
+
+      # 5th line has SKIP words
+      # 5th line of block account=1234 Name=JaaduVision
+      # regex groups: 1       2     3       4   5
+      PatternSkip: (.*)(account=)(\d+)( Name=)(\w+)(.*)
+      SkipGroups: 3,5
+
+      ### Block end line, use at least two groups so that it goes through skip group checks
+      PatternTraceBlockEnd: (6th line)( of block)
+      ### add below word at the end of the block start line or single trace line and print translated trace id without '-'
+      ###   loki can identify trace id in timestamp line and link to trace record.
+      TraceIdPrefix: TraceId=
+      Priority: 2
+      # DebugLevel: 4
+
+    TestStatsDaily:
+      LogFileName: JATest.daily.log*
+      ### tps = number of instances divided by sampling interval
+      PatternPass: TestMsg Pass
+      ### tps = number of instances divided by sampling interval
+      PatternFail: TestMsg Fail
+      PatternLog: TestMsg Fail
+      ### tps = number of instances divided by sampling interval
+      PatternCount: TestMsg Count
+      # PatternSum: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
+      # value is summed over the sampling interval, tps is computed by diving sampling interval
+      # line is of the form: 2021-09-18T14:57:07.088995 leading text key1 54 dummy1 key2 27.00 dummy2
+      #                                                              kkkk vv        kkkk vvvvv
+      ### On grafana, variable name wil be TestStats_key1_sum, TestStats_key2_sum
+      PatternSum: leading text (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy
+      # PatternAverage: leading text key1 dummy value1 dummy key2 dummy value2 dummy....
+      # value is summed over the sampling interval, average value is computed by dividing number of samples in that sampling interval
+      # line is of the form: 2021-09-18T14:57:07.088995 tps key1 54 dummy1 key2 27.00 dummy2
+      #                                                     kkkk  vv       kkkk vvvvv
+      # PatternAverage: tps (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy  
+      # PatternDelta: leading text (\w+) (\d+) dummy1 (\w+) (\d+.\d+) dummy
+      # prev sample value is subracted from current sample to find the change or delta value.
+      # these delta values are summed over the sampling interval and divided by sampling intervall to get tps
+      # line is of the form: 2021-09-18T14:57:07.089993 total key1 9 dummy1 total key2 4.50 dummy2
+      #                                                       kkkk v              kkkk vvvv
+      ### ### On grafana, variable name wil be TestStats_key1_delta, TestStats_key2_delta
+      PatternDelta: tps (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy
+      TimeStampFormat: '%Y-%m-%dT%H:%M:%S.%f'
+      Priority: 2
+
+    TestStatsDailyWithVarPrefix:
+      LogFileName: JATest.daily.log*
+      ### extract the regular expression value that matches to the variable prefix definition
+      ###   prefix that to the variable to make unique value
+      ###   serviceName_<variablePrefix>_<patterDelta>_delta
+      PatternVariablePrefix: Stats MicroService(\d) total
+      # 2021-10-05T01:09:03.249334 Stats MicroService1 total key1 9 dummy1 total key2 4.50 dummy2
+      #                                                      kkk vv              kkk  vvvv
+      ### On grafana, variable name wil be TestStatsWithVarPrefix_1_key1_average, TestStatsWithVarPrefix_1_key2_average
+      PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
+      Priority: 1
+
+    TestStatsDailyWithVarPrefixGroup:
+      LogFileName: JATest.daily.log*
+      ### extract the regular expression value that matches to the variable prefix definition
+      ###   prefix that to the variable to make unique value
+      ###   serviceName_<variablePrefix>_<patterDelta>_delta
+      PatternVariablePrefix: Stats MicroService(\d)(\d) total
+      ###                                       1    2  <-- group numbers, using index starting from 1
+      ###                                           ^^
+      ###  use 2nd group value as variable prefix for the *_avrage metrics variable
+      VariablePrefixGroup: 2
+      # 2021-10-05T01:09:03.249334 Stats MicroService25 total key1 9 dummy1 total key2 4.50 dummy2
+      #                                                       kkk vv              kkkk vvvv
+      ### On Grafana, variable will be TestStatsWithVarPrefixGroup_5_key1_average, TestStatsWithVarPrefixGroup_5_key2_average
+      PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) dummy2
+      Priority: 1
+
+    TestStatsDailyCSV:
+      LogFileName: JATest.daily.log*
+      ### send this data to "test" bucket and "havembha" org in influxdb
+      ###   this allows use of separate bucket and org per component/platform, per service type or per variable 
+      DBDetails: DBType=Influxdb,InfluxdbBucket=test2,InfluxdbOrg=havembha
+      ### NOTE - if regex spec does not have (), it will not be counted as group in regex.
+      ###   serviceName_:label:_varName_delta
+      PatternLabel: (CSV),(\w+),
+      ###              1    2   <-- group numbers, using index starting from 1
+      ###                  ^^^
+      ###  use 2nd group value as label so that variables can be tracked per client name,
+      ###       this allows to graph stats per client in grafana dashboard
+      LabelGroup: 2
+      ### On Grafana, variable will be TestStatsCSV_key1_delta, TestStatsCSV_key2_delta,... along with client name as label
+      ### Stats client2 total key1 39 dummy1 total key2 200.00 key3 19.50 dummy3
+      ### 2022-03-26T23:15:05.308415 CSV,client2,39,9.00,19.50
+      ###                                        ^^^^^^^^^^^^^^ <-- post these 3 values 
+      ###                            ^^^,^^^^^^^ <-- skip posting these as values 
+      PatternCSVVariableNames: CSV,clientName,key1,key2,key3
+      PatternDelta: (CSV),(\w+),(\d+),(\d+.\d+),(\d+.\d+)
+      ###             1    2        3       4      5 <-- group numbers, using index starting from 1
+      ###  skip groups 1, and group 2 which is client name, use group 2 for label, post values of groups 3,4,5 to web
+      SkipGroups: 1,2
+      ### 2022-03-26T23:15:05.308415 CSV,client2,39,9.00,19.50
+      ###                             1   2       3   4    5 <-- group numbers
+      ### variable and value posted to web server is of the form:
+      ###  TestStatsCSV_:client2:key1_delta=39   <-- group 3
+      ###                 ^^^^^ <-- this will be separated by web service as label and 
+      ###                                   data gets posted to prometheus with label client=client2 varName varValue
+      ###                                   This allows further filtering in grafana based on client names
+      ###  TestStatsCSV_:client2:key2_delta=<value like 9>    <-- group 4
+      ###  TestStatsCSV_:client2:key3_delta=<value like 19.5> <-- group 5
+      Priority: 1
+
+    TestStatsDailyWithLabel:
+      ### send this data to "test" bucket and "havembha" org in influxdb
+      ###   this allows use of separate bucket and org per component/platform, per service type or per variable 
+      DBDetails: DBType=Influxdb,InfluxdbBucket=test,InfluxdbOrg=havembha
+      LogFileName: JATest.daily.log*
+      # 2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
+      # 2021-10-31T19:11:12.096877 Stats client2 total key1 34 dummy1 total key2 200.00 key3 200.00 dummy3
+      #                                  ^^^^^^^ <-- will be posted as client label value to DB
+      ### extract the regular expression value that matches to label definition
+      PatternLabel: Stats (\w+) total
+      ###                  ^^^ <-- extract this and post the data for this service name with that label
+      ### using separate label name for these stats allows aggregation of stats per label name in dashboard
+      ###  use 1st group value as variable prefix for the *_avrage metrics variable
+      LabelGroup: 1
+      #2021-10-31T19:11:12.096877 Stats client1 total key1 34 dummy1 total key2 100.00 key3 100.00 dummy3
+      #                                               1     2               3    4      5    6     
+      #                                                                    ^^^^^^^^ <-- SKIP posting this data
+      SkipGroups: 3,4
+      PatternAverage: total (\w+) (\d+) dummy1 total (\w+) (\d+.\d+) (\w+) (\d+.\d+) dummy3
+      ### variable and value posted to web server is of the form:
+      ###  TestStatsWithLabel_:client1:key1_average=34.67
+      ###                     ^^^^^^^^^ <-- this will be separated by web service as label and 
+      ###                                   data gets posted to influxb with label client=client1 varName varValue
+      ###                                   This allows further filtering in grafana based on client names
+      Priority: 1
+
+    TestStatsDailyRepeatFieldValueSpec:
+      ### send this data to "test2" bucket and "havembha" org in influxdb
+      ###   this allows use of separate bucket and org per component/platform, per service type or per variable 
+      DBDetails: DBType=Influxdb,InfluxdbBucket=test2,InfluxdbOrg=havembha
+      LogFileName: JATest.daily.log*
+      # 2021-11-28T14:00:03.228652 ValuePair client11,key1=39,key2=100.00,key3=19.50
+      # 2021-11-28T14:00:03.228829 ValuePair client12,key1=69,key2=200.00,key3=34.50
+      ### extract the regular expression value that matches to label definition
+      PatternVariablePrefix: ValuePair client(\d)(\d)
+      ###                                         ^^
+      ###  use 2nd group value as variable prefix for the *_avrage metrics variable
+      VariablePrefixGroup: 2
+      # 2021-11-28T14:00:03.228652 ValuePair client11,key1=39,key2=100.00,key3=19.50
+      #                                               1    2  3    4      5    6     
+      #                                                       ^^^^^^^^ <-- SKIP posting this data
+      SkipGroups: 3,4
+      PatternAverage: (\w+)=(\d+)
+      Priority: 1
+
+    # Trace serviceName
+    TestTraceDaily:
+      # post trace data to zipkin
+      DBDetails: DBType=zipkin
+      LogFileName: JATest.daily.log*
+      # 2022-05-30T15:17:58.938264 TraceId=0000000000000001 Service1 status=202 test trace line 1
+      # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
+      # regex group:                1                                 2         3          4      5         6      7      8               9
+      PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( TraceId=)([0-9a-fA-F]+)( )(Service1)( status=)(\d+)( test trace line )(\d+)
+      #                                                                                                                                  ^^^^ <-- duration
+      #                                                                                                           ^^^^  <-- status code
+      #                                                                                       ^^^^ <-- label
+      #                                                                         ^^^^^^^^^^ <-- trace Id
+      #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
+      # group id where timestamp is present in trace log
+      TimeStampGroup: 1
+      # log timestamp format to convert time using time.strptime(). 
+      # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
+      TimeStampFormat: '%Y-%m-%dT%H:%M:%S.%f'
+      # all trace info in single line
+      TraceSingleLine: True
+      # trace id group in log line
+      TraceIdGroup: 3
+      # trace name
+      TraceLabelGroup: 5
+      ## group where status code is present
+      TraceStatusGroup: 7
+      PatternTraceStatus: (202|404)
+      # event duration is at this group id
+      DurationGroup: 9
+      ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
+      DurationMultiplier: 1000
+      Priority: 1
+      # DebugLevel: 4
+
+    # Trace serviceName
+    TestTraceDailyWithSkipGroups:
+      # post trace data to zipkin
+      DBDetails: DBType=zipkin
+      LogFileName: JATest.daily.log*
+
+      # 2022-05-30T15:17:58.938412 TraceId=0000000000000001 Service2 account=1234 Name=JaaduVision test trace line 1
+      # trace id is hexa decimal number 0-9, a-f, A-F, trace duration at the end of the line
+      # regex group:             1                                      2          
+      # regex group:                1                                     2         3         4     5           6     7      8      9   10  11
+      PatternTimeStamp: (^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)( TraceId=)([0-9a-fA-F]+)( )(Service2)( account=)(\d+)( Name=)(\w+)(.*)(\d+)
+      #                                                                                                                                     ^^^^ <-- duration
+      #                                                                                                             ^^^          ^^^  <-- skip groups
+      #                                                                                       ^^^^ <-- label
+      #                                                                         ^^^^^^^^^^ <-- trace Id
+      #                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ <-- timestamp
+      # group id where timestamp is present in trace log
+      TimeStampGroup: 1
+      # log timestamp format to convert time using time.strptime(). 
+      # Refer https://www.tutorialspoint.com/python/time_strptime.htm for details.  
+      TimeStampFormat: '%Y-%m-%dT%H:%M:%S.%f'
+      # all trace info in single line
+      TraceSingleLine: True
+      TraceIdGroup: 3
+      TraceLabelGroup: 5
+      # do not post values of these groups, just mask them. Here, account number and name are MASKED
+      SkipGroups: 7,9
+      # event duration is at this group id
+      DurationGroup: 11
+      ### trace duration in milliseconds, multiply by 1000 to concert to microsencds before posting
+      DurationMultiplier: 1000
+      Priority: 2
+      # DebugLevel: 4
+
+    # Trace serviceName
+    TestTraceDailyBlock:
+      # post trace data to zipkin
+      DBDetails: DBType=zipkin
+      LogFileName: JATest.daily.log*
       # all trace info in single line
       TraceSingleLine: False
       # log block of the form:
