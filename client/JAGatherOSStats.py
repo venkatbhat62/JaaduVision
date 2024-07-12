@@ -66,8 +66,9 @@ Execution flow
 2022-09-10 version 1.31.00
     Collected OS_uptime and process elapsed time (etime) in Linux (not supported on Windows yet)
 
-2024-06-22 version 1.40.00
-    Added two 
+2024-07-09 version 1.40.00
+    Added the support for ProcessOwnerNames and ProcessNamesToExclude in config file. 
+    For more details refer to the comments in config file JAGatherOSStats.yml.
 """
 import os, sys, re
 import datetime
@@ -618,11 +619,20 @@ try:
                     ###    xlate to get the real user name and append to the username regular expression string
                     try:
                         if ( tempOwnerName[0] == '$'):
-                            if ( os.environ[tempOwnerName[1:]] != None):
-                                tempOwnerName = os.environ[tempOwnerName[1:]]
+                            try:
+                                if ( os.environ[tempOwnerName[1:]] != None):
+                                    tempOwnerName = os.environ[tempOwnerName[1:]]
+                            except :
+                                errorMsg = 'ERROR Not able to xlate the username:{0}'.format(tempOwnerName)
+                                JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                                print(errorMsg)
+                                continue
+                                    
                         processOwnerNamesList.append(tempOwnerName)                            
                     except OSError as err:
-                        print('ERROR Not able to xlate the username:{0}'.format(tempOwnerName))
+                        errorMsg = 'ERROR Not able to xlate the username:{0}'.format(tempOwnerName)
+                        JAGlobalLib.LogMsg(errorMsg, JAOSStatsLogFileName, True)
+                        print(errorMsg)
                         continue
                 if value.get('ProcessNamesToExclude') != None:
                     ### process names will be in CSV format
